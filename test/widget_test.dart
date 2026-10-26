@@ -105,6 +105,49 @@ void main() {
 
     expect(appState.pesagens.any((p) => p.pesoKg == 79.5), isTrue);
 
+    // 4.3 Cadastra Segunda Avaliação para validar Fase 4 (Comparador Completo)
+    await tester.tap(find.byKey(const ValueKey('fab_quick_actions')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('action_full_evaluation')));
+    await tester.pumpAndSettle();
+
+    await tester.enterText(find.byKey(const ValueKey('input_Peso')), '78.5');
+    await tester.enterText(find.byKey(const ValueKey('input_Pescoço')), '38');
+    await tester.enterText(find.byKey(const ValueKey('input_Cintura')), '85');
+    await tester.pumpAndSettle();
+
+    final btnCalcular2 = find.text('Calcular Resultados');
+    await tester.ensureVisible(btnCalcular2);
+    await tester.tap(btnCalcular2);
+    await tester.pumpAndSettle();
+
+    // 4.4 Valida Acesso e Recursos do Comparador Completo (Fase 4)
+    final btnCompararHeader =
+        find.byKey(const ValueKey('btn_open_comparator_header'));
+    expect(btnCompararHeader, findsOneWidget);
+    await tester.tap(btnCompararHeader);
+    await tester.pumpAndSettle();
+
+    expect(find.text('Comparador de Avaliações'), findsOneWidget);
+    expect(find.byKey(const ValueKey('selector_base_a')), findsOneWidget);
+    expect(find.byKey(const ValueKey('selector_compare_b')), findsOneWidget);
+    expect(find.text('COMPOSIÇÃO CORPORAL'), findsOneWidget);
+    expect(find.text('CIRCUNFERÊNCIAS CORPORAIS (cm)'), findsOneWidget);
+
+    // Testa inversão de marcos (A ⇄ B)
+    await tester.tap(find.byKey(const ValueKey('btn_swap_comparator')));
+    await tester.pumpAndSettle();
+
+    // Testa aba de fotos
+    await tester.tap(find.text('Fotos Lado a Lado'));
+    await tester.pumpAndSettle();
+    expect(
+        find.byKey(const ValueKey('btn_open_zoom_comparator')), findsOneWidget);
+
+    // Volta ao painel principal
+    await tester.tap(find.byType(BackButton));
+    await tester.pumpAndSettle();
+
     // 5. Navega para a aba Ajustes e valida Backup JSON + Modo Escuro
     await tester.tap(find.text('Ajustes'));
     await tester.pumpAndSettle();

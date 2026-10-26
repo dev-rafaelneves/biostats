@@ -17,6 +17,7 @@ import '../widgets/legal_disclaimer_modal.dart';
 import '../widgets/photo_comparison.dart';
 import '../widgets/quick_weight_dialog.dart';
 import '../widgets/weekly_weight_tracker.dart';
+import 'evaluation_comparator_screen.dart';
 import 'evaluation_form_screen.dart';
 import 'onboarding_screen.dart';
 import 'profile_setup_screen.dart';
@@ -61,6 +62,22 @@ class _MainShellState extends State<MainShell> {
     Navigator.of(context).push<String>(
       MaterialPageRoute(
         builder: (ctx) => EvaluationFormScreen(appState: widget.appState),
+      ),
+    );
+  }
+
+  void _openComparator(
+    BuildContext context, {
+    String? baseId,
+    String? compareId,
+  }) {
+    Navigator.of(context).push<void>(
+      MaterialPageRoute(
+        builder: (ctx) => EvaluationComparatorScreen(
+          appState: widget.appState,
+          initialBaseId: baseId,
+          initialCompareId: compareId,
+        ),
       ),
     );
   }
@@ -178,6 +195,45 @@ class _MainShellState extends State<MainShell> {
                     trailing:
                         const Icon(Icons.arrow_forward_ios_rounded, size: 14),
                   ),
+                  if (widget.appState.avaliacoes.length >= 2) ...[
+                    const Divider(height: 16),
+                    ListTile(
+                      key: const ValueKey('action_open_comparator'),
+                      onTap: () {
+                        Navigator.of(ctx).pop();
+                        _openComparator(context);
+                      },
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      leading: Container(
+                        width: 44,
+                        height: 44,
+                        decoration: BoxDecoration(
+                          color: AppColors.orange.withValues(alpha: 0.12),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: const Icon(
+                          Icons.compare_arrows_rounded,
+                          color: AppColors.orange,
+                          size: 24,
+                        ),
+                      ),
+                      title: const Text(
+                        '⚖️ Comparar Avaliações',
+                        style: TextStyle(
+                          fontWeight: FontWeight.w700,
+                          fontSize: 16,
+                        ),
+                      ),
+                      subtitle: const Text(
+                        'Comparador lado a lado com métricas, fotos e metas',
+                        style: TextStyle(fontSize: 12.5),
+                      ),
+                      trailing:
+                          const Icon(Icons.arrow_forward_ios_rounded, size: 14),
+                    ),
+                  ],
                 ],
               ),
             ),
@@ -362,6 +418,22 @@ class _PersonalProgressPlaceholderState
     if (createdId != null && mounted) {
       setState(() => _selectedAvaliacaoId = createdId);
     }
+  }
+
+  void _openComparator(
+    BuildContext context, {
+    String? baseId,
+    String? compareId,
+  }) {
+    Navigator.of(context).push<void>(
+      MaterialPageRoute(
+        builder: (ctx) => EvaluationComparatorScreen(
+          appState: widget.appState,
+          initialBaseId: baseId,
+          initialCompareId: compareId,
+        ),
+      ),
+    );
   }
 
   Future<void> _openEditEvaluation(
@@ -621,28 +693,65 @@ class _PersonalProgressPlaceholderState
                                 ),
                               ),
                               const SizedBox(width: 8),
-                              ElevatedButton.icon(
-                                onPressed: () => _openNewEvaluation(context),
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: AppColors.indigoPrimary,
-                                  foregroundColor: Colors.white,
-                                  elevation: 0,
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 14,
-                                    vertical: 10,
+                              Wrap(
+                                spacing: 8,
+                                crossAxisAlignment: WrapCrossAlignment.center,
+                                children: [
+                                  if (evaluations.length >= 2)
+                                    OutlinedButton.icon(
+                                      key: const ValueKey(
+                                          'btn_open_comparator_header'),
+                                      onPressed: () => _openComparator(context),
+                                      style: OutlinedButton.styleFrom(
+                                        foregroundColor: AppColors.indigoPrimary,
+                                        side: const BorderSide(
+                                          color: AppColors.indigoPrimary,
+                                        ),
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 12,
+                                          vertical: 9,
+                                        ),
+                                        shape: RoundedRectangleBorder(
+                                          borderRadius:
+                                              BorderRadius.circular(100),
+                                        ),
+                                      ),
+                                      icon: const Icon(
+                                        Icons.compare_arrows_rounded,
+                                        size: 17,
+                                      ),
+                                      label: const Text(
+                                        'Comparar',
+                                        style: TextStyle(
+                                          fontSize: 12.5,
+                                          fontWeight: FontWeight.w700,
+                                        ),
+                                      ),
+                                    ),
+                                  ElevatedButton.icon(
+                                    onPressed: () => _openNewEvaluation(context),
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: AppColors.indigoPrimary,
+                                      foregroundColor: Colors.white,
+                                      elevation: 0,
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 14,
+                                        vertical: 10,
+                                      ),
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(100),
+                                      ),
+                                    ),
+                                    icon: const Icon(Icons.add_rounded, size: 18),
+                                    label: const Text(
+                                      'Nova Avaliação',
+                                      style: TextStyle(
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.w700,
+                                      ),
+                                    ),
                                   ),
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(100),
-                                  ),
-                                ),
-                                icon: const Icon(Icons.add_rounded, size: 18),
-                                label: const Text(
-                                  'Nova Avaliação',
-                                  style: TextStyle(
-                                    fontSize: 13,
-                                    fontWeight: FontWeight.w700,
-                                  ),
-                                ),
+                                ],
                               ),
                             ],
                           ),
@@ -721,6 +830,8 @@ class _PersonalProgressPlaceholderState
                             if (evaluations.length >= 2) ...[
                               BodyRecompositionInsight(
                                 evaluations: evaluations,
+                                onOpenComparator: () =>
+                                    _openComparator(context),
                               ),
                               const SizedBox(height: 18),
                             ],

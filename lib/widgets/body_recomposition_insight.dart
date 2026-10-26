@@ -3,10 +3,12 @@ import '../models/models.dart';
 
 class BodyRecompositionInsight extends StatelessWidget {
   final List<JoinedEvaluation> evaluations;
+  final VoidCallback? onOpenComparator;
 
   const BodyRecompositionInsight({
     super.key,
     required this.evaluations,
+    this.onOpenComparator,
   });
 
   @override
@@ -201,6 +203,49 @@ class BodyRecompositionInsight extends StatelessWidget {
                     ),
                   ],
                 ),
+                if (onOpenComparator != null) ...[
+                  const SizedBox(height: 14),
+                  InkWell(
+                    key: const ValueKey('btn_open_comparator_recomp'),
+                    onTap: onOpenComparator,
+                    borderRadius: BorderRadius.circular(10),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 9,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.08),
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(
+                          color: Colors.white.withValues(alpha: 0.15),
+                        ),
+                      ),
+                      child: const Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            Icons.compare_arrows_rounded,
+                            color: Colors.white,
+                            size: 16,
+                          ),
+                          SizedBox(width: 6),
+                          Flexible(
+                            child: Text(
+                              'Ver Comparação Completa Lado a Lado',
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 12,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
               ],
             ),
           ),
