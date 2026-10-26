@@ -74,6 +74,27 @@ void main() {
     expect(find.text('Baixar Relatório (PDF)'), findsOneWidget);
     expect(find.text('Exportar Tabela (CSV)'), findsOneWidget);
 
+    // 4.2 Testa FAB de Quick-Log de Pesagem Matinal (Fase 2)
+    final fab = find.byKey(const ValueKey('fab_quick_actions'));
+    expect(fab, findsOneWidget);
+    await tester.tap(fab);
+    await tester.pumpAndSettle();
+
+    // Seleciona Registrar Peso de Hoje
+    await tester.tap(find.byKey(const ValueKey('action_quick_weight')));
+    await tester.pumpAndSettle();
+
+    // Digita nova pesagem expressa de 79.5
+    final inputQuickWeight = find.byKey(const ValueKey('input_quick_weight'));
+    expect(inputQuickWeight, findsOneWidget);
+    await tester.enterText(inputQuickWeight, '79.5');
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const ValueKey('btn_save_quick_weight')));
+    await tester.pumpAndSettle();
+
+    expect(appState.pesagens.any((p) => p.pesoKg == 79.5), isTrue);
+
     // 5. Navega para a aba Ajustes e valida Backup JSON + Modo Escuro
     await tester.tap(find.text('Ajustes'));
     await tester.pumpAndSettle();

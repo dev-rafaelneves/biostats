@@ -15,6 +15,7 @@ import '../widgets/ios_action_sheet.dart';
 import '../widgets/latest_evaluation_card.dart';
 import '../widgets/legal_disclaimer_modal.dart';
 import '../widgets/photo_comparison.dart';
+import '../widgets/quick_weight_dialog.dart';
 import '../widgets/weekly_weight_tracker.dart';
 import 'evaluation_form_screen.dart';
 import 'onboarding_screen.dart';
@@ -52,6 +53,140 @@ class _MainShellState extends State<MainShell> {
     );
   }
 
+  void _openQuickWeightDialog(BuildContext context) {
+    QuickWeightDialog.show(context, appState: widget.appState);
+  }
+
+  void _openNewEvaluation(BuildContext context) {
+    Navigator.of(context).push<String>(
+      MaterialPageRoute(
+        builder: (ctx) => EvaluationFormScreen(appState: widget.appState),
+      ),
+    );
+  }
+
+  void _showQuickActionSheet(BuildContext context) {
+    HapticFeedback.lightImpact();
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Material(
+            color: isDark ? AppColors.darkSurface : Colors.white,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(24),
+              side: BorderSide(
+                color: isDark ? AppColors.darkBorder : AppColors.lightBorder,
+              ),
+            ),
+            elevation: 8,
+            clipBehavior: Clip.antiAlias,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.only(left: 8, bottom: 12),
+                    child: Text(
+                      'AÇÕES RÁPIDAS',
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: 0.8,
+                        color: isDark
+                            ? AppColors.indigoLight
+                            : AppColors.indigoPrimary,
+                      ),
+                    ),
+                  ),
+                  ListTile(
+                    key: const ValueKey('action_quick_weight'),
+                    onTap: () {
+                      Navigator.of(ctx).pop();
+                      _openQuickWeightDialog(context);
+                    },
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    leading: Container(
+                      width: 44,
+                      height: 44,
+                      decoration: BoxDecoration(
+                        color: AppColors.indigoPrimary.withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: const Icon(
+                        Icons.bolt_rounded,
+                        color: AppColors.indigoPrimary,
+                        size: 24,
+                      ),
+                    ),
+                    title: const Text(
+                      '⚡ Registrar Peso de Hoje',
+                      style: TextStyle(
+                        fontWeight: FontWeight.w700,
+                        fontSize: 16,
+                      ),
+                    ),
+                    subtitle: const Text(
+                      'Salva pesagem matinal em 2 segundos com micro-feedback',
+                      style: TextStyle(fontSize: 12.5),
+                    ),
+                    trailing:
+                        const Icon(Icons.arrow_forward_ios_rounded, size: 14),
+                  ),
+                  const Divider(height: 16),
+                  ListTile(
+                    key: const ValueKey('action_full_evaluation'),
+                    onTap: () {
+                      Navigator.of(ctx).pop();
+                      _openNewEvaluation(context);
+                    },
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    leading: Container(
+                      width: 44,
+                      height: 44,
+                      decoration: BoxDecoration(
+                        color: AppColors.emerald.withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: const Icon(
+                        Icons.straighten_rounded,
+                        color: AppColors.emerald,
+                        size: 24,
+                      ),
+                    ),
+                    title: const Text(
+                      '📋 Nova Avaliação Completa',
+                      style: TextStyle(
+                        fontWeight: FontWeight.w700,
+                        fontSize: 16,
+                      ),
+                    ),
+                    subtitle: const Text(
+                      'Medidas com fita métrica, fotos e composição corporal',
+                      style: TextStyle(fontSize: 12.5),
+                    ),
+                    trailing:
+                        const Icon(Icons.arrow_forward_ios_rounded, size: 14),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
@@ -60,6 +195,26 @@ class _MainShellState extends State<MainShell> {
       appState: widget.appState,
       child: Scaffold(
         extendBody: true,
+        floatingActionButton: _selectedIndex == 0
+            ? Padding(
+                padding: const EdgeInsets.only(bottom: 74),
+                child: FloatingActionButton.extended(
+                  key: const ValueKey('fab_quick_actions'),
+                  onPressed: () => _showQuickActionSheet(context),
+                  backgroundColor: AppColors.indigoPrimary,
+                  foregroundColor: Colors.white,
+                  elevation: 4,
+                  icon: const Icon(Icons.add_rounded, size: 22),
+                  label: const Text(
+                    'Registrar',
+                    style: TextStyle(
+                      fontWeight: FontWeight.w700,
+                      fontSize: 14,
+                    ),
+                  ),
+                ),
+              )
+            : null,
         body: IndexedStack(
           index: _selectedIndex,
           children: [
