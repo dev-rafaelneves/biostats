@@ -247,6 +247,53 @@ class _EvaluationFormScreenState extends State<EvaluationFormScreen> {
     return result ?? false;
   }
 
+  static String? _validateAnatomicalRange(String label, double? val) {
+    if (val == null || val <= 0) return null;
+    switch (label) {
+      case 'Peso':
+        if (val < 30 || val > 300) {
+          return 'Valor incomum (${val}kg). Confira a pontuação/vírgula.';
+        }
+        break;
+      case 'Pescoço':
+        if (val < 20 || val > 65) {
+          return 'Valor incomum (${val}cm). Faixa esperada: 20 a 65cm.';
+        }
+        break;
+      case 'Cintura':
+        if (val < 45 || val > 200) {
+          return 'Valor incomum (${val}cm). Faixa esperada: 45 a 200cm.';
+        }
+        break;
+      case 'Quadril':
+        if (val < 50 || val > 220) {
+          return 'Valor incomum (${val}cm). Faixa esperada: 50 a 220cm.';
+        }
+        break;
+      case 'Abdômen':
+        if (val < 45 || val > 200) {
+          return 'Valor incomum (${val}cm). Faixa esperada: 45 a 200cm.';
+        }
+        break;
+      case 'Braço':
+        if (val < 15 || val > 70) {
+          return 'Valor incomum (${val}cm). Faixa esperada: 15 a 70cm.';
+        }
+        break;
+      case 'Coxa':
+        if (val < 25 || val > 110) {
+          return 'Valor incomum (${val}cm). Faixa esperada: 25 a 110cm.';
+        }
+        break;
+      case 'Panturrilha':
+        if (val < 20 || val > 70) {
+          return 'Valor incomum (${val}cm). Faixa esperada: 20 a 70cm.';
+        }
+        break;
+    }
+    return null;
+  }
+
   bool get _canSubmit {
     if (_isSubmitting) return false;
     final p = _parseField(_pesoCtrl);
@@ -667,6 +714,16 @@ class _EvaluationFormScreenState extends State<EvaluationFormScreen> {
     final livePreview = _computeLivePreview();
     final dateFmt = DateFormat('dd/MM/yyyy');
 
+    int filledMembersCount = 0;
+    if (_parseField(_abdomenCtrl) != null) filledMembersCount++;
+    if (profile?.sexo == Sexo.M && _parseField(_quadrilCtrl) != null) {
+      filledMembersCount++;
+    }
+    if (_parseField(_bracoCtrl) != null) filledMembersCount++;
+    if (_parseField(_coxaCtrl) != null) filledMembersCount++;
+    if (_parseField(_panturrilhaCtrl) != null) filledMembersCount++;
+    final totalMembersCount = profile?.sexo == Sexo.M ? 5 : 4;
+
     return PopScope(
       canPop: !_hasUnsavedChanges,
       onPopInvokedWithResult: (didPop, result) async {
@@ -724,16 +781,41 @@ class _EvaluationFormScreenState extends State<EvaluationFormScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Seção 0: Data da Avaliação + Ações Rápidas
+                  // Seção 0: Ações Rápidas de Apoio
                   Wrap(
                     alignment: WrapAlignment.spaceBetween,
                     crossAxisAlignment: WrapCrossAlignment.center,
                     spacing: 8,
-                    runSpacing: 4,
+                    runSpacing: 6,
                     children: [
-                      const _SectionHeader(
-                        title: 'MEDIDAS CORPORAIS',
-                        bottomPadding: 0,
+                      Wrap(
+                        crossAxisAlignment: WrapCrossAlignment.center,
+                        spacing: 8,
+                        children: [
+                          const _SectionHeader(
+                            title: 'MEDIDAS ESSENCIAIS',
+                            bottomPadding: 0,
+                          ),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 3,
+                            ),
+                            decoration: BoxDecoration(
+                              color: AppColors.indigoPrimary
+                                  .withValues(alpha: 0.12),
+                              borderRadius: BorderRadius.circular(100),
+                            ),
+                            child: const Text(
+                              'Composição & Metas',
+                              style: TextStyle(
+                                fontSize: 10.5,
+                                fontWeight: FontWeight.w700,
+                                color: AppColors.indigoPrimary,
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
                       Wrap(
                         spacing: 4,
@@ -780,6 +862,7 @@ class _EvaluationFormScreenState extends State<EvaluationFormScreen> {
                   ),
                   const SizedBox(height: 6),
 
+                  // Card 1: Medidas Essenciais (Alimenta o motor científico de gordura e metabolismo)
                   Material(
                     color: isDark ? AppColors.darkSurface : Colors.white,
                     shape: RoundedRectangleBorder(
@@ -862,6 +945,10 @@ class _EvaluationFormScreenState extends State<EvaluationFormScreen> {
                           unit: 'kg',
                           requiredField: true,
                           hintText: _hintFromPrev(prev?.pesoKg),
+                          warningText: _validateAnatomicalRange(
+                            'Peso',
+                            _parseField(_pesoCtrl),
+                          ),
                           onChanged: (_) => setState(() {}),
                         ),
                         const Divider(indent: 16, height: 1),
@@ -871,6 +958,10 @@ class _EvaluationFormScreenState extends State<EvaluationFormScreen> {
                           controller: _pescocoCtrl,
                           unit: 'cm',
                           hintText: _hintFromPrev(prev?.medidas.pescoco),
+                          warningText: _validateAnatomicalRange(
+                            'Pescoço',
+                            _parseField(_pescocoCtrl),
+                          ),
                           onChanged: (_) => setState(() {}),
                         ),
                         const Divider(indent: 16, height: 1),
@@ -880,50 +971,150 @@ class _EvaluationFormScreenState extends State<EvaluationFormScreen> {
                           unit: 'cm',
                           requiredField: true,
                           hintText: _hintFromPrev(prev?.medidas.cintura),
+                          warningText: _validateAnatomicalRange(
+                            'Cintura',
+                            _parseField(_cinturaCtrl),
+                          ),
                           onChanged: (_) => setState(() {}),
                         ),
-                        const Divider(indent: 16, height: 1),
-                        _MeasureInputRow(
-                          label: 'Quadril',
-                          subtitle: profile?.sexo == Sexo.F
-                              ? 'Usado no BF% US Navy e BAI'
-                              : 'Usado no RCQ e BAI',
-                          controller: _quadrilCtrl,
-                          unit: 'cm',
-                          hintText: _hintFromPrev(prev?.medidas.quadril),
-                          onChanged: (_) => setState(() {}),
+                        if (profile?.sexo == Sexo.F) ...[
+                          const Divider(indent: 16, height: 1),
+                          _MeasureInputRow(
+                            label: 'Quadril',
+                            subtitle: 'Necessário no BF% US Navy feminino',
+                            controller: _quadrilCtrl,
+                            unit: 'cm',
+                            hintText: _hintFromPrev(prev?.medidas.quadril),
+                            warningText: _validateAnatomicalRange(
+                              'Quadril',
+                              _parseField(_quadrilCtrl),
+                            ),
+                            onChanged: (_) => setState(() {}),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+
+                  const SizedBox(height: 18),
+
+                  // Seção 1: Membros e Circunferências Periféricas
+                  Wrap(
+                    alignment: WrapAlignment.spaceBetween,
+                    crossAxisAlignment: WrapCrossAlignment.center,
+                    spacing: 8,
+                    runSpacing: 4,
+                    children: [
+                      const _SectionHeader(
+                        title: 'MEMBROS E DETALHES',
+                        bottomPadding: 0,
+                      ),
+                      Container(
+                        margin: const EdgeInsets.only(left: 14),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 3,
                         ),
-                        const Divider(indent: 16, height: 1),
+                        decoration: BoxDecoration(
+                          color: isDark
+                              ? const Color(0xFF1E293B)
+                              : const Color(0xFFF1F5F9),
+                          borderRadius: BorderRadius.circular(100),
+                        ),
+                        child: Text(
+                          '$filledMembersCount de $totalMembersCount preenchidos',
+                          style: TextStyle(
+                            fontSize: 10.5,
+                            fontWeight: FontWeight.w600,
+                            color: isDark
+                                ? AppColors.darkTextSecondary
+                                : const Color(0xFF64748B),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 6),
+
+                  // Card 2: Membros e Detalhes Musculares
+                  Material(
+                    color: isDark ? AppColors.darkSurface : Colors.white,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      side: BorderSide(
+                        color: isDark
+                            ? AppColors.darkBorder
+                            : AppColors.lightBorder,
+                      ),
+                    ),
+                    clipBehavior: Clip.antiAlias,
+                    child: Column(
+                      children: [
                         _MeasureInputRow(
                           label: 'Abdômen',
+                          subtitle: 'Linha da cicatriz umbilical',
                           controller: _abdomenCtrl,
                           unit: 'cm',
                           hintText: _hintFromPrev(prev?.medidas.abdomen),
+                          warningText: _validateAnatomicalRange(
+                            'Abdômen',
+                            _parseField(_abdomenCtrl),
+                          ),
                           onChanged: (_) => setState(() {}),
                         ),
+                        if (profile?.sexo == Sexo.M) ...[
+                          const Divider(indent: 16, height: 1),
+                          _MeasureInputRow(
+                            label: 'Quadril',
+                            subtitle: 'Usado no RCQ e BAI',
+                            controller: _quadrilCtrl,
+                            unit: 'cm',
+                            hintText: _hintFromPrev(prev?.medidas.quadril),
+                            warningText: _validateAnatomicalRange(
+                              'Quadril',
+                              _parseField(_quadrilCtrl),
+                            ),
+                            onChanged: (_) => setState(() {}),
+                          ),
+                        ],
                         const Divider(indent: 16, height: 1),
                         _MeasureInputRow(
                           label: 'Braço',
+                          subtitle: 'Ponto médio do bíceps',
                           controller: _bracoCtrl,
                           unit: 'cm',
                           hintText: _hintFromPrev(prev?.medidas.braco),
+                          warningText: _validateAnatomicalRange(
+                            'Braço',
+                            _parseField(_bracoCtrl),
+                          ),
                           onChanged: (_) => setState(() {}),
                         ),
                         const Divider(indent: 16, height: 1),
                         _MeasureInputRow(
                           label: 'Coxa',
+                          subtitle: 'Ponto médio do quadríceps',
                           controller: _coxaCtrl,
                           unit: 'cm',
                           hintText: _hintFromPrev(prev?.medidas.coxa),
+                          warningText: _validateAnatomicalRange(
+                            'Coxa',
+                            _parseField(_coxaCtrl),
+                          ),
                           onChanged: (_) => setState(() {}),
                         ),
                         const Divider(indent: 16, height: 1),
                         _MeasureInputRow(
                           label: 'Panturrilha',
+                          subtitle: 'Maior circunferência',
                           controller: _panturrilhaCtrl,
                           unit: 'cm',
                           hintText: _hintFromPrev(prev?.medidas.panturrilha),
                           textInputAction: TextInputAction.done,
+                          warningText: _validateAnatomicalRange(
+                            'Panturrilha',
+                            _parseField(_panturrilhaCtrl),
+                          ),
                           onChanged: (_) => setState(() {}),
                         ),
                       ],
@@ -1365,6 +1556,7 @@ class _SectionHeader extends StatelessWidget {
 class _MeasureInputRow extends StatelessWidget {
   final String label;
   final String? subtitle;
+  final String? warningText;
   final TextEditingController controller;
   final String unit;
   final bool requiredField;
@@ -1375,6 +1567,7 @@ class _MeasureInputRow extends StatelessWidget {
   const _MeasureInputRow({
     required this.label,
     this.subtitle,
+    this.warningText,
     required this.controller,
     required this.unit,
     this.requiredField = false,
@@ -1389,95 +1582,124 @@ class _MeasureInputRow extends StatelessWidget {
 
     return Container(
       constraints: const BoxConstraints(minHeight: 48),
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-      child: Row(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 5),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Expanded(
-            flex: 5,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Row(
-                  mainAxisSize: MainAxisSize.min,
+          Row(
+            children: [
+              Expanded(
+                flex: 5,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Flexible(
-                      child: Text(
-                        label,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          fontSize: 16.5,
-                          color: isDark
-                              ? AppColors.darkTextPrimary
-                              : AppColors.lightTextPrimary,
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Flexible(
+                          child: Text(
+                            label,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              fontSize: 16.5,
+                              color: isDark
+                                  ? AppColors.darkTextPrimary
+                                  : AppColors.lightTextPrimary,
+                            ),
+                          ),
                         ),
-                      ),
+                        if (requiredField) ...[
+                          const SizedBox(width: 4),
+                          const Text(
+                            '*',
+                            style: TextStyle(
+                              color: AppColors.rose,
+                              fontSize: 16.5,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ],
+                      ],
                     ),
-                    if (requiredField) ...[
-                      const SizedBox(width: 4),
-                      const Text(
-                        '*',
+                    if (subtitle != null)
+                      Text(
+                        subtitle!,
                         style: TextStyle(
-                          color: AppColors.rose,
-                          fontSize: 16.5,
-                          fontWeight: FontWeight.bold,
+                          fontSize: 11,
+                          color: isDark
+                              ? AppColors.darkTextSecondary
+                              : const Color(0xFF94A3B8),
                         ),
                       ),
-                    ],
                   ],
                 ),
-                if (subtitle != null)
-                  Text(
-                    subtitle!,
-                    style: TextStyle(
-                      fontSize: 11,
+              ),
+              Expanded(
+                flex: 4,
+                child: TextField(
+                  key: ValueKey('input_$label'),
+                  controller: controller,
+                  textInputAction: textInputAction,
+                  keyboardType:
+                      const TextInputType.numberWithOptions(decimal: true),
+                  textAlign: TextAlign.right,
+                  style: TextStyle(
+                    fontSize: 16.5,
+                    color: isDark
+                        ? AppColors.darkTextPrimary
+                        : AppColors.lightTextPrimary,
+                  ),
+                  decoration: InputDecoration(
+                    hintText: hintText,
+                    hintStyle: TextStyle(
+                      fontSize: 14,
                       color: isDark
-                          ? AppColors.darkTextSecondary
+                          ? const Color(0xFF475569)
                           : const Color(0xFF94A3B8),
                     ),
+                    border: InputBorder.none,
+                    isDense: true,
                   ),
-              ],
-            ),
-          ),
-          Expanded(
-            flex: 4,
-            child: TextField(
-              key: ValueKey('input_$label'),
-              controller: controller,
-              textInputAction: textInputAction,
-              keyboardType:
-                  const TextInputType.numberWithOptions(decimal: true),
-              textAlign: TextAlign.right,
-              style: TextStyle(
-                fontSize: 16.5,
-                color: isDark
-                    ? AppColors.darkTextPrimary
-                    : AppColors.lightTextPrimary,
+                  onChanged: onChanged,
+                ),
               ),
-              decoration: InputDecoration(
-                hintText: hintText,
-                hintStyle: TextStyle(
-                  fontSize: 14,
+              const SizedBox(width: 6),
+              Text(
+                unit,
+                style: TextStyle(
+                  fontSize: 16,
                   color: isDark
-                      ? const Color(0xFF475569)
+                      ? AppColors.darkTextSecondary
                       : const Color(0xFF94A3B8),
                 ),
-                border: InputBorder.none,
-                isDense: true,
               ),
-              onChanged: onChanged,
-            ),
+            ],
           ),
-          const SizedBox(width: 6),
-          Text(
-            unit,
-            style: TextStyle(
-              fontSize: 16,
-              color: isDark
-                  ? AppColors.darkTextSecondary
-                  : const Color(0xFF94A3B8),
+          if (warningText != null)
+            Padding(
+              padding: const EdgeInsets.only(top: 2, bottom: 2),
+              child: Row(
+                children: [
+                  const Icon(
+                    Icons.info_outline_rounded,
+                    size: 13,
+                    color: Color(0xFFD97706),
+                  ),
+                  const SizedBox(width: 4),
+                  Expanded(
+                    child: Text(
+                      warningText!,
+                      style: const TextStyle(
+                        fontSize: 11,
+                        color: Color(0xFFD97706),
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
             ),
-          ),
         ],
       ),
     );

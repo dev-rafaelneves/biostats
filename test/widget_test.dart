@@ -51,6 +51,16 @@ void main() {
     await tester.tap(btnNovaAvaliacao);
     await tester.pumpAndSettle();
 
+    // 4.0 Validação da Fase 3: Formulário Modular e Validação Anatômica
+    expect(find.text('MEDIDAS ESSENCIAIS'), findsOneWidget);
+    expect(find.text('MEMBROS E DETALHES'), findsOneWidget);
+    expect(find.text('Composição & Metas'), findsOneWidget);
+
+    // Testa aviso de validação anatômica não-bloqueante
+    await tester.enterText(find.byKey(const ValueKey('input_Peso')), '15');
+    await tester.pumpAndSettle();
+    expect(find.textContaining('Valor incomum'), findsOneWidget);
+
     await tester.enterText(find.byKey(const ValueKey('input_Peso')), '80');
     await tester.enterText(find.byKey(const ValueKey('input_Pescoço')), '38');
     await tester.enterText(find.byKey(const ValueKey('input_Cintura')), '88');
