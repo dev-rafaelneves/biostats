@@ -176,6 +176,77 @@ class _EvaluationFormScreenState extends State<EvaluationFormScreen> {
     return (val != null && val > 0) ? val : null;
   }
 
+  bool get _hasUnsavedChanges {
+    if (_isSubmitting) return false;
+    final initAv = widget.initialAvaliacao;
+    if (initAv == null) {
+      return _pesoCtrl.text.trim().isNotEmpty ||
+          _pescocoCtrl.text.trim().isNotEmpty ||
+          _cinturaCtrl.text.trim().isNotEmpty ||
+          _quadrilCtrl.text.trim().isNotEmpty ||
+          _abdomenCtrl.text.trim().isNotEmpty ||
+          _bracoCtrl.text.trim().isNotEmpty ||
+          _coxaCtrl.text.trim().isNotEmpty ||
+          _panturrilhaCtrl.text.trim().isNotEmpty ||
+          _fotoFrente != null ||
+          _fotoLado != null ||
+          _fotoCostas != null;
+    }
+    if (_pesoCtrl.text.trim() != _fmtEdit(initAv.pesoKg)) return true;
+    if (_pescocoCtrl.text.trim() != _fmtEdit(initAv.medidas.pescoco)) {
+      return true;
+    }
+    if (_cinturaCtrl.text.trim() != _fmtEdit(initAv.medidas.cintura)) {
+      return true;
+    }
+    if (_quadrilCtrl.text.trim() != _fmtEdit(initAv.medidas.quadril)) {
+      return true;
+    }
+    if (_abdomenCtrl.text.trim() != _fmtEdit(initAv.medidas.abdomen)) {
+      return true;
+    }
+    if (_bracoCtrl.text.trim() != _fmtEdit(initAv.medidas.braco)) {
+      return true;
+    }
+    if (_coxaCtrl.text.trim() != _fmtEdit(initAv.medidas.coxa)) {
+      return true;
+    }
+    if (_panturrilhaCtrl.text.trim() != _fmtEdit(initAv.medidas.panturrilha)) {
+      return true;
+    }
+    if (_dataAvaliacao != initAv.dataAvaliacao) return true;
+    if (_nivelAtividade != initAv.nivelAtividade) return true;
+    if (_objetivo != initAv.objetivo) return true;
+    return false;
+  }
+
+  Future<bool> _confirmDiscard(BuildContext context) async {
+    HapticFeedback.lightImpact();
+    final result = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog.adaptive(
+        title: const Text('Descartar alterações?'),
+        content: const Text(
+          'Você tem medições preenchidas. Se sair agora, todas as informações não salvas serão perdidas.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: const Text('Continuar Editando'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            style: TextButton.styleFrom(
+              foregroundColor: AppColors.rose,
+            ),
+            child: const Text('Descartar e Sair'),
+          ),
+        ],
+      ),
+    );
+    return result ?? false;
+  }
+
   bool get _canSubmit {
     if (_isSubmitting) return false;
     final p = _parseField(_pesoCtrl);
@@ -596,37 +667,55 @@ class _EvaluationFormScreenState extends State<EvaluationFormScreen> {
     final livePreview = _computeLivePreview();
     final dateFmt = DateFormat('dd/MM/yyyy');
 
-    return Scaffold(
-      backgroundColor:
-          isDark ? AppColors.darkBackground : AppColors.lightBackground,
-      appBar: AppBar(
-        leading: IconButton(
-          onPressed: () => Navigator.of(context).pop(),
-          tooltip: 'Voltar',
-          icon: const Icon(
-            Icons.arrow_back_rounded,
-            color: AppColors.indigoPrimary,
-          ),
-        ),
-        title: Text(
-          _isEditing
-              ? 'Editar Avaliação'
-              : (profile != null
-                  ? '${profile.primeiroNome} - Nova Avaliação'
-                  : 'Nova Avaliação'),
-        ),
-        actions: [
-          IconButton(
-            onPressed: () => _showMeasurementGuide(context),
-            tooltip: 'Como medir com a fita?',
+    return PopScope(
+      canPop: !_hasUnsavedChanges,
+      onPopInvokedWithResult: (didPop, result) async {
+        if (didPop) return;
+        final shouldDiscard = await _confirmDiscard(context);
+        if (shouldDiscard && context.mounted) {
+          Navigator.of(context).pop();
+        }
+      },
+      child: Scaffold(
+        backgroundColor:
+            isDark ? AppColors.darkBackground : AppColors.lightBackground,
+        appBar: AppBar(
+          leading: IconButton(
+            onPressed: () async {
+              if (!_hasUnsavedChanges) {
+                Navigator.of(context).pop();
+                return;
+              }
+              final shouldDiscard = await _confirmDiscard(context);
+              if (shouldDiscard && context.mounted) {
+                Navigator.of(context).pop();
+              }
+            },
+            tooltip: 'Voltar',
             icon: const Icon(
-              Icons.help_outline_rounded,
+              Icons.arrow_back_rounded,
               color: AppColors.indigoPrimary,
             ),
           ),
-        ],
-      ),
-      body: SafeArea(
+          title: Text(
+            _isEditing
+                ? 'Editar Avaliação'
+                : (profile != null
+                    ? '${profile.primeiroNome} - Nova Avaliação'
+                    : 'Nova Avaliação'),
+          ),
+          actions: [
+            IconButton(
+              onPressed: () => _showMeasurementGuide(context),
+              tooltip: 'Como medir com a fita?',
+              icon: const Icon(
+                Icons.help_outline_rounded,
+                color: AppColors.indigoPrimary,
+              ),
+            ),
+          ],
+        ),
+        body: SafeArea(
         child: Center(
           child: SingleChildScrollView(
             padding: const EdgeInsets.fromLTRB(16, 12, 16, 40),
@@ -1096,8 +1185,9 @@ class _EvaluationFormScreenState extends State<EvaluationFormScreen> {
           ),
         ),
       ),
-    );
-  }
+    ),
+  );
+}
 }
 
 class _LivePreviewCard extends StatelessWidget {

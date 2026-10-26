@@ -61,6 +61,7 @@ class _RootRouter extends StatelessWidget {
     // 1. Começa pelo Login / Configuração do Perfil Pessoal
     if (!appState.isLoggedIn) {
       return ProfileSetupScreen(
+        appState: appState,
         onSave: (profile) => appState.saveUserProfile(profile),
       );
     }

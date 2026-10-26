@@ -22,7 +22,9 @@ void main() {
     await tester.pumpWidget(BioStatsApp(appState: appState));
     await tester.pumpAndSettle();
 
-    // 1. Login / Perfil Pessoal
+    // 1. Login / Perfil Pessoal & Botão Restaurar Backup Direto
+    expect(find.text('Já tenho um Backup (.json)'), findsOneWidget);
+
     await tester.enterText(find.byType(TextField).first, 'Rafael Souza');
     await tester.enterText(find.byType(TextField).last, '178');
     await tester.pumpAndSettle();
@@ -52,6 +54,13 @@ void main() {
     await tester.enterText(find.byKey(const ValueKey('input_Peso')), '80');
     await tester.enterText(find.byKey(const ValueKey('input_Pescoço')), '38');
     await tester.enterText(find.byKey(const ValueKey('input_Cintura')), '88');
+    await tester.pumpAndSettle();
+
+    // 4.1 Valida proteção contra saída acidental (PopScope)
+    await tester.tap(find.byTooltip('Voltar'));
+    await tester.pumpAndSettle();
+    expect(find.text('Descartar alterações?'), findsOneWidget);
+    await tester.tap(find.text('Continuar Editando'));
     await tester.pumpAndSettle();
 
     final btnCalcular = find.text('Calcular Resultados');

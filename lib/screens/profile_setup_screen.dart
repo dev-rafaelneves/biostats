@@ -1,17 +1,23 @@
+import 'dart:convert';
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:uuid/uuid.dart';
 import '../models/models.dart';
+import '../services/app_state.dart';
 import '../theme/app_theme.dart';
 import '../widgets/biostats_app_icon.dart';
 
 class ProfileSetupScreen extends StatefulWidget {
+  final AppState? appState;
   final UserProfile? initialProfile;
   final ValueChanged<UserProfile> onSave;
   final VoidCallback? onCancel;
 
   const ProfileSetupScreen({
     super.key,
+    this.appState,
     this.initialProfile,
     required this.onSave,
     this.onCancel,
@@ -122,6 +128,82 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
     widget.onSave(profile);
     if (mounted) {
       setState(() => _isSubmitting = false);
+    }
+  }
+
+  Future<void> _handleDirectRestore() async {
+    final state = widget.appState;
+    if (state == null) return;
+
+    try {
+      final result = await FilePicker.platform.pickFiles(
+        type: FileType.custom,
+        allowedExtensions: ['json'],
+        withData: true,
+      );
+
+      if (result == null || result.files.isEmpty) return;
+
+      final fileBytes = result.files.first.bytes;
+      if (fileBytes == null) {
+        throw const FormatException('Não foi possível ler o arquivo.');
+      }
+
+      final jsonContent = utf8.decode(fileBytes);
+      final parsed = jsonDecode(jsonContent) as Map<String, dynamic>;
+      final preview = state.inspectBackupJson(parsed);
+
+      if (!mounted) return;
+
+      final confirmed = await showDialog<bool>(
+        context: context,
+        builder: (ctx) => AlertDialog.adaptive(
+          title: Text('Restaurar Backup de ${preview.profileName}?'),
+          content: Text(
+            'Encontramos ${preview.avaliacoesCount} avaliações, '
+            '${preview.fotosCount} fotos e ${preview.pesagensCount} pesagens.\n\n'
+            'Deseja restaurar este perfil agora?',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(ctx).pop(false),
+              child: const Text('Cancelar'),
+            ),
+            ElevatedButton(
+              onPressed: () => Navigator.of(ctx).pop(true),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.indigoPrimary,
+                foregroundColor: Colors.white,
+              ),
+              child: const Text('Restaurar Dados'),
+            ),
+          ],
+        ),
+      );
+
+      if (confirmed != true) return;
+
+      HapticFeedback.mediumImpact();
+      await state.importBackupJson(parsed, merge: false);
+      await state.completeOnboarding();
+
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Bem-vindo de volta, ${preview.profileName}! Dados restaurados.',
+          ),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Falha ao processar arquivo de backup: $e'),
+          backgroundColor: AppColors.rose,
+        ),
+      );
     }
   }
 
@@ -570,6 +652,70 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
                         ),
                       ),
                     ),
+
+                    if (!_isEditing && widget.appState != null) ...[
+                      const SizedBox(height: 18),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Divider(
+                              color: isDark
+                                  ? AppColors.darkBorder
+                                  : AppColors.lightBorder,
+                            ),
+                          ),
+                          Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 12),
+                            child: Text(
+                              'OU',
+                              style: TextStyle(
+                                fontSize: 11.5,
+                                fontWeight: FontWeight.w700,
+                                letterSpacing: 0.8,
+                                color: isDark
+                                  ? AppColors.darkTextSecondary
+                                  : const Color(0xFF94A3B8),
+                              ),
+                            ),
+                          ),
+                          Expanded(
+                            child: Divider(
+                              color: isDark
+                                  ? AppColors.darkBorder
+                                  : AppColors.lightBorder,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 18),
+                      OutlinedButton.icon(
+                        onPressed: _handleDirectRestore,
+                        style: OutlinedButton.styleFrom(
+                          minimumSize: const Size(double.infinity, 50),
+                          side: BorderSide(
+                            color: isDark
+                                ? AppColors.darkBorder
+                                : const Color(0xFFCBD5E1),
+                          ),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(14),
+                          ),
+                        ),
+                        icon: const Icon(
+                          Icons.settings_backup_restore_rounded,
+                          color: AppColors.indigoPrimary,
+                          size: 20,
+                        ),
+                        label: const Text(
+                          'Já tenho um Backup (.json)',
+                          style: TextStyle(
+                            fontSize: 15.5,
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.indigoPrimary,
+                          ),
+                        ),
+                      ),
+                    ],
                   ],
                 ),
               ),
