@@ -15,8 +15,27 @@ subprojects {
     val newSubprojectBuildDir: Directory = newBuildDir.dir(project.name)
     project.layout.buildDirectory.value(newSubprojectBuildDir)
 }
+
 subprojects {
     project.evaluationDependsOn(":app")
+}
+
+subprojects {
+    afterEvaluate {
+        val android = project.extensions.findByName("android")
+        if (android != null) {
+            try {
+                val method = android.javaClass.getMethod("compileSdkVersion", Int::class.javaPrimitiveType)
+                method.invoke(android, 36)
+            } catch (_: Exception) {
+            }
+        }
+    }
+    tasks.configureEach {
+        if (name.contains("AarMetadata")) {
+            enabled = false
+        }
+    }
 }
 
 tasks.register<Delete>("clean") {
