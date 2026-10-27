@@ -13,6 +13,10 @@ jobs:
     name: Build Android APK
     runs-on: ubuntu-latest
 
+    env:
+      # Mesma versão usada localmente — evita quebras quando o canal stable muda
+      FLUTTER_VERSION: '3.47.8'
+
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
@@ -27,16 +31,42 @@ jobs:
         uses: subosito/flutter-action@v2
         with:
           channel: 'stable'
+          flutter-version: ${{ env.FLUTTER_VERSION }}
           cache: true
 
       - name: Install Dependencies
         run: flutter pub get
 
+      - name: Analyze
+        run: dart analyze --no-fatal-infos
+
       - name: Run Tests
         run: flutter test
 
+      - name: Restore Release Keystore
+        env:
+          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+        run: |
+          if [ -z "$KEYSTORE_BASE64" ]; then
+            echo "::error::Secret KEYSTORE_BASE64 ausente. Sem a chave fixa, o APK não poderia ser atualizado por cima da versão instalada."
+            exit 1
+          fi
+          echo "$KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/biostats-release.jks"
+          echo "BIOSTATS_KEYSTORE_PATH=$RUNNER_TEMP/biostats-release.jks" >> "$GITHUB_ENV"
+
       - name: Build APK Release
-        run: flutter build apk --release
+        env:
+          BIOSTATS_KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          BIOSTATS_KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          BIOSTATS_KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+        run: flutter build apk --release --build-number=${{ github.run_number }}
+
+      - name: Read App Version
+        id: version
+        run: echo "name=$(grep '^version:' pubspec.yaml | sed 's/version: *//; s/+.*//')" >> "$GITHUB_OUTPUT"
+
+      - name: Rename APK
+        run: cp build/app/outputs/flutter-apk/app-release.apk "build/app/outputs/flutter-apk/BioStats-v${{ steps.version.outputs.name }}-build${{ github.run_number }}.apk"
 
       - name: Upload APK as Artifact
         uses: actions/upload-artifact@v4
@@ -45,21 +75,21 @@ jobs:
           path: build/app/outputs/flutter-apk/app-release.apk
           retention-days: 30
 
-      - name: Create or Update GitHub Release
+      - name: Create Versioned Release
         uses: softprops/action-gh-release@v2
         if: github.ref == 'refs/heads/main'
         with:
-          tag_name: latest
-          name: "BioStats - Versão Mais Recente (APK)"
+          tag_name: v${{ steps.version.outputs.name }}-build${{ github.run_number }}
+          name: "BioStats v${{ steps.version.outputs.name }} (build ${{ github.run_number }})"
           body: |
-            ### 📱 BioStats - Download Direto do APK
-            Este APK foi gerado automaticamente na nuvem pelos servidores do GitHub Actions.
+            ### 📱 BioStats v${{ steps.version.outputs.name }} — build ${{ github.run_number }}
+            Commit: ${{ github.sha }}
 
-            **Como instalar no seu celular:**
-            1. No seu celular, toque em `app-release.apk` abaixo nos Assets desta página.
-            2. Abra o arquivo baixado e toque em **Instalar** (permita a instalação de fontes desconhecidas se solicitado).
-          prerelease: false
+            **Como instalar:** toque em `app-release.apk` abaixo e depois em **Instalar**.
+            A partir da v1.1.0 o app usa assinatura fixa: novas versões instalam por cima, sem perder dados.
+          make_latest: true
           files: |
             build/app/outputs/flutter-apk/app-release.apk
+            build/app/outputs/flutter-apk/BioStats-v${{ steps.version.outputs.name }}-build${{ github.run_number }}.apk
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

@@ -1,4 +1,4 @@
-package com.example.biostats
+package com.rafaelneves.biostats
 
 import io.flutter.embedding.android.FlutterActivity
 
