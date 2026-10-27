@@ -8,6 +8,7 @@ import '../models/models.dart';
 import '../utils/calculator.dart';
 import 'database_service.dart';
 import 'photo_storage_service.dart';
+import 'security_service.dart';
 
 class BackupPreviewInfo {
   final String profileName;
@@ -47,9 +48,13 @@ class AppState extends ChangeNotifier {
   bool _onboardingDone = false;
   bool _disclaimerAccepted = false;
   ThemeMode _themeMode = ThemeMode.light;
-  String? _appPin;
+  bool _hasPinLock = false;
   bool _isSessionUnlocked = true;
   bool _discreetPhotos = false;
+  bool _useBiometrics = true;
+  bool _blockScreenshots = true;
+  int _failedPinAttempts = 0;
+  DateTime? _lockoutUntil;
 
   List<Avaliacao> _avaliacoes = [];
   List<Resultados> _resultados = [];
@@ -70,10 +75,17 @@ class AppState extends ChangeNotifier {
   ThemeMode get themeMode => _themeMode;
   bool get isDarkMode => _themeMode == ThemeMode.dark;
 
-  String? get appPin => _appPin;
-  bool get hasPinLock => _appPin != null && _appPin!.isNotEmpty;
-  bool get isLocked => hasPinLock && !_isSessionUnlocked;
+  bool get hasPinLock => _hasPinLock;
+  bool get isLocked => _hasPinLock && !_isSessionUnlocked;
   bool get discreetPhotos => _discreetPhotos;
+  bool get useBiometrics => _useBiometrics;
+  bool get blockScreenshots => _blockScreenshots;
+  int get failedPinAttempts => _failedPinAttempts;
+  DateTime? get lockoutUntil => _lockoutUntil;
+  bool get isLockedOut =>
+      _lockoutUntil != null && _lockoutUntil!.isAfter(DateTime.now());
+  int get remainingLockoutSeconds =>
+      SecurityService.getRemainingLockoutSeconds(_lockoutUntil);
 
   List<Avaliacao> get avaliacoes {
     final sorted = [..._avaliacoes]
@@ -183,11 +195,18 @@ class AppState extends ChangeNotifier {
     } catch (_) {}
     _disclaimerAccepted = disclaimer ?? _prefs?.getBool(_keyDisclaimerAccepted) ?? false;
 
-    try {
-      _appPin = await DatabaseService.getSetting(_keyAppPin);
-    } catch (_) {}
-    _appPin ??= _prefs?.getString(_keyAppPin);
-    _isSessionUnlocked = _appPin == null || _appPin!.isEmpty;
+    // 2.1 Migração de PIN em texto puro para hash SHA-256 + salt
+    await SecurityService.migrateLegacyPinIfNecessary(_prefs);
+    _hasPinLock = await SecurityService.hasSecurePin();
+    _useBiometrics = SecurityService.isBiometricsEnabled(_prefs);
+    _blockScreenshots = SecurityService.isBlockScreenshotsEnabled(_prefs);
+    _failedPinAttempts = SecurityService.getFailedAttempts(_prefs);
+    _lockoutUntil = SecurityService.getLockoutUntil(_prefs);
+    _isSessionUnlocked = !_hasPinLock;
+
+    if (_hasPinLock && _blockScreenshots) {
+      await SecurityService.setFlagSecure(true);
+    }
 
     bool? discreet;
     try {
@@ -339,9 +358,6 @@ class AppState extends ChangeNotifier {
       await DatabaseService.setSetting(_keyThemeMode, _themeMode == ThemeMode.dark ? 'dark' : 'light');
       await DatabaseService.setSetting(_keyOnboardingDone, _onboardingDone.toString());
       await DatabaseService.setSetting(_keyDisclaimerAccepted, _disclaimerAccepted.toString());
-      if (_appPin != null) {
-        await DatabaseService.setSetting(_keyAppPin, _appPin!);
-      }
       await DatabaseService.setSetting(_keyDiscreetPhotos, _discreetPhotos.toString());
 
       // 7. Marca como migrado e remove as strings gigantes do SharedPreferences (libera RAM)
@@ -405,30 +421,85 @@ class AppState extends ChangeNotifier {
   Future<void> setAppPin(String? pin) async {
     final cleaned = pin?.trim();
     if (cleaned == null || cleaned.isEmpty) {
-      _appPin = null;
+      await SecurityService.removeSecurePin();
+      _hasPinLock = false;
       _isSessionUnlocked = true;
+      await SecurityService.resetFailedAttempts(_prefs);
+      _failedPinAttempts = 0;
+      _lockoutUntil = null;
+      await SecurityService.setFlagSecure(false);
       await _prefs?.remove(_keyAppPin);
       try {
         await DatabaseService.removeSetting(_keyAppPin);
       } catch (_) {}
     } else {
-      _appPin = cleaned;
+      await SecurityService.saveSecurePin(cleaned);
+      _hasPinLock = true;
       _isSessionUnlocked = true;
-      await _prefs?.setString(_keyAppPin, cleaned);
+      await SecurityService.resetFailedAttempts(_prefs);
+      _failedPinAttempts = 0;
+      _lockoutUntil = null;
+      if (_blockScreenshots) {
+        await SecurityService.setFlagSecure(true);
+      }
+      await _prefs?.remove(_keyAppPin);
       try {
-        await DatabaseService.setSetting(_keyAppPin, cleaned);
+        await DatabaseService.removeSetting(_keyAppPin);
       } catch (_) {}
     }
     notifyListeners();
   }
 
-  bool unlockSession(String candidatePin) {
-    if (_appPin == null || candidatePin.trim() == _appPin) {
+  Future<bool> unlockSession(String candidatePin) async {
+    if (isLockedOut) return false;
+
+    if (!_hasPinLock) {
+      _isSessionUnlocked = true;
+      notifyListeners();
+      return true;
+    }
+
+    final isValid = await SecurityService.verifyPin(candidatePin);
+    if (isValid) {
+      await SecurityService.resetFailedAttempts(_prefs);
+      _failedPinAttempts = 0;
+      _lockoutUntil = null;
+      _isSessionUnlocked = true;
+      notifyListeners();
+      return true;
+    } else {
+      _lockoutUntil = await SecurityService.recordFailedAttempt(_prefs);
+      _failedPinAttempts = SecurityService.getFailedAttempts(_prefs);
+      notifyListeners();
+      return false;
+    }
+  }
+
+  Future<bool> unlockWithBiometrics() async {
+    if (isLockedOut || !_hasPinLock || !_useBiometrics) return false;
+
+    final authenticated = await SecurityService.authenticateBiometric();
+    if (authenticated) {
+      await SecurityService.resetFailedAttempts(_prefs);
+      _failedPinAttempts = 0;
+      _lockoutUntil = null;
       _isSessionUnlocked = true;
       notifyListeners();
       return true;
     }
     return false;
+  }
+
+  Future<void> toggleBiometrics() async {
+    _useBiometrics = !_useBiometrics;
+    await SecurityService.setBiometricsEnabled(_prefs, _useBiometrics);
+    notifyListeners();
+  }
+
+  Future<void> toggleBlockScreenshots() async {
+    _blockScreenshots = !_blockScreenshots;
+    await SecurityService.setBlockScreenshotsEnabled(_prefs, _blockScreenshots);
+    notifyListeners();
   }
 
   void lockSession() {
@@ -516,7 +587,12 @@ class AppState extends ChangeNotifier {
     _userProfile = null;
     _onboardingDone = false;
     _disclaimerAccepted = false;
-    _appPin = null;
+    await SecurityService.removeSecurePin();
+    await SecurityService.resetFailedAttempts(_prefs);
+    await SecurityService.setFlagSecure(false);
+    _hasPinLock = false;
+    _failedPinAttempts = 0;
+    _lockoutUntil = null;
     _isSessionUnlocked = true;
     _discreetPhotos = false;
     _avaliacoes = [];

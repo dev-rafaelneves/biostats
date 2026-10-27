@@ -3,10 +3,12 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:biostats/models/models.dart';
 import 'package:biostats/services/app_state.dart';
+import 'package:biostats/services/security_service.dart';
 import 'package:biostats/utils/calculator.dart';
 import 'package:biostats/utils/report_pdf_generator.dart';
 
 void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
   group('BioCalculator - Motor Matemático Científico', () {
     test('US Navy Body Fat Formula (Homem, Mulher e bordas)', () {
       expect(
@@ -279,8 +281,8 @@ void main() {
       expect(appState.hasPinLock, isTrue);
       appState.lockSession();
       expect(appState.isLocked, isTrue);
-      expect(appState.unlockSession('0000'), isFalse);
-      expect(appState.unlockSession('1234'), isTrue);
+      expect(await appState.unlockSession('0000'), isFalse);
+      expect(await appState.unlockSession('1234'), isTrue);
       expect(appState.isLocked, isFalse);
 
       await appState.resetAllData();
@@ -472,6 +474,105 @@ void main() {
       expect(reloadedRes.snapshot.bfPrincipal, greaterThan(0));
       expect(reloadedRes.snapshot.lbmFinal, greaterThan(0));
       expect(reloadedRes.snapshot.metodoPrincipal, 'navy');
+    });
+
+    test('F4 — Hash SHA-256 com Salt criptográfico para PIN', () {
+      final salt1 = SecurityService.generateSalt();
+      final salt2 = SecurityService.generateSalt();
+      expect(salt1, isNotEmpty);
+      expect(salt2, isNotEmpty);
+      expect(salt1, isNot(equals(salt2)));
+
+      final hash1 = SecurityService.hashPin('1234', salt1);
+      final hash2 = SecurityService.hashPin('1234', salt2);
+      // O mesmo PIN com salts diferentes gera hashes completamente diferentes (anti-rainbow table)
+      expect(hash1, isNot(equals(hash2)));
+
+      // O mesmo PIN com o mesmo salt é estritamente determinístico
+      expect(SecurityService.hashPin('1234', salt1), equals(hash1));
+      expect(SecurityService.hashPin('9999', salt1), isNot(equals(hash1)));
+    });
+
+    test('F4 — Lockout progressivo após tentativas incorretas (30s, 60s, 300s)',
+        () async {
+      SharedPreferences.setMockInitialValues({});
+      final prefs = await SharedPreferences.getInstance();
+
+      // 1 a 4 tentativas: sem lockout
+      for (int i = 1; i <= 4; i++) {
+        final lock = await SecurityService.recordFailedAttempt(prefs);
+        expect(lock, isNull);
+        expect(SecurityService.getFailedAttempts(prefs), i);
+        expect(SecurityService.calculateLockoutSeconds(i), 0);
+      }
+
+      // 5ª tentativa: bloqueio de 30 segundos
+      final lock5 = await SecurityService.recordFailedAttempt(prefs);
+      expect(lock5, isNotNull);
+      expect(SecurityService.calculateLockoutSeconds(5), 30);
+      expect(SecurityService.getRemainingLockoutSeconds(lock5), inInclusiveRange(28, 30));
+
+      // 6ª tentativa: bloqueio de 60 segundos
+      final lock6 = await SecurityService.recordFailedAttempt(prefs);
+      expect(lock6, isNotNull);
+      expect(SecurityService.calculateLockoutSeconds(6), 60);
+      expect(SecurityService.getRemainingLockoutSeconds(lock6), inInclusiveRange(58, 60));
+
+      // 7ª tentativa: bloqueio de 300 segundos (5 minutos)
+      final lock7 = await SecurityService.recordFailedAttempt(prefs);
+      expect(lock7, isNotNull);
+      expect(SecurityService.calculateLockoutSeconds(7), 300);
+      expect(SecurityService.getRemainingLockoutSeconds(lock7), inInclusiveRange(298, 300));
+
+      // Reset
+      await SecurityService.resetFailedAttempts(prefs);
+      expect(SecurityService.getFailedAttempts(prefs), 0);
+      expect(SecurityService.getLockoutUntil(prefs), isNull);
+    });
+
+    test('F4 — Migração de PIN em texto puro para Secure Storage com Hash',
+        () async {
+      SharedPreferences.setMockInitialValues({
+        'biostats_app_pin': '9876',
+      });
+      final prefs = await SharedPreferences.getInstance();
+
+      // Executa migração
+      await SecurityService.migrateLegacyPinIfNecessary(prefs);
+
+      // Texto puro deve ter sido removido
+      expect(prefs.containsKey('biostats_app_pin'), isFalse);
+
+      // Validação pelo hash seguro
+      expect(await SecurityService.hasSecurePin(), isTrue);
+      expect(await SecurityService.verifyPin('9876'), isTrue);
+      expect(await SecurityService.verifyPin('0000'), isFalse);
+    });
+
+    test('F4 — Lockout integrado no AppState com persistência', () async {
+      SharedPreferences.setMockInitialValues({});
+      final appState = AppState();
+      await appState.init();
+
+      await appState.setAppPin('5555');
+      expect(appState.hasPinLock, isTrue);
+      appState.lockSession();
+      expect(appState.isLocked, isTrue);
+
+      // 4 tentativas erradas
+      for (int i = 0; i < 4; i++) {
+        expect(await appState.unlockSession('0000'), isFalse);
+        expect(appState.isLockedOut, isFalse);
+      }
+
+      // 5ª tentativa errada ativa lockout de 30s
+      expect(await appState.unlockSession('0000'), isFalse);
+      expect(appState.isLockedOut, isTrue);
+      expect(appState.remainingLockoutSeconds, greaterThan(0));
+
+      // Mesmo com o PIN correto, durante o lockout não deve desbloquear
+      expect(await appState.unlockSession('5555'), isFalse);
+      expect(appState.isLocked, isTrue);
     });
   });
 }

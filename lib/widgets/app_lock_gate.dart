@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -41,7 +42,7 @@ class AppLockGate extends StatefulWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                'Proteja suas avaliações e fotos corporais com uma senha rápida de 4 números ao abrir o aplicativo.',
+                'Proteja suas avaliações e fotos corporais com uma senha criptografada de 4 números (SHA-256) ao abrir o aplicativo.',
                 style: TextStyle(
                   fontSize: 13.5,
                   color: isDark
@@ -143,15 +144,59 @@ class _AppLockGateState extends State<AppLockGate>
   bool _inBackground = false;
   String _typedPin = '';
   bool _hasError = false;
+  bool _isVerifying = false;
+  Timer? _lockoutTimer;
+  int _remainingSeconds = 0;
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    _checkLockoutTimer();
+
+    // Tenta desbloqueio biométrico automático inicial se ativado
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (widget.appState.isLocked && !widget.appState.isLockedOut) {
+        _tryBiometrics();
+      }
+    });
+  }
+
+  @override
+  void didUpdateWidget(covariant AppLockGate oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    _checkLockoutTimer();
+  }
+
+  void _checkLockoutTimer() {
+    if (widget.appState.isLockedOut) {
+      _remainingSeconds = widget.appState.remainingLockoutSeconds;
+      _lockoutTimer?.cancel();
+      _lockoutTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+        if (!mounted) {
+          timer.cancel();
+          return;
+        }
+        final rem = widget.appState.remainingLockoutSeconds;
+        setState(() {
+          _remainingSeconds = rem;
+        });
+        if (rem <= 0) {
+          timer.cancel();
+          setState(() {
+            _hasError = false;
+          });
+        }
+      });
+    } else {
+      _lockoutTimer?.cancel();
+      _remainingSeconds = 0;
+    }
   }
 
   @override
   void dispose() {
+    _lockoutTimer?.cancel();
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
   }
@@ -168,11 +213,28 @@ class _AppLockGateState extends State<AppLockGate>
       }
     } else if (state == AppLifecycleState.resumed) {
       setState(() => _inBackground = false);
+      if (widget.appState.isLocked && !widget.appState.isLockedOut) {
+        _tryBiometrics();
+      }
     }
   }
 
-  void _onDigitTap(String digit) {
-    if (_typedPin.length >= 4) return;
+  Future<void> _tryBiometrics() async {
+    if (!widget.appState.useBiometrics || widget.appState.isLockedOut) return;
+    final ok = await widget.appState.unlockWithBiometrics();
+    if (ok && mounted) {
+      HapticFeedback.mediumImpact();
+      setState(() {
+        _typedPin = '';
+        _hasError = false;
+      });
+    }
+  }
+
+  Future<void> _onDigitTap(String digit) async {
+    if (_isVerifying || widget.appState.isLockedOut || _typedPin.length >= 4) {
+      return;
+    }
     HapticFeedback.selectionClick();
     setState(() {
       _hasError = false;
@@ -180,13 +242,18 @@ class _AppLockGateState extends State<AppLockGate>
     });
 
     if (_typedPin.length == 4) {
-      final ok = widget.appState.unlockSession(_typedPin);
+      setState(() => _isVerifying = true);
+      final ok = await widget.appState.unlockSession(_typedPin);
+      if (!mounted) return;
+
+      setState(() => _isVerifying = false);
       if (!ok) {
         HapticFeedback.heavyImpact();
         setState(() {
           _hasError = true;
           _typedPin = '';
         });
+        _checkLockoutTimer();
       } else {
         HapticFeedback.mediumImpact();
         setState(() => _typedPin = '');
@@ -195,7 +262,9 @@ class _AppLockGateState extends State<AppLockGate>
   }
 
   void _onBackspace() {
-    if (_typedPin.isEmpty) return;
+    if (_isVerifying || widget.appState.isLockedOut || _typedPin.isEmpty) {
+      return;
+    }
     HapticFeedback.selectionClick();
     setState(() {
       _hasError = false;
@@ -206,8 +275,19 @@ class _AppLockGateState extends State<AppLockGate>
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final isLockedOut = widget.appState.isLockedOut;
 
     if (widget.appState.isLocked) {
+      String subtitleText;
+      if (isLockedOut) {
+        subtitleText =
+            'Muitas tentativas incorretas.\nAguarde ${_remainingSeconds}s para tentar novamente.';
+      } else if (_hasError) {
+        subtitleText = 'PIN incorreto. Tente novamente.';
+      } else {
+        subtitleText = 'Digite seu PIN de 4 dígitos para continuar';
+      }
+
       return Scaffold(
         backgroundColor:
             isDark ? AppColors.darkBackground : AppColors.lightBackground,
@@ -234,14 +314,15 @@ class _AppLockGateState extends State<AppLockGate>
                     ),
                     const SizedBox(height: 6),
                     Text(
-                      _hasError
-                          ? 'PIN incorreto. Tente novamente.'
-                          : 'Digite seu PIN de 4 dígitos para continuar',
+                      subtitleText,
+                      textAlign: TextAlign.center,
                       style: TextStyle(
                         fontSize: 14,
-                        fontWeight:
-                            _hasError ? FontWeight.w600 : FontWeight.normal,
-                        color: _hasError
+                        height: 1.35,
+                        fontWeight: (_hasError || isLockedOut)
+                            ? FontWeight.w600
+                            : FontWeight.normal,
+                        color: (_hasError || isLockedOut)
                             ? AppColors.rose
                             : (isDark
                                 ? AppColors.darkTextSecondary
@@ -266,7 +347,7 @@ class _AppLockGateState extends State<AppLockGate>
                                 ? AppColors.indigoPrimary
                                 : Colors.transparent,
                             border: Border.all(
-                              color: _hasError
+                              color: (_hasError || isLockedOut)
                                   ? AppColors.rose
                                   : (filled
                                       ? AppColors.indigoPrimary
@@ -279,31 +360,76 @@ class _AppLockGateState extends State<AppLockGate>
                     ),
                     const SizedBox(height: 32),
 
-                    // Keypad 1-9, 0, backspace
-                    Wrap(
-                      spacing: 20,
-                      runSpacing: 16,
-                      alignment: WrapAlignment.center,
-                      children: [
-                        for (final d in ['1', '2', '3', '4', '5', '6', '7', '8', '9'])
+                    // Keypad 1-9, Biometria, 0, Backspace
+                    Opacity(
+                      opacity: isLockedOut ? 0.35 : 1.0,
+                      child: Wrap(
+                        spacing: 20,
+                        runSpacing: 16,
+                        alignment: WrapAlignment.center,
+                        children: [
+                          for (final d in [
+                            '1',
+                            '2',
+                            '3',
+                            '4',
+                            '5',
+                            '6',
+                            '7',
+                            '8',
+                            '9'
+                          ])
+                            _PinKeyButton(
+                              label: d,
+                              enabled: !isLockedOut,
+                              onTap: () => _onDigitTap(d),
+                            ),
+
+                          // Botão de Biometria (se ativada)
+                          if (widget.appState.useBiometrics)
+                            Material(
+                              color: isDark ? AppColors.darkSurface : Colors.white,
+                              shape: CircleBorder(
+                                side: BorderSide(
+                                  color: isDark
+                                      ? AppColors.darkBorder
+                                      : AppColors.lightBorder,
+                                ),
+                              ),
+                              child: InkWell(
+                                onTap: isLockedOut ? null : _tryBiometrics,
+                                customBorder: const CircleBorder(),
+                                child: const SizedBox(
+                                  width: 68,
+                                  height: 68,
+                                  child: Center(
+                                    child: Icon(
+                                      Icons.fingerprint_rounded,
+                                      size: 32,
+                                      color: AppColors.indigoPrimary,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            )
+                          else
+                            const SizedBox(width: 68, height: 68),
+
                           _PinKeyButton(
-                            label: d,
-                            onTap: () => _onDigitTap(d),
+                            label: '0',
+                            enabled: !isLockedOut,
+                            onTap: () => _onDigitTap('0'),
                           ),
-                        const SizedBox(width: 68, height: 68),
-                        _PinKeyButton(
-                          label: '0',
-                          onTap: () => _onDigitTap('0'),
-                        ),
-                        SizedBox(
-                          width: 68,
-                          height: 68,
-                          child: IconButton(
-                            onPressed: _onBackspace,
-                            icon: const Icon(Icons.backspace_outlined),
+                          SizedBox(
+                            width: 68,
+                            height: 68,
+                            child: IconButton(
+                              onPressed: isLockedOut ? null : _onBackspace,
+                              icon: const Icon(Icons.backspace_outlined),
+                            ),
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
                   ],
                 ),
@@ -335,9 +461,14 @@ class _AppLockGateState extends State<AppLockGate>
 
 class _PinKeyButton extends StatelessWidget {
   final String label;
+  final bool enabled;
   final VoidCallback onTap;
 
-  const _PinKeyButton({required this.label, required this.onTap});
+  const _PinKeyButton({
+    required this.label,
+    this.enabled = true,
+    required this.onTap,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -350,7 +481,7 @@ class _PinKeyButton extends StatelessWidget {
         ),
       ),
       child: InkWell(
-        onTap: onTap,
+        onTap: enabled ? onTap : null,
         customBorder: const CircleBorder(),
         child: SizedBox(
           width: 68,

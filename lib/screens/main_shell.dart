@@ -1276,6 +1276,60 @@ class _SettingsTab extends StatelessWidget {
                           ),
                           const Divider(indent: 16, height: 1),
                           SwitchListTile.adaptive(
+                            value: appState.hasPinLock && appState.useBiometrics,
+                            onChanged: appState.hasPinLock
+                                ? (_) {
+                                    HapticFeedback.selectionClick();
+                                    appState.toggleBiometrics();
+                                  }
+                                : null,
+                            activeTrackColor: AppColors.indigoPrimary,
+                            secondary: const Icon(
+                              Icons.fingerprint_rounded,
+                              color: AppColors.indigoPrimary,
+                              size: 20,
+                            ),
+                            title: const Text(
+                              'Desbloqueio por Biometria',
+                              style: TextStyle(
+                                fontSize: 15.5,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                            subtitle: Text(
+                              appState.hasPinLock
+                                  ? 'Use impressão digital ou rosto como alternativa rápida ao PIN'
+                                  : 'Requer PIN configurado previamente',
+                              style: const TextStyle(fontSize: 12.5),
+                            ),
+                          ),
+                          const Divider(indent: 16, height: 1),
+                          SwitchListTile.adaptive(
+                            value: appState.blockScreenshots,
+                            onChanged: (_) {
+                              HapticFeedback.selectionClick();
+                              appState.toggleBlockScreenshots();
+                            },
+                            activeTrackColor: AppColors.indigoPrimary,
+                            secondary: const Icon(
+                              Icons.security_rounded,
+                              color: AppColors.indigoPrimary,
+                              size: 20,
+                            ),
+                            title: const Text(
+                              'Ocultar em recentes e bloquear prints',
+                              style: TextStyle(
+                                fontSize: 15.5,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                            subtitle: const Text(
+                              'Proteção FLAG_SECURE: tela fica preta no multitarefas e bloqueia capturas de tela',
+                              style: TextStyle(fontSize: 12.5),
+                            ),
+                          ),
+                          const Divider(indent: 16, height: 1),
+                          SwitchListTile.adaptive(
                             value: appState.discreetPhotos,
                             onChanged: (_) {
                               HapticFeedback.selectionClick();
