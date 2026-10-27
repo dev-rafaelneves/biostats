@@ -13,10 +13,6 @@ jobs:
     name: Build Android APK
     runs-on: ubuntu-latest
 
-    env:
-      # Mesma versão usada localmente — evita quebras quando o canal stable muda
-      FLUTTER_VERSION: '3.47.8'
-
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
@@ -31,7 +27,6 @@ jobs:
         uses: subosito/flutter-action@v2
         with:
           channel: 'stable'
-          flutter-version: ${{ env.FLUTTER_VERSION }}
           cache: true
 
       - name: Install Dependencies
@@ -63,7 +58,9 @@ jobs:
 
       - name: Read App Version
         id: version
-        run: echo "name=$(grep '^version:' pubspec.yaml | sed 's/version: *//; s/+.*//')" >> "$GITHUB_OUTPUT"
+        run: |
+          APP_VER=$(grep '^version:' pubspec.yaml | cut -d ' ' -f 2 | cut -d '+' -f 1)
+          echo "name=$APP_VER" >> $GITHUB_OUTPUT
 
       - name: Rename APK
         run: cp build/app/outputs/flutter-apk/app-release.apk "build/app/outputs/flutter-apk/BioStats-v${{ steps.version.outputs.name }}-build${{ github.run_number }}.apk"
