@@ -25,11 +25,6 @@ subprojects {
         configure<com.android.build.gradle.LibraryExtension> {
             compileSdk = 36
         }
-        afterEvaluate {
-            configure<com.android.build.gradle.LibraryExtension> {
-                compileSdk = 36
-            }
-        }
     }
 }
 
