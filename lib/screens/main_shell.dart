@@ -252,21 +252,18 @@ class _MainShellState extends State<MainShell> {
       child: Scaffold(
         extendBody: true,
         floatingActionButton: _selectedIndex == 0
-            ? Padding(
-                padding: const EdgeInsets.only(bottom: 74),
-                child: FloatingActionButton.extended(
-                  key: const ValueKey('fab_quick_actions'),
-                  onPressed: () => _showQuickActionSheet(context),
-                  backgroundColor: AppColors.indigoPrimary,
-                  foregroundColor: Colors.white,
-                  elevation: 4,
-                  icon: const Icon(Icons.add_rounded, size: 22),
-                  label: const Text(
-                    'Registrar',
-                    style: TextStyle(
-                      fontWeight: FontWeight.w700,
-                      fontSize: 14,
-                    ),
+            ? FloatingActionButton.extended(
+                key: const ValueKey('fab_quick_actions'),
+                onPressed: () => _showQuickActionSheet(context),
+                backgroundColor: AppColors.indigoPrimary,
+                foregroundColor: Colors.white,
+                elevation: 4,
+                icon: const Icon(Icons.add_rounded, size: 22),
+                label: const Text(
+                  'Registrar',
+                  style: TextStyle(
+                    fontWeight: FontWeight.w700,
+                    fontSize: 14,
                   ),
                 ),
               )
