@@ -183,20 +183,23 @@ class EvaluationDetailsWidget extends StatelessWidget {
 
   Future<void> _handleShare(BuildContext context) async {
     HapticFeedback.lightImpact();
+    final snap = resultado?.snapshot;
     final calc = resultado?.calculos ?? {};
     final dataFormatada =
         DateFormat("dd 'de' MMMM", 'pt_BR').format(avaliacao.dataAvaliacao);
 
-    final bfNavy = _numVal(calc['bfNavy']);
-    final bfRfm = _numVal(calc['bfRfm']);
-    final lbmBoer = _numVal(calc['lbmBoer']);
-    final imc = _numVal(calc['imc']);
-    final rcq = _numVal(calc['rcq']);
-    final bai = _numVal(calc['bai']);
-    final bri = _numVal(calc['bri']);
-    final ci = _numVal(calc['ci']);
-    final bmrKatch = _numVal(calc['bmrKatch']);
-    final tdee = _numVal(calc['tdee']);
+    final bfNavy = snap?.bfNavy ?? _numVal(calc['bfNavy']);
+    final bfRfm = snap?.bfRfm ?? _numVal(calc['bfRfm']);
+    final bfPrinc = snap?.bfPrincipal ?? (bfNavy > 0 ? bfNavy : bfRfm);
+    final metodoLabel = snap?.metodoPrincipalLabel ?? (bfNavy > 0 ? 'US Navy' : 'RFM');
+    final lbmFinal = snap?.lbmFinal ?? _numVal(calc['lbmBoer']);
+    final imc = snap?.imc ?? _numVal(calc['imc']);
+    final rcq = snap?.rcq ?? _numVal(calc['rcq']);
+    final bai = snap?.bai ?? _numVal(calc['bai']);
+    final bri = snap?.bri ?? _numVal(calc['bri']);
+    final ci = snap?.ci ?? _numVal(calc['ci']);
+    final bmrKatch = snap?.bmrKatch ?? _numVal(calc['bmrKatch']);
+    final tdee = snap?.tdee ?? _numVal(calc['tdee']);
 
     final ibwMap = calc['ibw'] is Map
         ? Map<String, dynamic>.from(calc['ibw'] as Map)
@@ -210,12 +213,10 @@ class EvaluationDetailsWidget extends StatelessWidget {
     buffer.writeln('*Nome:* ${profile.nome}');
     buffer.writeln('*Data:* $dataFormatada\n');
     buffer.writeln('*Composição Corporal:*');
-    if (bfNavy > 0) {
-      buffer.writeln('• BF (US Navy): ${bfNavy.toStringAsFixed(1)}%');
-    } else if (bfRfm > 0) {
-      buffer.writeln('• BF (RFM): ${bfRfm.toStringAsFixed(1)}%');
+    if (bfPrinc > 0) {
+      buffer.writeln('• BF ($metodoLabel): ${bfPrinc.toStringAsFixed(1)}%');
     }
-    buffer.writeln('• Massa Magra: ${lbmBoer.toStringAsFixed(1)} kg');
+    buffer.writeln('• Massa Magra: ${lbmFinal.toStringAsFixed(1)} kg');
     buffer.writeln('• Peso Atual: ${avaliacao.pesoKg.toStringAsFixed(1)} kg');
 
     if (ibwMap != null) {
@@ -268,21 +269,26 @@ class EvaluationDetailsWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final snap = resultado?.snapshot;
     final calc = resultado?.calculos ?? {};
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    final bmrKatch = _numVal(calc['bmrKatch']);
-    final tdee = _numVal(calc['tdee']);
-    final bfNavy = _numVal(calc['bfNavy']);
-    final bfRfm = _numVal(calc['bfRfm']);
-    final bfDeurenberg = _numVal(calc['bfDeurenberg']);
-    final imc = _numVal(calc['imc']);
-    final rcq = _numVal(calc['rcq']);
-    final rcEst = _numVal(calc['rcEst']);
-    final lbmBoer = _numVal(calc['lbmBoer']);
-    final bai = _numVal(calc['bai']);
-    final bri = _numVal(calc['bri']);
-    final ci = _numVal(calc['ci']);
+    final bmrKatch = snap?.bmrKatch ?? _numVal(calc['bmrKatch']);
+    final tdee = snap?.tdee ?? _numVal(calc['tdee']);
+    final bfNavy = snap?.bfNavy ?? _numVal(calc['bfNavy']);
+    final bfRfm = snap?.bfRfm ?? _numVal(calc['bfRfm']);
+    final bfDeurenberg = snap?.bfDeurenberg ?? _numVal(calc['bfDeurenberg']);
+    final metodoPrincipal = snap?.metodoPrincipal ?? (bfNavy > 0 ? 'navy' : 'rfm');
+    final imc = snap?.imc ?? _numVal(calc['imc']);
+    final rcq = snap?.rcq ?? _numVal(calc['rcq']);
+    final rcEst = snap?.rcEst ?? _numVal(calc['rcEst']);
+    final lbmFinal = snap?.lbmFinal ?? _numVal(calc['lbmBoer']);
+    final lbmLabel = (snap != null && snap.lbmFinal != snap.lbmBoer)
+        ? 'Real (${snap.metodoPrincipalLabel})'
+        : 'Fórmula Boer';
+    final bai = snap?.bai ?? _numVal(calc['bai']);
+    final bri = snap?.bri ?? _numVal(calc['bri']);
+    final ci = snap?.ci ?? _numVal(calc['ci']);
 
     final ibwMap = calc['ibw'] is Map
         ? Map<String, dynamic>.from(calc['ibw'] as Map)
@@ -538,7 +544,7 @@ class EvaluationDetailsWidget extends StatelessWidget {
                 name: 'Método US Navy',
                 desc: 'Baseado em circunferências (Padrão ouro prático)',
                 value: bfNavy > 0 ? '${bfNavy.toStringAsFixed(1)}%' : '--',
-                highlight: bfNavy > 0,
+                highlight: metodoPrincipal == 'navy',
               ),
               const Padding(
                 padding: EdgeInsets.symmetric(vertical: 10),
@@ -548,7 +554,7 @@ class EvaluationDetailsWidget extends StatelessWidget {
                 name: 'Relative Fat Mass (RFM)',
                 desc: 'Equação recente altura/cintura',
                 value: bfRfm > 0 ? '${bfRfm.toStringAsFixed(1)}%' : '--',
-                highlight: bfNavy <= 0 && bfRfm > 0,
+                highlight: metodoPrincipal == 'rfm',
               ),
               const Padding(
                 padding: EdgeInsets.symmetric(vertical: 10),
@@ -558,6 +564,7 @@ class EvaluationDetailsWidget extends StatelessWidget {
                 name: 'Fórmula Deurenberg',
                 desc: 'Estimativa baseada no IMC e Idade',
                 value: '${bfDeurenberg.toStringAsFixed(1)}%',
+                highlight: metodoPrincipal == 'deurenberg',
               ),
             ],
           ),
@@ -611,8 +618,8 @@ class EvaluationDetailsWidget extends StatelessWidget {
               _GridHalfItem(
                 child: _RiskMiniCard(
                   title: 'Massa Magra',
-                  value: '${lbmBoer.toStringAsFixed(1)} kg',
-                  label: 'Fórmula Boer',
+                  value: '${lbmFinal.toStringAsFixed(1)} kg',
+                  label: lbmLabel,
                 ),
               ),
               if (bai > 0)

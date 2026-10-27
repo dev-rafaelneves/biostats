@@ -105,7 +105,7 @@ class _ExportDataCardState extends State<ExportDataCard> {
           av.pesoKg.toStringAsFixed(2),
           fmtNum(calc['bfNavy']),
           fmtNum(calc['bfRfm']),
-          fmtNum(calc['lbmBoer']),
+          fmtNum(ev.resultado?.snapshot.lbmFinal ?? calc['lbmBoer']),
           av.medidas.cintura?.toString() ?? '',
           av.medidas.pescoco?.toString() ?? '',
           av.medidas.quadril?.toString() ?? '',

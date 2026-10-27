@@ -422,9 +422,7 @@ class _EvaluationComparatorScreenState
 
   double _getBf(JoinedEvaluation? ev) {
     if (ev == null) return 0.0;
-    final navy = (ev.resultado?.calculos['bfNavy'] as num?)?.toDouble() ?? 0.0;
-    if (navy > 0) return navy;
-    return (ev.resultado?.calculos['bfRfm'] as num?)?.toDouble() ?? 0.0;
+    return ev.resultado?.snapshot.bfPrincipal ?? 0.0;
   }
 
   @override
@@ -909,20 +907,12 @@ class _EvaluationComparatorScreenState
                         ),
                       _ComparisonRowData(
                         label: 'Índice IMC',
-                        valA: ((evalA.resultado?.calculos['imc'] as num?)
-                                    ?.toDouble() ??
-                                0.0)
+                        valA: (evalA.resultado?.snapshot.imc ?? 0.0)
                             .toStringAsFixed(1),
-                        valB: ((evalB.resultado?.calculos['imc'] as num?)
-                                    ?.toDouble() ??
-                                0.0)
+                        valB: (evalB.resultado?.snapshot.imc ?? 0.0)
                             .toStringAsFixed(1),
-                        delta: (((evalB.resultado?.calculos['imc'] as num?)
-                                        ?.toDouble() ??
-                                    0.0) -
-                                ((evalA.resultado?.calculos['imc'] as num?)
-                                        ?.toDouble() ??
-                                    0.0)),
+                        delta: (evalB.resultado?.snapshot.imc ?? 0.0) -
+                            (evalA.resultado?.snapshot.imc ?? 0.0),
                         isPositiveGood: false,
                       ),
                     ],
@@ -993,26 +983,26 @@ class _EvaluationComparatorScreenState
                     rows: [
                       _buildCalcRow(
                         'RCQ (Cintura/Quadril)',
-                        evalA.resultado?.calculos['rcq'],
-                        evalB.resultado?.calculos['rcq'],
+                        evalA.resultado?.snapshot.rcq,
+                        evalB.resultado?.snapshot.rcq,
                         isPositiveGood: false,
                       ),
                       _buildCalcRow(
                         'RCEst (Cintura/Altura)',
-                        evalA.resultado?.calculos['rcEst'],
-                        evalB.resultado?.calculos['rcEst'],
+                        evalA.resultado?.snapshot.rcEst,
+                        evalB.resultado?.snapshot.rcEst,
                         isPositiveGood: false,
                       ),
                       _buildCalcRow(
                         'BRI (Redondeza Corp.)',
-                        evalA.resultado?.calculos['bri'],
-                        evalB.resultado?.calculos['bri'],
+                        evalA.resultado?.snapshot.bri,
+                        evalB.resultado?.snapshot.bri,
                         isPositiveGood: false,
                       ),
                       _buildCalcRow(
                         'CI (Conicidade)',
-                        evalA.resultado?.calculos['ci'],
-                        evalB.resultado?.calculos['ci'],
+                        evalA.resultado?.snapshot.ci,
+                        evalB.resultado?.snapshot.ci,
                         isPositiveGood: false,
                       ),
                     ].whereType<_ComparisonRowData>().toList(),

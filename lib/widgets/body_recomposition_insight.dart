@@ -24,9 +24,7 @@ class BodyRecompositionInsight extends StatelessWidget {
     final weightDiff = currentWeight - initialWeight;
 
     double extractBf(JoinedEvaluation ev) {
-      final navy = (ev.resultado?.calculos['bfNavy'] as num?)?.toDouble() ?? 0.0;
-      if (navy > 0) return navy;
-      return (ev.resultado?.calculos['bfRfm'] as num?)?.toDouble() ?? 0.0;
+      return ev.resultado?.snapshot.bfPrincipal ?? 0.0;
     }
 
     final initialBf = extractBf(oldest);

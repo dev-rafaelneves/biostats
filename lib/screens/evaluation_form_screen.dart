@@ -305,7 +305,7 @@ class _EvaluationFormScreenState extends State<EvaluationFormScreen> {
     return p != null && c != null;
   }
 
-  Map<String, dynamic>? _computeLivePreview() {
+  CalculosSnapshot? _computeLivePreview() {
     final profile = widget.appState.userProfile;
     final peso = _parseField(_pesoCtrl);
     final cintura = _parseField(_cinturaCtrl);
@@ -631,7 +631,8 @@ class _EvaluationFormScreenState extends State<EvaluationFormScreen> {
       final novoResultado = Resultados(
         id: existingResultado?.id ?? uuid.v4(),
         avaliacaoId: avaliacaoId,
-        calculos: calculos,
+        calculos: calculos.toJson(),
+        calcVersion: 2,
       );
 
       final novasFotos = <FotoAvaliacao>[];
@@ -1392,7 +1393,7 @@ class _EvaluationFormScreenState extends State<EvaluationFormScreen> {
 }
 
 class _LivePreviewCard extends StatelessWidget {
-  final Map<String, dynamic> calculos;
+  final CalculosSnapshot calculos;
   final Sexo sexo;
   final bool hasPescoco;
   final bool hasQuadril;
@@ -1407,11 +1408,13 @@ class _LivePreviewCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final imc = (calculos['imc'] as num?)?.toDouble() ?? 0.0;
-    final bfNavy = (calculos['bfNavy'] as num?)?.toDouble() ?? 0.0;
-    final bfRfm = (calculos['bfRfm'] as num?)?.toDouble() ?? 0.0;
-    final lbmBoer = (calculos['lbmBoer'] as num?)?.toDouble() ?? 0.0;
-    final metaKcal = (calculos['metaCalorica'] as num?)?.toDouble() ?? 0.0;
+    final imc = calculos.imc;
+    final bfNavy = calculos.bfNavy;
+    final bfRfm = calculos.bfRfm;
+    final bfPrinc = calculos.bfPrincipal;
+    final metodoLabel = calculos.metodoPrincipalLabel;
+    final lbm = calculos.lbmFinal;
+    final metaKcal = calculos.macros.targetCalories;
 
     final missingNavyField =
         !hasPescoco || (sexo == Sexo.F && !hasQuadril);
@@ -1460,16 +1463,22 @@ class _LivePreviewCard extends StatelessWidget {
                 value: imc > 0 ? imc.toStringAsFixed(1) : '--',
               ),
               _PreviewMetric(
-                label: 'BF% (Navy)',
-                value: bfNavy > 0 ? '${bfNavy.toStringAsFixed(1)}%' : '--',
+                label: 'BF% ($metodoLabel)',
+                value: bfPrinc > 0 ? '${bfPrinc.toStringAsFixed(1)}%' : '--',
               ),
-              _PreviewMetric(
-                label: 'BF% (RFM)',
-                value: bfRfm > 0 ? '${bfRfm.toStringAsFixed(1)}%' : '--',
-              ),
+              if (bfNavy > 0 && metodoLabel != 'US Navy')
+                _PreviewMetric(
+                  label: 'BF% (Navy)',
+                  value: '${bfNavy.toStringAsFixed(1)}%',
+                ),
+              if (bfRfm > 0 && metodoLabel != 'RFM')
+                _PreviewMetric(
+                  label: 'BF% (RFM)',
+                  value: '${bfRfm.toStringAsFixed(1)}%',
+                ),
               _PreviewMetric(
                 label: 'Massa Magra',
-                value: lbmBoer > 0 ? '${lbmBoer.toStringAsFixed(1)}kg' : '--',
+                value: lbm > 0 ? '${lbm.toStringAsFixed(1)}kg' : '--',
               ),
               _PreviewMetric(
                 label: 'Meta',

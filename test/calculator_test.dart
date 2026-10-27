@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:biostats/models/models.dart';
@@ -74,17 +75,54 @@ void main() {
       expect(BioCalculator.calculateIBW(Sexo.M, 0).devine, 0);
     });
 
-    test('Macronutrientes e Metas (Emagrecimento, Piso 1200 kcal)', () {
-      final res =
-          BioCalculator.calculateMacrosAndGoals(2500, Objetivo.emagrecimento);
-      expect(res.targetCalories, 2000);
-      expect(res.grams.protein, 200);
-      expect(res.grams.carbs, 150);
-      expect(res.grams.fat, 67);
+    test('Macronutrientes Científicos em g/kg e Pisos Calóricos (F3)', () {
+      // Caso 1: Homem, TDEE 2500, Emagrecimento, Peso 80kg, LBM 64kg
+      final resM = BioCalculator.calculateMacrosAndGoals(
+        2500,
+        Objetivo.emagrecimento,
+        sexo: Sexo.M,
+        pesoKg: 80,
+        lbmKg: 64,
+      );
+      expect(resM.targetCalories, 2000); // 2500 - 500
+      expect(resM.grams.protein, 115); // 64kg LBM * 1.8 = 115.2 -> 115g
+      expect(resM.grams.fat, 64); // 80kg peso * 0.8 = 64g
+      expect(resM.grams.carbs, 241); // (2000 - (115*4) - (64*9)) / 4 = 964 / 4 = 241g
+      expect(resM.macros.protein + resM.macros.fat + resM.macros.carbs, 100);
 
-      final resLow =
-          BioCalculator.calculateMacrosAndGoals(1500, Objetivo.emagrecimento);
-      expect(resLow.targetCalories, 1200);
+      // Caso 2: Piso Calórico Feminino (1200 kcal)
+      final resLowF = BioCalculator.calculateMacrosAndGoals(
+        1400,
+        Objetivo.emagrecimento,
+        sexo: Sexo.F,
+        pesoKg: 60,
+        lbmKg: 45,
+      );
+      expect(resLowF.targetCalories, 1200); // 1400 - 500 = 900 -> piso 1200
+      expect(resLowF.grams.protein, 81); // 45 * 1.8 = 81g
+      expect(resLowF.grams.fat, 48); // 60 * 0.8 = 48g
+
+      // Caso 3: Piso Calórico Masculino (1500 kcal)
+      final resLowM = BioCalculator.calculateMacrosAndGoals(
+        1700,
+        Objetivo.emagrecimento,
+        sexo: Sexo.M,
+        pesoKg: 75,
+        lbmKg: 58,
+      );
+      expect(resLowM.targetCalories, 1500); // 1700 - 500 = 1200 -> piso 1500
+
+      // Caso 4: Hipertrofia (2.0 g/kg LBM e +300 kcal)
+      final resHip = BioCalculator.calculateMacrosAndGoals(
+        2200,
+        Objetivo.hipertrofia,
+        sexo: Sexo.M,
+        pesoKg: 70,
+        lbmKg: 55,
+      );
+      expect(resHip.targetCalories, 2500); // 2200 + 300
+      expect(resHip.grams.protein, 110); // 55 * 2.0 = 110g
+      expect(resHip.grams.fat, 56); // 70 * 0.8 = 56g
     });
 
     test('Índices Avançados de Risco (BAI, BRI, CI)', () {
@@ -129,7 +167,8 @@ void main() {
       final resultado = Resultados(
         id: 'res-1',
         avaliacaoId: avaliacao.id,
-        calculos: calculos,
+        calculos: calculos.toJson(),
+        calcVersion: 2,
       );
       await appState.addAvaliacao(avaliacao: avaliacao, resultado: resultado);
 
@@ -194,7 +233,7 @@ void main() {
           calculos: BioCalculator.buildCalculosSnapshot(
             profile: profile,
             avaliacao: av1,
-          ),
+          ).toJson(),
         ),
       );
 
@@ -226,7 +265,7 @@ void main() {
           calculos: BioCalculator.buildCalculosSnapshot(
             profile: appState.userProfile!,
             avaliacao: av1Edited,
-          ),
+          ).toJson(),
         ),
         fotosDaAvaliacao: const [],
       );
@@ -277,7 +316,7 @@ void main() {
       expect(cleared.metaPesoKg, isNull);
       expect(cleared.metaBfPct, isNull);
 
-      // Avaliação sem pescoço preenchido (bf_navy = 0, bf_rfm > 0)
+      // Avaliação sem pescoço preenchido (bfNavy = 0, bfRfm > 0, bfPrincipal = bfRfm)
       final avNoNeck = Avaliacao(
         id: 'av-noneck',
         userId: profile.id,
@@ -291,9 +330,148 @@ void main() {
         profile: profile,
         avaliacao: avNoNeck,
       );
-      // Sem pescoço, o snapshot usa RFM como fallback para bfNavy
-      expect((snap['bfRfm'] as num).toDouble(), greaterThan(0.0));
-      expect(snap['bfNavy'], snap['bfRfm']);
+      // Sem pescoço: bfNavy fica 0.0, bfRfm > 0, bfPrincipal = bfRfm e metodo = 'rfm'
+      expect(snap.bfNavy, 0.0);
+      expect(snap.bfRfm, greaterThan(0.0));
+      expect(snap.bfPrincipal, snap.bfRfm);
+      expect(snap.metodoPrincipal, 'rfm');
+      expect(snap.metodoPrincipalLabel, 'RFM');
+    });
+
+    test('F3 — Idade na data da avaliação', () {
+      final profile = UserProfile(
+        id: 'user-age',
+        nome: 'Teste Idade',
+        dataNascimento: DateTime(1990, 6, 15),
+        sexo: Sexo.M,
+        alturaCm: 175,
+        criadoEm: DateTime(2020, 1, 1),
+      );
+
+      // Antes do aniversário em 2024
+      expect(profile.idadeNaData(DateTime(2024, 6, 14)), 33);
+      // No dia do aniversário em 2024
+      expect(profile.idadeNaData(DateTime(2024, 6, 15)), 34);
+      // Depois do aniversário em 2024
+      expect(profile.idadeNaData(DateTime(2024, 6, 16)), 34);
+    });
+
+    test('F3 — Massa Magra Real LBM = peso * (1 - BF%) e Katch-McArdle', () {
+      final profile = UserProfile(
+        id: 'user-lbm',
+        nome: 'Teste LBM',
+        dataNascimento: DateTime(1995, 1, 1),
+        sexo: Sexo.M,
+        alturaCm: 180,
+        criadoEm: DateTime(2026, 1, 1),
+      );
+      // Avaliação com medidas completas: peso 80kg, cintura 84cm, pescoço 38cm
+      final av = Avaliacao(
+        id: 'av-lbm',
+        userId: profile.id,
+        dataAvaliacao: DateTime(2026, 10, 20),
+        pesoKg: 80.0,
+        nivelAtividade: 1.55,
+        objetivo: Objetivo.manutencao,
+        medidas: const MedidasCorporais(cintura: 84, pescoco: 38),
+      );
+      final snap = BioCalculator.buildCalculosSnapshot(
+        profile: profile,
+        avaliacao: av,
+      );
+
+      expect(snap.bfNavy, greaterThan(0));
+      expect(snap.bfPrincipal, snap.bfNavy);
+      expect(snap.metodoPrincipal, 'navy');
+
+      // LBM real = 80 * (1 - (bf/100))
+      final expectedLbmReal =
+          BioCalculator.round2(80.0 * (1.0 - (snap.bfPrincipal / 100.0)));
+      expect(snap.lbmFinal, expectedLbmReal);
+      // Katch-McArdle usa lbmFinal
+      expect(
+        snap.bmrKatch,
+        BioCalculator.calculateKatchMcArdleBMR(snap.lbmFinal),
+      );
+    });
+
+    test('F3 — CalculosSnapshot.fromJson tolerante com snapshot legado v1', () {
+      final legacyMap = {
+        'imc': 24.5,
+        'rcq': 0.85,
+        'rcEst': 0.48,
+        'bfNavy': 16.8,
+        'bfRfm': 18.2,
+        'bfDeurenberg': 19.5,
+        'lbmBoer': 62.0,
+        'bmrKatch': 1700.0,
+        'tdee': 2400.0,
+        'bai': 22.0,
+        'bri': 3.1,
+        'ci': 1.15,
+        // Sem bfPrincipal, sem metodoPrincipal, sem calcVersion
+      };
+
+      final snapshot = CalculosSnapshot.fromJson(legacyMap);
+      expect(snapshot.imc, 24.5);
+      expect(snapshot.bfNavy, 16.8);
+      expect(snapshot.bfPrincipal, 16.8);
+      expect(snapshot.metodoPrincipal, 'navy');
+      expect(snapshot.metodoPrincipalLabel, 'US Navy');
+      expect(snapshot.lbmFinal, 62.0); // fallback para lbmBoer
+      expect(snapshot.calcVersion, 1);
+    });
+
+    test('F3 — Auto-recalculação de snapshots legados no AppState.init()',
+        () async {
+      final profile = UserProfile(
+        id: 'user-migr',
+        nome: 'Usuario Legado',
+        dataNascimento: DateTime(1990, 5, 10),
+        sexo: Sexo.M,
+        alturaCm: 178,
+        criadoEm: DateTime(2025, 1, 1),
+      );
+
+      final av = Avaliacao(
+        id: 'av-legada',
+        userId: profile.id,
+        dataAvaliacao: DateTime(2025, 6, 1),
+        pesoKg: 82.0,
+        nivelAtividade: 1.55,
+        objetivo: Objetivo.emagrecimento,
+        medidas: const MedidasCorporais(cintura: 86, pescoco: 38),
+      );
+
+      // Insere resultado com calcVersion = 1 e sem bfPrincipal
+      final resLegado = Resultados(
+        id: 'res-legado',
+        avaliacaoId: av.id,
+        calculos: {
+          'imc': 25.88,
+          'bfNavy': 17.0,
+          'lbmBoer': 61.5,
+          'calcVersion': 1,
+        },
+        calcVersion: 1,
+      );
+
+      SharedPreferences.setMockInitialValues({
+        'biostats_user_profile': jsonEncode(profile.toJson()),
+        'biostats_avaliacoes': jsonEncode([av.toJson()]),
+        'biostats_resultados': jsonEncode([resLegado.toJson()]),
+      });
+
+      final appState = AppState();
+      await appState.init();
+
+      final reloadedRes = appState.getResultadoForAvaliacao('av-legada');
+      expect(reloadedRes, isNotNull);
+      // Deve ter sido recalculado para v2 automaticamente
+      expect(reloadedRes!.calcVersion, 2);
+      expect(reloadedRes.snapshot.bfPrincipal, greaterThan(0));
+      expect(reloadedRes.snapshot.lbmFinal, greaterThan(0));
+      expect(reloadedRes.snapshot.metodoPrincipal, 'navy');
     });
   });
 }

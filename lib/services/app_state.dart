@@ -201,6 +201,7 @@ class AppState extends ChangeNotifier {
     try {
       isMigrated = await DatabaseService.getSetting(_keyStorageMigrated) == 'true';
     } catch (_) {}
+    isMigrated = isMigrated || (_prefs?.getBool(_keyStorageMigrated) ?? false);
 
     if (!isMigrated) {
       await _migrateFromSharedPreferences();
@@ -246,6 +247,45 @@ class AppState extends ChangeNotifier {
     }
 
     _rebuildResultadosIndex();
+
+    // 5. Auto-recalcula resultados com versão antiga (calcVersion < 2) com fórmulas científicas
+    if (_userProfile != null && _avaliacoes.isNotEmpty) {
+      bool recalculouAlgum = false;
+      const uuid = Uuid();
+      for (int i = 0; i < _avaliacoes.length; i++) {
+        final ev = _avaliacoes[i];
+        final res = _resultadosByAvaliacaoId[ev.id];
+        if (res == null ||
+            res.calcVersion < 2 ||
+            !res.calculos.containsKey('bfPrincipal')) {
+          final novoSnapshot = BioCalculator.buildCalculosSnapshot(
+            profile: _userProfile!,
+            avaliacao: ev,
+          );
+          final novoResultado = Resultados(
+            id: res?.id ?? uuid.v4(),
+            avaliacaoId: ev.id,
+            calculos: novoSnapshot.toJson(),
+            calcVersion: 2,
+          );
+          try {
+            await DatabaseService.upsertResultado(novoResultado);
+          } catch (_) {}
+
+          final idx = _resultados.indexWhere((r) => r.avaliacaoId == ev.id);
+          if (idx >= 0) {
+            _resultados[idx] = novoResultado;
+          } else {
+            _resultados.add(novoResultado);
+          }
+          recalculouAlgum = true;
+        }
+      }
+      if (recalculouAlgum) {
+        _rebuildResultadosIndex();
+      }
+    }
+
     _initialized = true;
     notifyListeners();
   }
@@ -306,6 +346,7 @@ class AppState extends ChangeNotifier {
 
       // 7. Marca como migrado e remove as strings gigantes do SharedPreferences (libera RAM)
       await DatabaseService.setSetting(_keyStorageMigrated, 'true');
+      await _prefs?.setBool(_keyStorageMigrated, true);
       await _prefs?.remove(_keyAvaliacoes);
       await _prefs?.remove(_keyResultados);
       await _prefs?.remove(_keyFotos);
@@ -330,6 +371,15 @@ class AppState extends ChangeNotifier {
     } catch (e) {
       return [];
     }
+  }
+
+  Future<void> _saveList<T>(
+    String key,
+    List<T> list,
+    Map<String, dynamic> Function(T) toJson,
+  ) async {
+    final encoded = jsonEncode(list.map((item) => toJson(item)).toList());
+    await _prefs?.setString(key, encoded);
   }
 
   Future<void> toggleTheme() async {
@@ -434,7 +484,8 @@ class AppState extends ChangeNotifier {
         final res = Resultados(
           id: existing?.id ?? uuid.v4(),
           avaliacaoId: av.id,
-          calculos: newCalc,
+          calculos: newCalc.toJson(),
+          calcVersion: 2,
         );
         updatedResultados.add(res);
         try {
@@ -564,6 +615,13 @@ class AppState extends ChangeNotifier {
       } catch (_) {}
     }
 
+    if (!DatabaseService.isAvailable) {
+      await _saveList(_keyAvaliacoes, _avaliacoes, (a) => a.toJson());
+      await _saveList(_keyResultados, _resultados, (r) => r.toJson());
+      await _saveList(_keyFotos, _fotos, (f) => f.toJson());
+      await _saveList(_keyPesagens, _pesagens, (p) => p.toJson());
+    }
+
     notifyListeners();
   }
 
@@ -629,6 +687,13 @@ class AppState extends ChangeNotifier {
       } catch (_) {}
     }
 
+    if (!DatabaseService.isAvailable) {
+      await _saveList(_keyAvaliacoes, _avaliacoes, (a) => a.toJson());
+      await _saveList(_keyResultados, _resultados, (r) => r.toJson());
+      await _saveList(_keyFotos, _fotos, (f) => f.toJson());
+      await _saveList(_keyPesagens, _pesagens, (p) => p.toJson());
+    }
+
     notifyListeners();
   }
 
@@ -649,6 +714,12 @@ class AppState extends ChangeNotifier {
       await DatabaseService.deleteFotosByAvaliacaoId(avaliacaoId);
     } catch (e) {
       debugPrint('Aviso ao deletar avaliacao no SQLite: $e');
+    }
+
+    if (!DatabaseService.isAvailable) {
+      await _saveList(_keyAvaliacoes, _avaliacoes, (a) => a.toJson());
+      await _saveList(_keyResultados, _resultados, (r) => r.toJson());
+      await _saveList(_keyFotos, _fotos, (f) => f.toJson());
     }
 
     notifyListeners();

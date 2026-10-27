@@ -47,8 +47,11 @@ class ReportPdfGenerator {
         ? Map<String, dynamic>.from(macrosMap!['grams'] as Map)
         : <String, dynamic>{};
 
-    final bfNavy = _numVal(c['bfNavy']);
-    final lbmBoer = _numVal(c['lbmBoer']);
+    final snap = resultado?.snapshot;
+    final bfNavy = snap?.bfNavy ?? _numVal(c['bfNavy']);
+    final bfPrinc = snap?.bfPrincipal ?? (bfNavy > 0 ? bfNavy : _numVal(c['bfRfm']));
+    final metodoBf = snap?.metodoPrincipalLabel ?? (bfNavy > 0 ? 'US Navy' : 'RFM');
+    final lbmFinal = snap?.lbmFinal ?? _numVal(c['lbmBoer']);
     final imc = _numVal(c['imc']);
     final rcEst = _numVal(c['rcEst']);
     final bmrKatch = _numVal(c['bmrKatch']);
@@ -252,12 +255,12 @@ class ReportPdfGenerator {
                 spacing: 20,
                 children: [
                   buildHighlightCard(
-                    'Gordura Corporal (Navy)',
-                    bfNavy > 0 ? '${bfNavy.toStringAsFixed(1)} %' : '--',
+                    'Gordura Corporal ($metodoBf)',
+                    bfPrinc > 0 ? '${bfPrinc.toStringAsFixed(1)} %' : '--',
                   ),
                   buildHighlightCard(
-                    'Massa Magra (Boer)',
-                    lbmBoer > 0 ? '${lbmBoer.toStringAsFixed(1)} kg' : '--',
+                    'Massa Magra',
+                    lbmFinal > 0 ? '${lbmFinal.toStringAsFixed(1)} kg' : '--',
                   ),
                   buildHighlightCard(
                     'Índice de Massa Corporal',

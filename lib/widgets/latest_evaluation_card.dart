@@ -18,15 +18,17 @@ class LatestEvaluationCard extends StatelessWidget {
 
   double _extractBf(JoinedEvaluation? ev) {
     if (ev == null) return 0.0;
-    final navy = (ev.resultado?.calculos['bfNavy'] as num?)?.toDouble() ?? 0.0;
-    if (navy > 0) return navy;
-    return (ev.resultado?.calculos['bfRfm'] as num?)?.toDouble() ?? 0.0;
+    return ev.resultado?.snapshot.bfPrincipal ?? 0.0;
+  }
+
+  String _metodoBf(JoinedEvaluation? ev) {
+    if (ev == null) return 'Navy';
+    return ev.resultado?.snapshot.metodoPrincipalLabel ?? 'Navy';
   }
 
   bool _usedRfmFallback(JoinedEvaluation ev) {
-    final navy = (ev.resultado?.calculos['bfNavy'] as num?)?.toDouble() ?? 0.0;
-    final rfm = (ev.resultado?.calculos['bfRfm'] as num?)?.toDouble() ?? 0.0;
-    return navy <= 0 && rfm > 0;
+    final snap = ev.resultado?.snapshot;
+    return snap != null && snap.metodoPrincipal == 'rfm';
   }
 
   Future<void> _showGoalDialog(BuildContext context, UserProfile user) async {
@@ -157,10 +159,8 @@ class LatestEvaluationCard extends StatelessWidget {
             : 0.0;
     final isRfmFallback = _usedRfmFallback(current);
 
-    final currentLBM =
-        (current.resultado?.calculos['lbmBoer'] as num?)?.toDouble() ?? 0.0;
-    final previousLBM =
-        (previous?.resultado?.calculos['lbmBoer'] as num?)?.toDouble() ?? 0.0;
+    final currentLBM = current.resultado?.snapshot.lbmFinal ?? 0.0;
+    final previousLBM = previous?.resultado?.snapshot.lbmFinal ?? 0.0;
     final lbmDelta =
         (previous != null && previousLBM > 0) ? currentLBM - previousLBM : 0.0;
 
@@ -263,7 +263,7 @@ class LatestEvaluationCard extends StatelessWidget {
               const SizedBox(width: 10),
               Expanded(
                 child: _MetricColumn(
-                  title: isRfmFallback ? 'Gordura (RFM)' : 'Gordura',
+                  title: currentBF > 0 ? 'Gordura (${_metodoBf(current)})' : 'Gordura',
                   value: currentBF > 0
                       ? '${currentBF.toStringAsFixed(1)} %'
                       : '--',

@@ -58,7 +58,8 @@ class _EvolutionChartsState extends State<EvolutionCharts> {
     for (int i = 0; i < n; i++) {
       final ev = sorted[i];
       final peso = ev.avaliacao.pesoKg;
-      final bf = (ev.resultado?.calculos['bfNavy'] as num?)?.toDouble() ?? 0.0;
+      final snap = ev.resultado?.snapshot;
+      final bf = snap?.bfPrincipal ?? 0.0;
       sumX += i;
       sumYPeso += peso;
       sumXYPeso += i * peso;
@@ -83,19 +84,16 @@ class _EvolutionChartsState extends State<EvolutionCharts> {
       final prev = index > 0 ? sorted[index - 1] : null;
 
       final peso = ev.avaliacao.pesoKg;
-      final bfNavy =
-          (ev.resultado?.calculos['bfNavy'] as num?)?.toDouble() ?? 0.0;
-      final bfRfm =
-          (ev.resultado?.calculos['bfRfm'] as num?)?.toDouble() ?? 0.0;
-      final lbm =
-          (ev.resultado?.calculos['lbmBoer'] as num?)?.toDouble() ?? 0.0;
+      final snap = ev.resultado?.snapshot;
+      final prevSnap = prev?.resultado?.snapshot;
 
-      final prevBfNavy =
-          (prev?.resultado?.calculos['bfNavy'] as num?)?.toDouble() ?? 0.0;
-      final prevBfRfm =
-          (prev?.resultado?.calculos['bfRfm'] as num?)?.toDouble() ?? 0.0;
-      final prevLbm =
-          (prev?.resultado?.calculos['lbmBoer'] as num?)?.toDouble() ?? 0.0;
+      final bfNavy = snap?.bfNavy ?? 0.0;
+      final bfRfm = snap?.bfRfm ?? 0.0;
+      final lbm = snap?.lbmFinal ?? 0.0;
+
+      final prevBfNavy = prevSnap?.bfNavy ?? 0.0;
+      final prevBfRfm = prevSnap?.bfRfm ?? 0.0;
+      final prevLbm = prevSnap?.lbmFinal ?? 0.0;
 
       return _ChartPoint(
         index: index,

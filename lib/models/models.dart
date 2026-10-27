@@ -1,3 +1,5 @@
+import '../utils/calculator.dart';
+
 enum Sexo {
   M,
   F;
@@ -62,14 +64,15 @@ class UserProfile {
     required this.criadoEm,
   });
 
-  int get idade {
-    final hoje = DateTime.now();
-    int age = hoje.year - dataNascimento.year;
-    final mesDiff = hoje.month - dataNascimento.month;
-    if (mesDiff < 0 || (mesDiff == 0 && hoje.day < dataNascimento.day)) {
+  int get idade => idadeNaData(DateTime.now());
+
+  int idadeNaData(DateTime data) {
+    int age = data.year - dataNascimento.year;
+    final mesDiff = data.month - dataNascimento.month;
+    if (mesDiff < 0 || (mesDiff == 0 && data.day < dataNascimento.day)) {
       age--;
     }
-    return age;
+    return age > 0 ? age : 0;
   }
 
   String get primeiroNome => nome.trim().split(' ').first;
@@ -232,24 +235,49 @@ class Resultados {
   final String id;
   final String avaliacaoId;
   final Map<String, dynamic> calculos;
+  final int calcVersion;
 
   const Resultados({
     required this.id,
     required this.avaliacaoId,
     required this.calculos,
+    this.calcVersion = 2,
   });
+
+  CalculosSnapshot get snapshot => CalculosSnapshot.fromJson(calculos);
 
   Map<String, dynamic> toJson() => {
         'id': id,
         'avaliacao_id': avaliacaoId,
         'calculos': calculos,
+        'calcVersion': calcVersion,
       };
 
   factory Resultados.fromJson(Map<String, dynamic> json) {
+    final calculosMap =
+        Map<String, dynamic>.from(json['calculos'] as Map? ?? {});
+    final version = (json['calcVersion'] as num?)?.toInt() ??
+        (calculosMap['calcVersion'] as num?)?.toInt() ??
+        1;
     return Resultados(
       id: json['id'] as String,
       avaliacaoId: json['avaliacao_id'] as String,
-      calculos: Map<String, dynamic>.from(json['calculos'] as Map? ?? {}),
+      calculos: calculosMap,
+      calcVersion: version,
+    );
+  }
+
+  Resultados copyWith({
+    String? id,
+    String? avaliacaoId,
+    Map<String, dynamic>? calculos,
+    int? calcVersion,
+  }) {
+    return Resultados(
+      id: id ?? this.id,
+      avaliacaoId: avaliacaoId ?? this.avaliacaoId,
+      calculos: calculos ?? this.calculos,
+      calcVersion: calcVersion ?? this.calcVersion,
     );
   }
 }
