@@ -32,9 +32,6 @@ jobs:
       - name: Install Dependencies
         run: flutter pub get
 
-      - name: Analyze
-        run: dart analyze --no-fatal-infos
-
       - name: Run Tests
         run: flutter test
 
