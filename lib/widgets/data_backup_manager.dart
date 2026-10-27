@@ -1,5 +1,5 @@
 import 'dart:convert';
-import 'package:file_picker/file_picker.dart';
+import 'package:file_selector/file_selector.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -117,23 +117,19 @@ class _DataBackupManagerState extends State<DataBackupManager> {
     });
 
     try {
-      final result = await FilePicker.platform.pickFiles(
-        type: FileType.custom,
-        allowedExtensions: ['json'],
-        withData: true,
+      const typeGroup = XTypeGroup(
+        label: 'JSON Backup',
+        extensions: ['json'],
+        mimeTypes: ['application/json', 'text/json', 'text/plain'],
       );
+      final XFile? file = await openFile(acceptedTypeGroups: [typeGroup]);
 
-      if (result == null || result.files.isEmpty) {
+      if (file == null) {
         if (mounted) setState(() => _isImporting = false);
         return;
       }
 
-      final fileBytes = result.files.first.bytes;
-      if (fileBytes == null) {
-        throw const FormatException('Não foi possível ler o arquivo.');
-      }
-
-      final jsonContent = utf8.decode(fileBytes);
+      final jsonContent = await file.readAsString();
       final parsed = jsonDecode(jsonContent) as Map<String, dynamic>;
       final preview = widget.appState.inspectBackupJson(parsed);
 
