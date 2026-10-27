@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:io';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -87,15 +88,18 @@ class _EvaluationFormScreenState extends State<EvaluationFormScreen> {
 
       final fotosExistentes = widget.appState.getFotosForAvaliacao(initAv.id);
       for (final f in fotosExistentes) {
+        final ref = (f.filePath != null && f.filePath!.isNotEmpty)
+            ? f.filePath
+            : f.fotoBase64;
         switch (f.tipo) {
           case FotoTipo.frente:
-            _fotoFrente = f.fotoBase64;
+            _fotoFrente = ref;
             break;
           case FotoTipo.lado:
-            _fotoLado = f.fotoBase64;
+            _fotoLado = ref;
             break;
           case FotoTipo.costas:
-            _fotoCostas = f.fotoBase64;
+            _fotoCostas = ref;
             break;
         }
       }
@@ -631,38 +635,44 @@ class _EvaluationFormScreenState extends State<EvaluationFormScreen> {
       );
 
       final novasFotos = <FotoAvaliacao>[];
-      if (_fotoFrente != null) {
+      if (_fotoFrente != null && _fotoFrente!.isNotEmpty) {
+        final isPath = !_fotoFrente!.startsWith('data:') && _fotoFrente!.length < 500;
         novasFotos.add(
           FotoAvaliacao(
             id: uuid.v4(),
             avaliacaoId: avaliacaoId,
             userId: profile.id,
             tipo: FotoTipo.frente,
-            fotoBase64: _fotoFrente!,
+            filePath: isPath ? _fotoFrente : null,
+            fotoBase64: isPath ? '' : _fotoFrente!,
             criadoEm: _dataAvaliacao,
           ),
         );
       }
-      if (_fotoLado != null) {
+      if (_fotoLado != null && _fotoLado!.isNotEmpty) {
+        final isPath = !_fotoLado!.startsWith('data:') && _fotoLado!.length < 500;
         novasFotos.add(
           FotoAvaliacao(
             id: uuid.v4(),
             avaliacaoId: avaliacaoId,
             userId: profile.id,
             tipo: FotoTipo.lado,
-            fotoBase64: _fotoLado!,
+            filePath: isPath ? _fotoLado : null,
+            fotoBase64: isPath ? '' : _fotoLado!,
             criadoEm: _dataAvaliacao,
           ),
         );
       }
-      if (_fotoCostas != null) {
+      if (_fotoCostas != null && _fotoCostas!.isNotEmpty) {
+        final isPath = !_fotoCostas!.startsWith('data:') && _fotoCostas!.length < 500;
         novasFotos.add(
           FotoAvaliacao(
             id: uuid.v4(),
             avaliacaoId: avaliacaoId,
             userId: profile.id,
             tipo: FotoTipo.costas,
-            fotoBase64: _fotoCostas!,
+            filePath: isPath ? _fotoCostas : null,
+            fotoBase64: isPath ? '' : _fotoCostas!,
             criadoEm: _dataAvaliacao,
           ),
         );
@@ -1722,6 +1732,12 @@ class _PhotoUploaderSlot extends StatelessWidget {
   Uint8List? _decodePhoto(String? raw) {
     if (raw == null || raw.isEmpty) return null;
     try {
+      if (!raw.startsWith('data:') && raw.length < 500) {
+        final file = File(raw);
+        if (file.existsSync()) {
+          return file.readAsBytesSync();
+        }
+      }
       final clean = raw.contains(',') ? raw.split(',').last : raw;
       return base64Decode(clean);
     } catch (_) {

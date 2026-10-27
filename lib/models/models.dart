@@ -260,6 +260,7 @@ class FotoAvaliacao {
   final String userId;
   final FotoTipo tipo;
   final String fotoBase64;
+  final String? filePath;
   final DateTime criadoEm;
 
   const FotoAvaliacao({
@@ -267,16 +268,38 @@ class FotoAvaliacao {
     required this.avaliacaoId,
     required this.userId,
     required this.tipo,
-    required this.fotoBase64,
+    this.fotoBase64 = '',
+    this.filePath,
     required this.criadoEm,
   });
 
-  Map<String, dynamic> toJson() => {
+  FotoAvaliacao copyWith({
+    String? id,
+    String? avaliacaoId,
+    String? userId,
+    FotoTipo? tipo,
+    String? fotoBase64,
+    String? filePath,
+    DateTime? criadoEm,
+  }) {
+    return FotoAvaliacao(
+      id: id ?? this.id,
+      avaliacaoId: avaliacaoId ?? this.avaliacaoId,
+      userId: userId ?? this.userId,
+      tipo: tipo ?? this.tipo,
+      fotoBase64: fotoBase64 ?? this.fotoBase64,
+      filePath: filePath ?? this.filePath,
+      criadoEm: criadoEm ?? this.criadoEm,
+    );
+  }
+
+  Map<String, dynamic> toJson({String? resolvedBase64}) => {
         'id': id,
         'avaliacao_id': avaliacaoId,
         'cliente_id': userId,
         'tipo': tipo.name,
-        'foto_base64': fotoBase64,
+        'foto_base64': resolvedBase64 ?? fotoBase64,
+        if (filePath != null) 'file_path': filePath,
         'criado_em': criadoEm.toIso8601String(),
       };
 
@@ -291,7 +314,8 @@ class FotoAvaliacao {
       avaliacaoId: json['avaliacao_id'] as String,
       userId: (json['cliente_id'] ?? json['user_id'] ?? '') as String,
       tipo: tipo,
-      fotoBase64: json['foto_base64'] as String,
+      fotoBase64: (json['foto_base64'] as String?) ?? '',
+      filePath: json['file_path'] as String?,
       criadoEm: DateTime.tryParse(json['criado_em'] as String? ?? '') ??
           DateTime.now(),
     );
