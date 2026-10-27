@@ -3,6 +3,11 @@ allprojects {
         google()
         mavenCentral()
     }
+    tasks.configureEach {
+        if (name.contains("AarMetadata")) {
+            enabled = false
+        }
+    }
 }
 
 val newBuildDir: Directory =
@@ -21,19 +26,23 @@ subprojects {
 }
 
 subprojects {
-    afterEvaluate {
-        val android = project.extensions.findByName("android")
-        if (android != null) {
-            try {
-                val method = android.javaClass.getMethod("compileSdkVersion", Int::class.javaPrimitiveType)
-                method.invoke(android, 36)
-            } catch (_: Exception) {
+    if (project.name != "app") {
+        val configureSubproject: () -> Unit = {
+            val android = project.extensions.findByName("android")
+            if (android != null) {
+                try {
+                    val method = android.javaClass.getMethod("compileSdkVersion", Int::class.javaPrimitiveType)
+                    method.invoke(android, 36)
+                } catch (_: Exception) {
+                }
             }
         }
-    }
-    tasks.configureEach {
-        if (name.contains("AarMetadata")) {
-            enabled = false
+        if (project.state.executed) {
+            configureSubproject()
+        } else {
+            project.afterEvaluate {
+                configureSubproject()
+            }
         }
     }
 }
