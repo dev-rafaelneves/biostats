@@ -6,6 +6,7 @@ import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 import 'package:share_plus/share_plus.dart';
 import '../services/app_state.dart';
+import '../services/backup_service.dart';
 import '../theme/app_theme.dart';
 
 enum _RestoreChoice { merge, overwrite }
@@ -69,6 +70,59 @@ class _DataBackupManagerState extends State<DataBackupManager> {
       if (mounted) {
         setState(() => _isExporting = false);
       }
+    }
+  }
+
+  Future<void> _handleShareOneTouch() async {
+    setState(() {
+      _isExporting = true;
+      _messageText = null;
+    });
+    try {
+      final shared = await BackupService.instance.shareBackup(widget.appState);
+      if (!mounted) return;
+      HapticFeedback.lightImpact();
+      setState(() {
+        _messageText = shared
+            ? 'Backup compartilhado com sucesso!'
+            : 'Compartilhamento cancelado.';
+        _isSuccess = shared;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _messageText = 'Erro ao compartilhar backup: $e';
+        _isSuccess = false;
+      });
+    } finally {
+      if (mounted) setState(() => _isExporting = false);
+    }
+  }
+
+  Future<void> _handleSaveToDocuments() async {
+    setState(() {
+      _isExporting = true;
+      _messageText = null;
+    });
+    try {
+      final res =
+          await BackupService.instance.generateLocalBackup(widget.appState);
+      if (!mounted) return;
+      HapticFeedback.lightImpact();
+      setState(() {
+        _messageText = res.success
+            ? 'Backup salvo em Documentos/backups!'
+            : (res.message ?? 'Falha ao salvar backup.');
+        _isSuccess = res.success;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _messageText = 'Erro ao salvar backup: $e';
+        _isSuccess = false;
+      });
+    } finally {
+      if (mounted) setState(() => _isExporting = false);
     }
   }
 
@@ -212,6 +266,70 @@ class _DataBackupManagerState extends State<DataBackupManager> {
             ),
           ),
           const Divider(height: 1),
+          InkWell(
+            onTap: (_isExporting || _isImporting) ? null : _handleShareOneTouch,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+              child: Row(
+                children: [
+                  Icon(
+                    Icons.share_outlined,
+                    size: 20,
+                    color: isDark
+                        ? AppColors.indigoLight
+                        : AppColors.indigoPrimary,
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      'Compartilhar Backup em 1 Toque',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w500,
+                        color: isDark
+                            ? AppColors.indigoLight
+                            : AppColors.indigoPrimary,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          const Divider(indent: 16, height: 1),
+          InkWell(
+            onTap: (_isExporting || _isImporting)
+                ? null
+                : _handleSaveToDocuments,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+              child: Row(
+                children: [
+                  Icon(
+                    Icons.folder_zip_outlined,
+                    size: 20,
+                    color: isDark
+                        ? AppColors.indigoLight
+                        : AppColors.indigoPrimary,
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      'Salvar Cópia em Documentos',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w500,
+                        color: isDark
+                            ? AppColors.indigoLight
+                            : AppColors.indigoPrimary,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          const Divider(indent: 16, height: 1),
           InkWell(
             onTap: (_isExporting || _isImporting) ? null : _handleExportData,
             child: Padding(

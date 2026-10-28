@@ -14,6 +14,7 @@ import 'evaluation_form/live_preview_card.dart';
 import 'evaluation_form/measure_input_row.dart';
 import 'evaluation_form/photo_uploader_slot.dart';
 import 'evaluation_form/section_header.dart';
+import 'ghost_camera_screen.dart';
 
 class EvaluationFormScreen extends StatefulWidget {
   final AppState appState;
@@ -38,6 +39,16 @@ class _EvaluationFormScreenState extends State<EvaluationFormScreen> {
   final _bracoCtrl = TextEditingController();
   final _coxaCtrl = TextEditingController();
   final _panturrilhaCtrl = TextEditingController();
+
+  // Dobras cutâneas (Adipômetro em mm)
+  final _dobraPeitoralCtrl = TextEditingController();
+  final _dobraAxilarMediaCtrl = TextEditingController();
+  final _dobraTricepsCtrl = TextEditingController();
+  final _dobraSubescapularCtrl = TextEditingController();
+  final _dobraAbdomenCtrl = TextEditingController();
+  final _dobraSuprailiacaCtrl = TextEditingController();
+  final _dobraCoxaCtrl = TextEditingController();
+  bool _showDobras = false;
 
   late DateTime _dataAvaliacao;
   double _nivelAtividade = 1.2;
@@ -89,6 +100,23 @@ class _EvaluationFormScreenState extends State<EvaluationFormScreen> {
       _bracoCtrl.text = _fmtEdit(initAv.medidas.braco);
       _coxaCtrl.text = _fmtEdit(initAv.medidas.coxa);
       _panturrilhaCtrl.text = _fmtEdit(initAv.medidas.panturrilha);
+      _dobraPeitoralCtrl.text = _fmtEdit(initAv.medidas.dobraPeitoral);
+      _dobraAxilarMediaCtrl.text = _fmtEdit(initAv.medidas.dobraAxilarMedia);
+      _dobraTricepsCtrl.text = _fmtEdit(initAv.medidas.dobraTriceps);
+      _dobraSubescapularCtrl.text = _fmtEdit(initAv.medidas.dobraSubescapular);
+      _dobraAbdomenCtrl.text = _fmtEdit(initAv.medidas.dobraAbdomen);
+      _dobraSuprailiacaCtrl.text = _fmtEdit(initAv.medidas.dobraSuprailiaca);
+      _dobraCoxaCtrl.text = _fmtEdit(initAv.medidas.dobraCoxa);
+
+      if (_dobraPeitoralCtrl.text.isNotEmpty ||
+          _dobraAxilarMediaCtrl.text.isNotEmpty ||
+          _dobraTricepsCtrl.text.isNotEmpty ||
+          _dobraSubescapularCtrl.text.isNotEmpty ||
+          _dobraAbdomenCtrl.text.isNotEmpty ||
+          _dobraSuprailiacaCtrl.text.isNotEmpty ||
+          _dobraCoxaCtrl.text.isNotEmpty) {
+        _showDobras = true;
+      }
 
       final fotosExistentes = widget.appState.getFotosForAvaliacao(initAv.id);
       for (final f in fotosExistentes) {
@@ -161,6 +189,34 @@ class _EvaluationFormScreenState extends State<EvaluationFormScreen> {
           prev.medidas.panturrilha != null) {
         _panturrilhaCtrl.text = _fmtEdit(prev.medidas.panturrilha);
       }
+      if (_dobraPeitoralCtrl.text.trim().isEmpty &&
+          prev.medidas.dobraPeitoral != null) {
+        _dobraPeitoralCtrl.text = _fmtEdit(prev.medidas.dobraPeitoral);
+      }
+      if (_dobraAxilarMediaCtrl.text.trim().isEmpty &&
+          prev.medidas.dobraAxilarMedia != null) {
+        _dobraAxilarMediaCtrl.text = _fmtEdit(prev.medidas.dobraAxilarMedia);
+      }
+      if (_dobraTricepsCtrl.text.trim().isEmpty &&
+          prev.medidas.dobraTriceps != null) {
+        _dobraTricepsCtrl.text = _fmtEdit(prev.medidas.dobraTriceps);
+      }
+      if (_dobraSubescapularCtrl.text.trim().isEmpty &&
+          prev.medidas.dobraSubescapular != null) {
+        _dobraSubescapularCtrl.text = _fmtEdit(prev.medidas.dobraSubescapular);
+      }
+      if (_dobraAbdomenCtrl.text.trim().isEmpty &&
+          prev.medidas.dobraAbdomen != null) {
+        _dobraAbdomenCtrl.text = _fmtEdit(prev.medidas.dobraAbdomen);
+      }
+      if (_dobraSuprailiacaCtrl.text.trim().isEmpty &&
+          prev.medidas.dobraSuprailiaca != null) {
+        _dobraSuprailiacaCtrl.text = _fmtEdit(prev.medidas.dobraSuprailiaca);
+      }
+      if (_dobraCoxaCtrl.text.trim().isEmpty &&
+          prev.medidas.dobraCoxa != null) {
+        _dobraCoxaCtrl.text = _fmtEdit(prev.medidas.dobraCoxa);
+      }
     });
   }
 
@@ -174,6 +230,13 @@ class _EvaluationFormScreenState extends State<EvaluationFormScreen> {
     _bracoCtrl.dispose();
     _coxaCtrl.dispose();
     _panturrilhaCtrl.dispose();
+    _dobraPeitoralCtrl.dispose();
+    _dobraAxilarMediaCtrl.dispose();
+    _dobraTricepsCtrl.dispose();
+    _dobraSubescapularCtrl.dispose();
+    _dobraAbdomenCtrl.dispose();
+    _dobraSuprailiacaCtrl.dispose();
+    _dobraCoxaCtrl.dispose();
     super.dispose();
   }
 
@@ -196,6 +259,13 @@ class _EvaluationFormScreenState extends State<EvaluationFormScreen> {
           _bracoCtrl.text.trim().isNotEmpty ||
           _coxaCtrl.text.trim().isNotEmpty ||
           _panturrilhaCtrl.text.trim().isNotEmpty ||
+          _dobraPeitoralCtrl.text.trim().isNotEmpty ||
+          _dobraAxilarMediaCtrl.text.trim().isNotEmpty ||
+          _dobraTricepsCtrl.text.trim().isNotEmpty ||
+          _dobraSubescapularCtrl.text.trim().isNotEmpty ||
+          _dobraAbdomenCtrl.text.trim().isNotEmpty ||
+          _dobraSuprailiacaCtrl.text.trim().isNotEmpty ||
+          _dobraCoxaCtrl.text.trim().isNotEmpty ||
           _fotoFrente != null ||
           _fotoLado != null ||
           _fotoCostas != null;
@@ -220,6 +290,34 @@ class _EvaluationFormScreenState extends State<EvaluationFormScreen> {
       return true;
     }
     if (_panturrilhaCtrl.text.trim() != _fmtEdit(initAv.medidas.panturrilha)) {
+      return true;
+    }
+    if (_dobraPeitoralCtrl.text.trim() !=
+        _fmtEdit(initAv.medidas.dobraPeitoral)) {
+      return true;
+    }
+    if (_dobraAxilarMediaCtrl.text.trim() !=
+        _fmtEdit(initAv.medidas.dobraAxilarMedia)) {
+      return true;
+    }
+    if (_dobraTricepsCtrl.text.trim() !=
+        _fmtEdit(initAv.medidas.dobraTriceps)) {
+      return true;
+    }
+    if (_dobraSubescapularCtrl.text.trim() !=
+        _fmtEdit(initAv.medidas.dobraSubescapular)) {
+      return true;
+    }
+    if (_dobraAbdomenCtrl.text.trim() !=
+        _fmtEdit(initAv.medidas.dobraAbdomen)) {
+      return true;
+    }
+    if (_dobraSuprailiacaCtrl.text.trim() !=
+        _fmtEdit(initAv.medidas.dobraSuprailiaca)) {
+      return true;
+    }
+    if (_dobraCoxaCtrl.text.trim() !=
+        _fmtEdit(initAv.medidas.dobraCoxa)) {
       return true;
     }
     if (_dataAvaliacao != initAv.dataAvaliacao) return true;
@@ -298,6 +396,11 @@ class _EvaluationFormScreenState extends State<EvaluationFormScreen> {
           return 'Valor incomum (${val}cm). Faixa esperada: 20 a 70cm.';
         }
         break;
+      case 'Dobra':
+        if (val < 2 || val > 70) {
+          return 'Valor incomum (${val}mm). Faixa esperada: 2 a 70mm.';
+        }
+        break;
     }
     return null;
   }
@@ -330,6 +433,13 @@ class _EvaluationFormScreenState extends State<EvaluationFormScreen> {
         braco: _parseField(_bracoCtrl),
         coxa: _parseField(_coxaCtrl),
         panturrilha: _parseField(_panturrilhaCtrl),
+        dobraPeitoral: _parseField(_dobraPeitoralCtrl),
+        dobraAxilarMedia: _parseField(_dobraAxilarMediaCtrl),
+        dobraTriceps: _parseField(_dobraTricepsCtrl),
+        dobraSubescapular: _parseField(_dobraSubescapularCtrl),
+        dobraAbdomen: _parseField(_dobraAbdomenCtrl),
+        dobraSuprailiaca: _parseField(_dobraSuprailiacaCtrl),
+        dobraCoxa: _parseField(_dobraCoxaCtrl),
       ),
     );
 
@@ -369,18 +479,28 @@ class _EvaluationFormScreenState extends State<EvaluationFormScreen> {
   }
 
   Future<void> _promptPhotoSource(FotoTipo tipo) async {
-    final source = await showCupertinoModalPopup<ImageSource>(
+    final choice = await showCupertinoModalPopup<String>(
       context: context,
       builder: (ctx) => CupertinoActionSheet(
         title: Text('Foto de ${tipo.label}'),
         message: const Text('Escolha de onde deseja adicionar sua foto:'),
         actions: [
           CupertinoActionSheetAction(
-            onPressed: () => Navigator.of(ctx).pop(ImageSource.camera),
-            child: const Text('Tirar Foto com a Câmera'),
+            onPressed: () => Navigator.of(ctx).pop('ghost'),
+            child: const Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text('👻 '),
+                Text('Câmera com Foto-Fantasma'),
+              ],
+            ),
           ),
           CupertinoActionSheetAction(
-            onPressed: () => Navigator.of(ctx).pop(ImageSource.gallery),
+            onPressed: () => Navigator.of(ctx).pop('camera'),
+            child: const Text('Câmera Padrão'),
+          ),
+          CupertinoActionSheetAction(
+            onPressed: () => Navigator.of(ctx).pop('gallery'),
             child: const Text('Escolher da Galeria'),
           ),
         ],
@@ -392,8 +512,51 @@ class _EvaluationFormScreenState extends State<EvaluationFormScreen> {
       ),
     );
 
-    if (source != null) {
-      await _pickPhoto(tipo, source: source);
+    if (choice == 'ghost') {
+      Uint8List? previousGhostBytes;
+      for (final av in widget.appState.avaliacoes) {
+        if (widget.initialAvaliacao != null &&
+            av.id == widget.initialAvaliacao!.id) {
+          continue;
+        }
+        final fotos = widget.appState.getFotosForAvaliacao(av.id);
+        final f = fotos.where((item) => item.tipo == tipo).firstOrNull;
+        if (f != null) {
+          previousGhostBytes = widget.appState.getDecodedPhotoBytes(f);
+          if (previousGhostBytes != null && previousGhostBytes.isNotEmpty) {
+            break;
+          }
+        }
+      }
+
+      if (!mounted) return;
+      final path = await Navigator.of(context).push<String>(
+        MaterialPageRoute(
+          builder: (_) => GhostCameraScreen(
+            tipo: tipo,
+            ghostPhotoBytes: previousGhostBytes,
+          ),
+        ),
+      );
+      if (path != null && path.isNotEmpty) {
+        setState(() {
+          switch (tipo) {
+            case FotoTipo.frente:
+              _fotoFrente = path;
+              break;
+            case FotoTipo.lado:
+              _fotoLado = path;
+              break;
+            case FotoTipo.costas:
+              _fotoCostas = path;
+              break;
+          }
+        });
+      }
+    } else if (choice == 'camera') {
+      await _pickPhoto(tipo, source: ImageSource.camera);
+    } else if (choice == 'gallery') {
+      await _pickPhoto(tipo, source: ImageSource.gallery);
     }
   }
 
@@ -461,6 +624,13 @@ class _EvaluationFormScreenState extends State<EvaluationFormScreen> {
           braco: _parseField(_bracoCtrl),
           coxa: _parseField(_coxaCtrl),
           panturrilha: _parseField(_panturrilhaCtrl),
+          dobraPeitoral: _parseField(_dobraPeitoralCtrl),
+          dobraAxilarMedia: _parseField(_dobraAxilarMediaCtrl),
+          dobraTriceps: _parseField(_dobraTricepsCtrl),
+          dobraSubescapular: _parseField(_dobraSubescapularCtrl),
+          dobraAbdomen: _parseField(_dobraAbdomenCtrl),
+          dobraSuprailiaca: _parseField(_dobraSuprailiacaCtrl),
+          dobraCoxa: _parseField(_dobraCoxaCtrl),
         ),
       );
 
@@ -575,6 +745,30 @@ class _EvaluationFormScreenState extends State<EvaluationFormScreen> {
     if (_parseField(_coxaCtrl) != null) filledMembersCount++;
     if (_parseField(_panturrilhaCtrl) != null) filledMembersCount++;
     final totalMembersCount = profile?.sexo == Sexo.M ? 5 : 4;
+
+    int filledDobrasCount = 0;
+    if (_parseField(_dobraPeitoralCtrl) != null) filledDobrasCount++;
+    if (_parseField(_dobraAxilarMediaCtrl) != null) filledDobrasCount++;
+    if (_parseField(_dobraTricepsCtrl) != null) filledDobrasCount++;
+    if (_parseField(_dobraSubescapularCtrl) != null) filledDobrasCount++;
+    if (_parseField(_dobraAbdomenCtrl) != null) filledDobrasCount++;
+    if (_parseField(_dobraSuprailiacaCtrl) != null) filledDobrasCount++;
+    if (_parseField(_dobraCoxaCtrl) != null) filledDobrasCount++;
+
+    final tempMedidas = MedidasCorporais(
+      dobraPeitoral: _parseField(_dobraPeitoralCtrl),
+      dobraAxilarMedia: _parseField(_dobraAxilarMediaCtrl),
+      dobraTriceps: _parseField(_dobraTricepsCtrl),
+      dobraSubescapular: _parseField(_dobraSubescapularCtrl),
+      dobraAbdomen: _parseField(_dobraAbdomenCtrl),
+      dobraSuprailiaca: _parseField(_dobraSuprailiacaCtrl),
+      dobraCoxa: _parseField(_dobraCoxaCtrl),
+    );
+
+    final bool isJp7Ready = tempMedidas.hasJacksonPollock7;
+    final bool isJp3Ready = profile?.sexo == Sexo.F
+        ? tempMedidas.hasJacksonPollock3Female
+        : tempMedidas.hasJacksonPollock3Male;
 
     return PopScope(
       canPop: !_hasUnsavedChanges,
@@ -1005,6 +1199,266 @@ class _EvaluationFormScreenState extends State<EvaluationFormScreen> {
                           ),
                           onChanged: (_) => setState(() {}),
                         ),
+                      ],
+                    ),
+                  ),
+
+                  const SizedBox(height: 18),
+
+                  // Seção: Dobras Cutâneas (Adipômetro)
+                  Wrap(
+                    alignment: WrapAlignment.spaceBetween,
+                    crossAxisAlignment: WrapCrossAlignment.center,
+                    spacing: 8,
+                    runSpacing: 4,
+                    children: [
+                      const SectionHeader(
+                        title: 'DOBRAS CUTÂNEAS (ADIPÔMETRO)',
+                        bottomPadding: 0,
+                      ),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 3,
+                        ),
+                        decoration: BoxDecoration(
+                          color: (isJp7Ready || isJp3Ready)
+                              ? AppColors.emerald.withValues(alpha: 0.12)
+                              : (isDark
+                                  ? const Color(0xFF1E293B)
+                                  : const Color(0xFFF1F5F9)),
+                          borderRadius: BorderRadius.circular(100),
+                        ),
+                        child: Text(
+                          isJp7Ready
+                              ? '✨ JP 7 Ativo'
+                              : (isJp3Ready
+                                  ? '✨ JP 3 Ativo'
+                                  : '$filledDobrasCount de 7 preenchidas'),
+                          style: TextStyle(
+                            fontSize: 10.5,
+                            fontWeight: FontWeight.w700,
+                            color: (isJp7Ready || isJp3Ready)
+                                ? AppColors.emerald
+                                : (isDark
+                                    ? AppColors.darkTextSecondary
+                                    : const Color(0xFF64748B)),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 6),
+
+                  Material(
+                    color: isDark ? AppColors.darkSurface : Colors.white,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      side: BorderSide(
+                        color: isDark
+                            ? AppColors.darkBorder
+                            : AppColors.lightBorder,
+                      ),
+                    ),
+                    clipBehavior: Clip.antiAlias,
+                    child: Column(
+                      children: [
+                        InkWell(
+                          onTap: () {
+                            HapticFeedback.selectionClick();
+                            setState(() => _showDobras = !_showDobras);
+                          },
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 16,
+                              vertical: 12,
+                            ),
+                            child: Row(
+                              children: [
+                                const Icon(
+                                  Icons.straighten_rounded,
+                                  size: 18,
+                                  color: AppColors.indigoPrimary,
+                                ),
+                                const SizedBox(width: 10),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        'Protocolos Jackson-Pollock',
+                                        style: TextStyle(
+                                          fontSize: 15.5,
+                                          fontWeight: FontWeight.w600,
+                                          color: isDark
+                                              ? AppColors.darkTextPrimary
+                                              : AppColors.lightTextPrimary,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 2),
+                                      Text(
+                                        profile?.sexo == Sexo.F
+                                            ? 'JP3: Tríceps, Suprailíaca, Coxa • JP7: Todas'
+                                            : 'JP3: Peitoral, Abdômen, Coxa • JP7: Todas',
+                                        style: TextStyle(
+                                          fontSize: 11.5,
+                                          color: isDark
+                                              ? AppColors.darkTextSecondary
+                                              : const Color(0xFF64748B),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                Icon(
+                                  _showDobras
+                                      ? Icons.keyboard_arrow_up_rounded
+                                      : Icons.keyboard_arrow_down_rounded,
+                                  color: isDark
+                                      ? AppColors.darkTextSecondary
+                                      : const Color(0xFF94A3B8),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                        if (_showDobras) ...[
+                          const Divider(height: 1),
+                          MeasureInputRow(
+                            label: 'Peitoral',
+                            subtitle: profile?.sexo == Sexo.M
+                                ? 'Essencial no JP3 masculino'
+                                : null,
+                            controller: _dobraPeitoralCtrl,
+                            unit: 'mm',
+                            hintText:
+                                _hintFromPrev(prev?.medidas.dobraPeitoral),
+                            warningText: _validateAnatomicalRange(
+                              'Dobra',
+                              _parseField(_dobraPeitoralCtrl),
+                            ),
+                            onHelpTap: () => MeasurementGuideModal.show(
+                              context,
+                              MeasurementGuideType.dobraCutanea,
+                            ),
+                            onChanged: (_) => setState(() {}),
+                          ),
+                          const Divider(indent: 16, height: 1),
+                          MeasureInputRow(
+                            label: 'Axilar Média',
+                            subtitle: 'Necessária para o JP7',
+                            controller: _dobraAxilarMediaCtrl,
+                            unit: 'mm',
+                            hintText:
+                                _hintFromPrev(prev?.medidas.dobraAxilarMedia),
+                            warningText: _validateAnatomicalRange(
+                              'Dobra',
+                              _parseField(_dobraAxilarMediaCtrl),
+                            ),
+                            onHelpTap: () => MeasurementGuideModal.show(
+                              context,
+                              MeasurementGuideType.dobraCutanea,
+                            ),
+                            onChanged: (_) => setState(() {}),
+                          ),
+                          const Divider(indent: 16, height: 1),
+                          MeasureInputRow(
+                            label: 'Tríceps',
+                            subtitle: profile?.sexo == Sexo.F
+                                ? 'Essencial no JP3 feminino'
+                                : 'Necessária para o JP7',
+                            controller: _dobraTricepsCtrl,
+                            unit: 'mm',
+                            hintText:
+                                _hintFromPrev(prev?.medidas.dobraTriceps),
+                            warningText: _validateAnatomicalRange(
+                              'Dobra',
+                              _parseField(_dobraTricepsCtrl),
+                            ),
+                            onHelpTap: () => MeasurementGuideModal.show(
+                              context,
+                              MeasurementGuideType.dobraCutanea,
+                            ),
+                            onChanged: (_) => setState(() {}),
+                          ),
+                          const Divider(indent: 16, height: 1),
+                          MeasureInputRow(
+                            label: 'Subescapular',
+                            subtitle: 'Necessária para o JP7',
+                            controller: _dobraSubescapularCtrl,
+                            unit: 'mm',
+                            hintText:
+                                _hintFromPrev(prev?.medidas.dobraSubescapular),
+                            warningText: _validateAnatomicalRange(
+                              'Dobra',
+                              _parseField(_dobraSubescapularCtrl),
+                            ),
+                            onHelpTap: () => MeasurementGuideModal.show(
+                              context,
+                              MeasurementGuideType.dobraCutanea,
+                            ),
+                            onChanged: (_) => setState(() {}),
+                          ),
+                          const Divider(indent: 16, height: 1),
+                          MeasureInputRow(
+                            label: 'Abdômen',
+                            subtitle: profile?.sexo == Sexo.M
+                                ? 'Essencial no JP3 masculino'
+                                : 'Necessária para o JP7',
+                            controller: _dobraAbdomenCtrl,
+                            unit: 'mm',
+                            hintText:
+                                _hintFromPrev(prev?.medidas.dobraAbdomen),
+                            warningText: _validateAnatomicalRange(
+                              'Dobra',
+                              _parseField(_dobraAbdomenCtrl),
+                            ),
+                            onHelpTap: () => MeasurementGuideModal.show(
+                              context,
+                              MeasurementGuideType.dobraCutanea,
+                            ),
+                            onChanged: (_) => setState(() {}),
+                          ),
+                          const Divider(indent: 16, height: 1),
+                          MeasureInputRow(
+                            label: 'Suprailíaca',
+                            subtitle: profile?.sexo == Sexo.F
+                                ? 'Essencial no JP3 feminino'
+                                : 'Necessária para o JP7',
+                            controller: _dobraSuprailiacaCtrl,
+                            unit: 'mm',
+                            hintText:
+                                _hintFromPrev(prev?.medidas.dobraSuprailiaca),
+                            warningText: _validateAnatomicalRange(
+                              'Dobra',
+                              _parseField(_dobraSuprailiacaCtrl),
+                            ),
+                            onHelpTap: () => MeasurementGuideModal.show(
+                              context,
+                              MeasurementGuideType.dobraCutanea,
+                            ),
+                            onChanged: (_) => setState(() {}),
+                          ),
+                          const Divider(indent: 16, height: 1),
+                          MeasureInputRow(
+                            label: 'Coxa',
+                            subtitle: 'Essencial no JP3 e JP7',
+                            controller: _dobraCoxaCtrl,
+                            unit: 'mm',
+                            hintText:
+                                _hintFromPrev(prev?.medidas.dobraCoxa),
+                            warningText: _validateAnatomicalRange(
+                              'Dobra',
+                              _parseField(_dobraCoxaCtrl),
+                            ),
+                            onHelpTap: () => MeasurementGuideModal.show(
+                              context,
+                              MeasurementGuideType.dobraCutanea,
+                            ),
+                            onChanged: (_) => setState(() {}),
+                          ),
+                        ],
                       ],
                     ),
                   ),

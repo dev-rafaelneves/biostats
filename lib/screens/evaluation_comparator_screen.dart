@@ -979,6 +979,55 @@ class _EvaluationComparatorScreenState
                   ),
                   const SizedBox(height: 16),
 
+                  // Seção: Dobras Cutâneas (Adipômetro em mm)
+                  if (_hasAnyDobras(evalA) || _hasAnyDobras(evalB)) ...[
+                    ComparisonSectionCard(
+                      title: 'DOBRAS CUTÂNEAS (mm)',
+                      icon: Icons.straighten_rounded,
+                      isDark: isDark,
+                      dateAStr: dateAStr,
+                      dateBStr: dateBStr,
+                      rows: [
+                        _buildDobraRow(
+                          'Peitoral',
+                          evalA.avaliacao.medidas.dobraPeitoral,
+                          evalB.avaliacao.medidas.dobraPeitoral,
+                        ),
+                        _buildDobraRow(
+                          'Axilar Média',
+                          evalA.avaliacao.medidas.dobraAxilarMedia,
+                          evalB.avaliacao.medidas.dobraAxilarMedia,
+                        ),
+                        _buildDobraRow(
+                          'Tríceps',
+                          evalA.avaliacao.medidas.dobraTriceps,
+                          evalB.avaliacao.medidas.dobraTriceps,
+                        ),
+                        _buildDobraRow(
+                          'Subescapular',
+                          evalA.avaliacao.medidas.dobraSubescapular,
+                          evalB.avaliacao.medidas.dobraSubescapular,
+                        ),
+                        _buildDobraRow(
+                          'Abdômen',
+                          evalA.avaliacao.medidas.dobraAbdomen,
+                          evalB.avaliacao.medidas.dobraAbdomen,
+                        ),
+                        _buildDobraRow(
+                          'Suprailíaca',
+                          evalA.avaliacao.medidas.dobraSuprailiaca,
+                          evalB.avaliacao.medidas.dobraSuprailiaca,
+                        ),
+                        _buildDobraRow(
+                          'Coxa',
+                          evalA.avaliacao.medidas.dobraCoxa,
+                          evalB.avaliacao.medidas.dobraCoxa,
+                        ),
+                      ].whereType<ComparisonRowData>().toList(),
+                    ),
+                    const SizedBox(height: 16),
+                  ],
+
                   // Seção C: Risco Metabólico & Saúde
                   ComparisonSectionCard(
                     title: 'ÍNDICES CLÍNICOS E RISCO',
@@ -1086,6 +1135,33 @@ class _EvaluationComparatorScreenState
       deltaFormatted:
           delta != null ? '${delta >= 0 ? "+" : ""}${delta.toStringAsFixed(2)}' : null,
       isPositiveGood: isPositiveGood,
+    );
+  }
+
+  bool _hasAnyDobras(JoinedEvaluation? ev) {
+    if (ev == null) return false;
+    final m = ev.avaliacao.medidas;
+    return (m.dobraPeitoral != null && m.dobraPeitoral! > 0) ||
+        (m.dobraAxilarMedia != null && m.dobraAxilarMedia! > 0) ||
+        (m.dobraTriceps != null && m.dobraTriceps! > 0) ||
+        (m.dobraSubescapular != null && m.dobraSubescapular! > 0) ||
+        (m.dobraAbdomen != null && m.dobraAbdomen! > 0) ||
+        (m.dobraSuprailiaca != null && m.dobraSuprailiaca! > 0) ||
+        (m.dobraCoxa != null && m.dobraCoxa! > 0);
+  }
+
+  ComparisonRowData? _buildDobraRow(String label, double? a, double? b) {
+    if ((a == null || a <= 0) && (b == null || b <= 0)) return null;
+    final delta = (a != null && a > 0 && b != null && b > 0) ? (b - a) : null;
+    return ComparisonRowData(
+      label: label,
+      valA: (a != null && a > 0) ? '${a.toStringAsFixed(1)} mm' : '--',
+      valB: (b != null && b > 0) ? '${b.toStringAsFixed(1)} mm' : '--',
+      delta: delta,
+      deltaFormatted: delta != null
+          ? '${delta >= 0 ? "+" : ""}${delta.toStringAsFixed(1)} mm'
+          : null,
+      isPositiveGood: false,
     );
   }
 }

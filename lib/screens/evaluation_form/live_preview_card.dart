@@ -77,6 +77,16 @@ class LivePreviewCard extends StatelessWidget {
                 label: 'BF% ($metodoLabel)',
                 value: bfPrinc > 0 ? '${bfPrinc.toStringAsFixed(1)}%' : '--',
               ),
+              if (calculos.bfJp7 > 0 && metodoLabel != 'Jackson-Pollock 7')
+                _PreviewMetric(
+                  label: 'BF% (JP 7)',
+                  value: '${calculos.bfJp7.toStringAsFixed(1)}%',
+                ),
+              if (calculos.bfJp3 > 0 && metodoLabel != 'Jackson-Pollock 3')
+                _PreviewMetric(
+                  label: 'BF% (JP 3)',
+                  value: '${calculos.bfJp3.toStringAsFixed(1)}%',
+                ),
               if (bfNavy > 0 && metodoLabel != 'US Navy')
                 _PreviewMetric(
                   label: 'BF% (Navy)',

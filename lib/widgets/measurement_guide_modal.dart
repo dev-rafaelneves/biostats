@@ -10,6 +10,7 @@ enum MeasurementGuideType {
   coxa,
   panturrilha,
   peso,
+  dobraCutanea,
 }
 
 class MeasurementGuideInfo {
@@ -144,6 +145,23 @@ class MeasurementGuideInfo {
             'Foque na tendência e na média semanal calculada pelo aplicativo, nunca no número de um único dia isolado.',
           ],
           highlightY: 0.95,
+        );
+      case MeasurementGuideType.dobraCutanea:
+        return const MeasurementGuideInfo(
+          title: 'Medição de Dobras Cutâneas (Adipômetro)',
+          targetFormula:
+              'Protocolos Jackson-Pollock 3 e 7 dobras + Equação de Siri',
+          explanation:
+              'As dobras cutâneas avaliam diretamente a espessura da gordura subcutânea em milímetros (mm). É um dos métodos clínicos mais precisos para estimar a densidade corporal.',
+          steps: [
+            'Realize todas as medições sempre no hemicorpo direito do corpo.',
+            'Identifique e marque o ponto anatômico de referência com precisão.',
+            'Pinçe a dobra firmemente com o polegar e o dedo indicador da mão esquerda, cerca de 1 a 2 cm acima do ponto a ser medido, separando a gordura do músculo.',
+            'Aplique as pontas do adipômetro perpendicularmente à dobra na altura marcada.',
+            'Aguarde cerca de 1 a 2 segundos para estabilização da pressão e leia a espessura em milímetros (mm).',
+            'Repita a medida 2 a 3 vezes em cada ponto para obter um resultado consistente.',
+          ],
+          highlightY: 0.45,
         );
     }
   }

@@ -6,10 +6,13 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:uuid/uuid.dart';
 import '../models/models.dart';
 import '../utils/calculator.dart';
+import 'backup_service.dart';
 import 'database_service.dart';
+import 'health_connect_service.dart';
 import 'notification_service.dart';
 import 'photo_storage_service.dart';
 import 'security_service.dart';
+import 'widget_service.dart';
 
 class BackupPreviewInfo {
   final String profileName;
@@ -84,6 +87,7 @@ class AppState extends ChangeNotifier {
   final Map<String, Uint8List> _decodedFotoCache = {};
 
   bool get isInitialized => _initialized;
+  SharedPreferences? get prefs => _prefs;
   UserProfile? get userProfile => _userProfile;
   bool get isLoggedIn => _userProfile != null;
   bool get onboardingDone => _onboardingDone;
@@ -363,6 +367,14 @@ class AppState extends ChangeNotifier {
         minute: _weeklyEvalReminderMinute,
       );
     }
+
+    // 7. Widget na Tela Inicial e Backup Automático
+    await WidgetService.instance.init();
+    await WidgetService.instance.updateWidgetData(
+      pesagens: _pesagens,
+      profile: _userProfile,
+    );
+    await BackupService.instance.checkAndRunWeeklyAutoBackup(this);
 
     _initialized = true;
     notifyListeners();
@@ -688,6 +700,11 @@ class AppState extends ChangeNotifier {
       _rebuildResultadosIndex();
     }
 
+    WidgetService.instance.updateWidgetData(
+      pesagens: _pesagens,
+      profile: _userProfile,
+    );
+
     notifyListeners();
   }
 
@@ -821,6 +838,11 @@ class AppState extends ChangeNotifier {
       await _saveList(_keyPesagens, _pesagens, (p) => p.toJson());
     }
 
+    WidgetService.instance.updateWidgetData(
+      pesagens: _pesagens,
+      profile: _userProfile,
+    );
+
     notifyListeners();
   }
 
@@ -895,6 +917,11 @@ class AppState extends ChangeNotifier {
       await _saveList(_keyPesagens, _pesagens, (p) => p.toJson());
     }
 
+    WidgetService.instance.updateWidgetData(
+      pesagens: _pesagens,
+      profile: _userProfile,
+    );
+
     notifyListeners();
   }
 
@@ -922,6 +949,11 @@ class AppState extends ChangeNotifier {
       await _saveList(_keyResultados, _resultados, (r) => r.toJson());
       await _saveList(_keyFotos, _fotos, (f) => f.toJson());
     }
+
+    WidgetService.instance.updateWidgetData(
+      pesagens: _pesagens,
+      profile: _userProfile,
+    );
 
     notifyListeners();
   }
@@ -962,6 +994,11 @@ class AppState extends ChangeNotifier {
       await DatabaseService.upsertPesagem(toSave);
     } catch (_) {}
 
+    WidgetService.instance.updateWidgetData(
+      pesagens: _pesagens,
+      profile: _userProfile,
+    );
+
     notifyListeners();
     return updatedExisting;
   }
@@ -971,7 +1008,54 @@ class AppState extends ChangeNotifier {
     try {
       await DatabaseService.deletePesagem(pesagemId);
     } catch (_) {}
+
+    WidgetService.instance.updateWidgetData(
+      pesagens: _pesagens,
+      profile: _userProfile,
+    );
+
     notifyListeners();
+  }
+
+  /// Sincroniza medições da balança inteligente via Health Connect / Apple Health
+  Future<int> syncSmartScaleWeights() async {
+    if (_userProfile == null) return 0;
+    final importedWeights =
+        await HealthConnectService.instance.fetchRecentWeights(
+      userId: _userProfile!.id,
+      days: 30,
+    );
+    if (importedWeights.isEmpty) return 0;
+
+    int newCount = 0;
+    for (final p in importedWeights) {
+      final normalizedDate = DateTime(p.data.year, p.data.month, p.data.day);
+      final exists = _pesagens.any((e) => _isSameDay(e.data, normalizedDate));
+      if (!exists) {
+        final created = _upsertPesagemInMemory(
+          userId: _userProfile!.id,
+          data: normalizedDate,
+          pesoKg: p.pesoKg,
+        );
+        try {
+          await DatabaseService.upsertPesagem(created);
+        } catch (_) {}
+        newCount++;
+      }
+    }
+
+    if (newCount > 0) {
+      _sortPesagens();
+      if (!DatabaseService.isAvailable) {
+        await _saveList(_keyPesagens, _pesagens, (p) => p.toJson());
+      }
+      await WidgetService.instance.updateWidgetData(
+        pesagens: _pesagens,
+        profile: _userProfile,
+      );
+      notifyListeners();
+    }
+    return newCount;
   }
 
   /// Exporta todo o banco de dados em formato JSON compatível com o BioStats (com fotos em Base64 para portabilidade)

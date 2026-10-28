@@ -26,11 +26,44 @@ class _WeeklyWeightTrackerState extends State<WeeklyWeightTracker> {
   final _weightCtrl = TextEditingController();
   DateTime _selectedDate = DateTime.now();
   bool _showHistory = false;
+  bool _isSyncing = false;
 
   @override
   void dispose() {
     _weightCtrl.dispose();
     super.dispose();
+  }
+
+  Future<void> _syncSmartScale() async {
+    setState(() => _isSyncing = true);
+    HapticFeedback.lightImpact();
+    try {
+      final count = await widget.appState.syncSmartScaleWeights();
+      if (!mounted) return;
+      if (count > 0) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              '🎉 $count nova${count > 1 ? 's' : ''} pesage${count > 1 ? 'ns importadas' : 'm importada'} da balança!',
+            ),
+          ),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content:
+                Text('Nenhuma nova pesagem encontrada na balança inteligente.'),
+          ),
+        );
+      }
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Falha ao sincronizar balança: $e')),
+      );
+    } finally {
+      if (mounted) setState(() => _isSyncing = false);
+    }
   }
 
   Future<void> _pickDate(BuildContext context) async {
@@ -211,6 +244,21 @@ class _WeeklyWeightTrackerState extends State<WeeklyWeightTracker> {
                     ),
                   ],
                 ),
+              ),
+              const SizedBox(width: 8),
+              IconButton(
+                onPressed: _isSyncing ? null : _syncSmartScale,
+                tooltip: 'Sincronizar balança inteligente (Health Connect)',
+                icon: _isSyncing
+                    ? const SizedBox(
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Icon(
+                        Icons.sync_rounded,
+                        color: AppColors.indigoPrimary,
+                      ),
               ),
             ],
           ),

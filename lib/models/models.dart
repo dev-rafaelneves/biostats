@@ -143,6 +143,15 @@ class MedidasCorporais {
   final double? coxa;
   final double? panturrilha;
 
+  // Dobras Cutâneas (em mm) para protocolos de Pollock
+  final double? dobraPeitoral;
+  final double? dobraAxilarMedia;
+  final double? dobraTriceps;
+  final double? dobraSubescapular;
+  final double? dobraAbdomen;
+  final double? dobraSuprailiaca;
+  final double? dobraCoxa;
+
   const MedidasCorporais({
     this.pescoco,
     this.cintura,
@@ -151,7 +160,46 @@ class MedidasCorporais {
     this.braco,
     this.coxa,
     this.panturrilha,
+    this.dobraPeitoral,
+    this.dobraAxilarMedia,
+    this.dobraTriceps,
+    this.dobraSubescapular,
+    this.dobraAbdomen,
+    this.dobraSuprailiaca,
+    this.dobraCoxa,
   });
+
+  bool get hasJacksonPollock3Male =>
+      dobraPeitoral != null &&
+      dobraAbdomen != null &&
+      dobraCoxa != null &&
+      dobraPeitoral! > 0 &&
+      dobraAbdomen! > 0 &&
+      dobraCoxa! > 0;
+
+  bool get hasJacksonPollock3Female =>
+      dobraTriceps != null &&
+      dobraSuprailiaca != null &&
+      dobraCoxa != null &&
+      dobraTriceps! > 0 &&
+      dobraSuprailiaca! > 0 &&
+      dobraCoxa! > 0;
+
+  bool get hasJacksonPollock7 =>
+      dobraPeitoral != null &&
+      dobraAxilarMedia != null &&
+      dobraTriceps != null &&
+      dobraSubescapular != null &&
+      dobraAbdomen != null &&
+      dobraSuprailiaca != null &&
+      dobraCoxa != null &&
+      dobraPeitoral! > 0 &&
+      dobraAxilarMedia! > 0 &&
+      dobraTriceps! > 0 &&
+      dobraSubescapular! > 0 &&
+      dobraAbdomen! > 0 &&
+      dobraSuprailiaca! > 0 &&
+      dobraCoxa! > 0;
 
   Map<String, dynamic> toJson() => {
         'pescoco': pescoco,
@@ -161,13 +209,24 @@ class MedidasCorporais {
         'braco': braco,
         'coxa': coxa,
         'panturrilha': panturrilha,
+        if (dobraPeitoral != null) 'dobra_peitoral': dobraPeitoral,
+        if (dobraAxilarMedia != null) 'dobra_axilar_media': dobraAxilarMedia,
+        if (dobraTriceps != null) 'dobra_triceps': dobraTriceps,
+        if (dobraSubescapular != null) 'dobra_subescapular': dobraSubescapular,
+        if (dobraAbdomen != null) 'dobra_abdomen': dobraAbdomen,
+        if (dobraSuprailiaca != null) 'dobra_suprailiaca': dobraSuprailiaca,
+        if (dobraCoxa != null) 'dobra_coxa': dobraCoxa,
       };
 
   factory MedidasCorporais.fromJson(Map<String, dynamic> json) {
     double? toDoubleOrNull(dynamic val) {
       if (val == null) return null;
-      final d = (val as num).toDouble();
-      return d > 0 ? d : null;
+      if (val is num) return val > 0 ? val.toDouble() : null;
+      if (val is String) {
+        final d = double.tryParse(val);
+        return (d != null && d > 0) ? d : null;
+      }
+      return null;
     }
 
     return MedidasCorporais(
@@ -178,6 +237,19 @@ class MedidasCorporais {
       braco: toDoubleOrNull(json['braco']),
       coxa: toDoubleOrNull(json['coxa']),
       panturrilha: toDoubleOrNull(json['panturrilha']),
+      dobraPeitoral:
+          toDoubleOrNull(json['dobra_peitoral'] ?? json['dobraPeitoral']),
+      dobraAxilarMedia:
+          toDoubleOrNull(json['dobra_axilar_media'] ?? json['dobraAxilarMedia']),
+      dobraTriceps:
+          toDoubleOrNull(json['dobra_triceps'] ?? json['dobraTriceps']),
+      dobraSubescapular:
+          toDoubleOrNull(json['dobra_subescapular'] ?? json['dobraSubescapular']),
+      dobraAbdomen:
+          toDoubleOrNull(json['dobra_abdomen'] ?? json['dobraAbdomen']),
+      dobraSuprailiaca:
+          toDoubleOrNull(json['dobra_suprailiaca'] ?? json['dobraSuprailiaca']),
+      dobraCoxa: toDoubleOrNull(json['dobra_coxa'] ?? json['dobraCoxa']),
     );
   }
 }

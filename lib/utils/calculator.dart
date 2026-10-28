@@ -103,8 +103,10 @@ class CalculosSnapshot {
   final double bfNavy;
   final double bfRfm;
   final double bfDeurenberg;
+  final double bfJp3;
+  final double bfJp7;
   final double bfPrincipal;
-  final String metodoPrincipal; // 'navy', 'rfm', 'deurenberg', 'none'
+  final String metodoPrincipal; // 'jp7', 'jp3', 'navy', 'rfm', 'deurenberg', 'none'
   final double lbmBoer;
   final double lbmFinal;
   final double bmrKatch;
@@ -123,6 +125,8 @@ class CalculosSnapshot {
     required this.bfNavy,
     required this.bfRfm,
     required this.bfDeurenberg,
+    this.bfJp3 = 0.0,
+    this.bfJp7 = 0.0,
     required this.bfPrincipal,
     required this.metodoPrincipal,
     required this.lbmBoer,
@@ -139,6 +143,10 @@ class CalculosSnapshot {
 
   String get metodoPrincipalLabel {
     switch (metodoPrincipal.toLowerCase()) {
+      case 'jp7':
+        return 'Jackson-Pollock 7 Dobras';
+      case 'jp3':
+        return 'Jackson-Pollock 3 Dobras';
       case 'navy':
         return 'US Navy';
       case 'rfm':
@@ -157,6 +165,8 @@ class CalculosSnapshot {
         'bfNavy': bfNavy,
         'bfRfm': bfRfm,
         'bfDeurenberg': bfDeurenberg,
+        'bfJp3': bfJp3,
+        'bfJp7': bfJp7,
         'bfPrincipal': bfPrincipal,
         'metodoPrincipal': metodoPrincipal,
         'lbmBoer': lbmBoer,
@@ -175,12 +185,20 @@ class CalculosSnapshot {
     final bfNavy = _numToDouble(json['bfNavy']);
     final bfRfm = _numToDouble(json['bfRfm']);
     final bfDeur = _numToDouble(json['bfDeurenberg']);
+    final bfJp3 = _numToDouble(json['bfJp3']);
+    final bfJp7 = _numToDouble(json['bfJp7']);
 
     String metodo = (json['metodoPrincipal'] as String?) ?? '';
     double bfPrinc = _numToDouble(json['bfPrincipal']);
 
     if (bfPrinc <= 0) {
-      if (bfNavy > 0) {
+      if (bfJp7 > 0) {
+        bfPrinc = bfJp7;
+        metodo = 'jp7';
+      } else if (bfJp3 > 0) {
+        bfPrinc = bfJp3;
+        metodo = 'jp3';
+      } else if (bfNavy > 0) {
         bfPrinc = bfNavy;
         metodo = 'navy';
       } else if (bfRfm > 0) {
@@ -195,9 +213,15 @@ class CalculosSnapshot {
       }
     }
     if (metodo.isEmpty) {
-      metodo = bfNavy > 0
-          ? 'navy'
-          : (bfRfm > 0 ? 'rfm' : (bfDeur > 0 ? 'deurenberg' : 'none'));
+      metodo = bfJp7 > 0
+          ? 'jp7'
+          : (bfJp3 > 0
+              ? 'jp3'
+              : (bfNavy > 0
+                  ? 'navy'
+                  : (bfRfm > 0
+                      ? 'rfm'
+                      : (bfDeur > 0 ? 'deurenberg' : 'none'))));
     }
 
     final lbmBoer = _numToDouble(json['lbmBoer']);
@@ -231,6 +255,8 @@ class CalculosSnapshot {
       bfNavy: bfNavy,
       bfRfm: bfRfm,
       bfDeurenberg: bfDeur,
+      bfJp3: bfJp3,
+      bfJp7: bfJp7,
       bfPrincipal: bfPrinc,
       metodoPrincipal: metodo,
       lbmBoer: lbmBoer,
@@ -321,6 +347,115 @@ class BioCalculator {
     if (imc <= 0) return 0;
     final genderFactor = sexo == Sexo.M ? 1 : 0;
     return round2(1.2 * imc + 0.23 * idade - 10.8 * genderFactor - 5.4);
+  }
+
+  /// Converte densidade corporal (BD) para % de Gordura usando a equação de Siri:
+  /// %BF = ((4.95 / BD) - 4.50) * 100
+  static double siriEquation(double bodyDensity) {
+    if (bodyDensity <= 0) return 0;
+    final bf = ((4.95 / bodyDensity) - 4.50) * 100.0;
+    return round2(math.max(0.0, bf));
+  }
+
+  /// Protocolo Jackson-Pollock 3 Dobras (JP3) + Equação de Siri
+  /// - Homens: Peitoral, Abdômen, Coxa
+  /// - Mulheres: Tríceps, Suprailíaca, Coxa
+  static double calculateJacksonPollock3({
+    required Sexo sexo,
+    required int idade,
+    double? peitoral,
+    double? abdomen,
+    double? coxa,
+    double? triceps,
+    double? suprailiaca,
+  }) {
+    if (idade <= 0) return 0;
+    if (sexo == Sexo.M) {
+      if (peitoral == null ||
+          abdomen == null ||
+          coxa == null ||
+          peitoral <= 0 ||
+          abdomen <= 0 ||
+          coxa <= 0) {
+        return 0;
+      }
+      final s = peitoral + abdomen + coxa;
+      final bd = 1.109380 -
+          (0.0008267 * s) +
+          (0.0000016 * s * s) -
+          (0.0002574 * idade);
+      return siriEquation(bd);
+    } else {
+      if (triceps == null ||
+          suprailiaca == null ||
+          coxa == null ||
+          triceps <= 0 ||
+          suprailiaca <= 0 ||
+          coxa <= 0) {
+        return 0;
+      }
+      final s = triceps + suprailiaca + coxa;
+      final bd = 1.0994921 -
+          (0.0009929 * s) +
+          (0.0000023 * s * s) -
+          (0.0001392 * idade);
+      return siriEquation(bd);
+    }
+  }
+
+  /// Protocolo Jackson-Pollock 7 Dobras (JP7) + Equação de Siri
+  /// 7 dobras: Peitoral, Axilar Média, Tríceps, Subescapular, Abdômen, Suprailíaca, Coxa
+  static double calculateJacksonPollock7({
+    required Sexo sexo,
+    required int idade,
+    required double? peitoral,
+    required double? axilarMedia,
+    required double? triceps,
+    required double? subescapular,
+    required double? abdomen,
+    required double? suprailiaca,
+    required double? coxa,
+  }) {
+    if (idade <= 0 ||
+        peitoral == null ||
+        peitoral <= 0 ||
+        axilarMedia == null ||
+        axilarMedia <= 0 ||
+        triceps == null ||
+        triceps <= 0 ||
+        subescapular == null ||
+        subescapular <= 0 ||
+        abdomen == null ||
+        abdomen <= 0 ||
+        suprailiaca == null ||
+        suprailiaca <= 0 ||
+        coxa == null ||
+        coxa <= 0) {
+      return 0;
+    }
+
+    final s = peitoral +
+        axilarMedia +
+        triceps +
+        subescapular +
+        abdomen +
+        suprailiaca +
+        coxa;
+
+    double bd;
+    if (sexo == Sexo.M) {
+      bd = 1.1120 -
+          (0.00043499 * s) +
+          (0.00000055 * s * s) -
+          (0.00028826 * idade);
+    } else {
+      bd = 1.0970 -
+          (0.00046971 * s) +
+          (0.00000056 * s * s) -
+          (0.00012828 * idade);
+    }
+
+    return siriEquation(bd);
   }
 
   /// Calcula a Massa Magra (Lean Body Mass - LBM) usando a fórmula de Boer (fallback)
@@ -529,12 +664,40 @@ class BioCalculator {
     final bfRfm = calculateRFM(sexo, altura, cintura);
     final bfDeurenberg = calculateDeurenbergBF(sexo, peso, altura, idade);
 
+    final bfJp7 = calculateJacksonPollock7(
+      sexo: sexo,
+      idade: idade,
+      peitoral: avaliacao.medidas.dobraPeitoral,
+      axilarMedia: avaliacao.medidas.dobraAxilarMedia,
+      triceps: avaliacao.medidas.dobraTriceps,
+      subescapular: avaliacao.medidas.dobraSubescapular,
+      abdomen: avaliacao.medidas.dobraAbdomen,
+      suprailiaca: avaliacao.medidas.dobraSuprailiaca,
+      coxa: avaliacao.medidas.dobraCoxa,
+    );
+
+    final bfJp3 = calculateJacksonPollock3(
+      sexo: sexo,
+      idade: idade,
+      peitoral: avaliacao.medidas.dobraPeitoral,
+      abdomen: avaliacao.medidas.dobraAbdomen,
+      coxa: avaliacao.medidas.dobraCoxa,
+      triceps: avaliacao.medidas.dobraTriceps,
+      suprailiaca: avaliacao.medidas.dobraSuprailiaca,
+    );
+
     // Determina o BF principal e o método utilizado:
-    // 1º Navy (se medidas presentes) -> 2º RFM (se cintura presente) -> 3º Deurenberg (IMC + idade)
+    // 1º JP7 (padrão ouro em dobras) -> 2º JP3 -> 3º Navy -> 4º RFM -> 5º Deurenberg
     double bfPrincipal = 0.0;
     String metodoPrincipal = 'none';
 
-    if (bfNavy > 0) {
+    if (bfJp7 > 0) {
+      bfPrincipal = bfJp7;
+      metodoPrincipal = 'jp7';
+    } else if (bfJp3 > 0) {
+      bfPrincipal = bfJp3;
+      metodoPrincipal = 'jp3';
+    } else if (bfNavy > 0) {
       bfPrincipal = bfNavy;
       metodoPrincipal = 'navy';
     } else if (bfRfm > 0) {
@@ -581,6 +744,8 @@ class BioCalculator {
       bfNavy: bfNavy,
       bfRfm: bfRfm,
       bfDeurenberg: bfDeurenberg,
+      bfJp3: bfJp3,
+      bfJp7: bfJp7,
       bfPrincipal: bfPrincipal,
       metodoPrincipal: metodoPrincipal,
       lbmBoer: lbmBoer,
