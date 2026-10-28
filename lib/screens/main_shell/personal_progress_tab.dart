@@ -1,30 +1,20 @@
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 import '../../models/models.dart';
 import '../../services/app_state.dart';
 import '../../theme/app_theme.dart';
-import '../../widgets/body_recomposition_insight.dart';
 import '../../widgets/evaluation_details_widget.dart';
 import '../../widgets/evolution_charts.dart';
 import '../../widgets/export_data_card.dart';
 import '../../widgets/ios_action_sheet.dart';
-import '../../widgets/latest_evaluation_card.dart';
 import '../../widgets/photo_comparison.dart';
+import '../../widgets/quick_weight_dialog.dart';
 import '../../widgets/weekly_weight_tracker.dart';
 import '../evaluation_comparator_screen.dart';
 import '../evaluation_form_screen.dart';
-
-enum DashboardSection {
-  tudo('Tudo', Icons.dashboard_customize_outlined),
-  resumo('Resumo & Peso', Icons.monitor_weight_outlined),
-  evolucao('Gráficos & Fotos', Icons.show_chart_rounded),
-  ficha('Ficha Detalhada', Icons.assignment_outlined);
-
-  final String label;
-  final IconData icon;
-  const DashboardSection(this.label, this.icon);
-}
+import 'progress_overview_section.dart';
 
 class PersonalProgressTab extends StatefulWidget {
   final AppState appState;
@@ -37,7 +27,7 @@ class PersonalProgressTab extends StatefulWidget {
 
 class _PersonalProgressTabState extends State<PersonalProgressTab> {
   String? _selectedAvaliacaoId;
-  DashboardSection _activeSection = DashboardSection.tudo;
+  int _selectedSegment = 0; // 0: Resumo, 1: Pesagens, 2: Evolução, 3: Ficha
 
   Future<void> _openNewEvaluation(BuildContext context) async {
     final createdId = await Navigator.of(context).push<String>(
@@ -137,15 +127,12 @@ class _PersonalProgressTabState extends State<PersonalProgressTab> {
             ? evaluations[selectedIdx + 1].avaliacao
             : null;
 
-    final showResumo = _activeSection == DashboardSection.tudo ||
-        _activeSection == DashboardSection.resumo;
-    final showEvolucao = _activeSection == DashboardSection.tudo ||
-        _activeSection == DashboardSection.evolucao;
-    final showFicha = _activeSection == DashboardSection.tudo ||
-        _activeSection == DashboardSection.ficha;
+    final now = DateTime.now();
+    final dateStr = DateFormat("EEEE, d 'de' MMMM", 'pt_BR').format(now);
 
     return CustomScrollView(
       slivers: [
+        // App Bar com Large Title estilo iOS HIG
         SliverAppBar(
           pinned: true,
           toolbarHeight: 74,
@@ -163,27 +150,27 @@ class _PersonalProgressTabState extends State<PersonalProgressTab> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'MEU PAINEL CORPORAL',
+                      dateStr.toUpperCase(),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(
-                        fontSize: 10,
+                        fontSize: 10.5,
                         fontWeight: FontWeight.w700,
                         letterSpacing: 0.8,
                         color: isDark
-                            ? AppColors.indigoLight
-                            : AppColors.indigoPrimary,
+                            ? AppColors.darkTextSecondary
+                            : const Color(0xFF64748B),
                       ),
                     ),
                     const SizedBox(height: 2),
                     Text(
-                      'Olá, ${profile.primeiroNome} 👋',
+                      'Meu Progresso',
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(
-                        fontSize: 22,
-                        fontWeight: FontWeight.bold,
-                        letterSpacing: -0.5,
+                        fontSize: 24,
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: -0.6,
                         color: isDark
                             ? AppColors.darkTextPrimary
                             : AppColors.lightTextPrimary,
@@ -220,421 +207,462 @@ class _PersonalProgressTabState extends State<PersonalProgressTab> {
             ],
           ),
         ),
+
         SliverPadding(
-          padding: const EdgeInsets.fromLTRB(16, 12, 16, 120),
+          padding: const EdgeInsets.fromLTRB(16, 10, 16, 120),
           sliver: SliverToBoxAdapter(
             child: Center(
               child: ConstrainedBox(
                 constraints: const BoxConstraints(maxWidth: 460),
-                child: evaluations.isEmpty
-                    ? Container(
-                        padding: const EdgeInsets.all(28),
-                        decoration: BoxDecoration(
-                          color: isDark ? AppColors.darkSurface : Colors.white,
-                          borderRadius: BorderRadius.circular(16),
-                          border: Border.all(
-                            color: isDark
-                                ? AppColors.darkBorder
-                                : AppColors.lightBorder,
-                          ),
-                        ),
-                        child: Column(
-                          children: [
-                            Container(
-                              width: 64,
-                              height: 64,
-                              decoration: BoxDecoration(
-                                color: AppColors.indigoPrimary
-                                    .withValues(alpha: 0.1),
-                                shape: BoxShape.circle,
-                              ),
-                              child: const Icon(
-                                Icons.history_rounded,
-                                size: 32,
-                                color: AppColors.indigoPrimary,
-                              ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Controle Deslizante Segmentado Nativo iOS
+                    SizedBox(
+                      width: double.infinity,
+                      child: CupertinoSlidingSegmentedControl<int>(
+                        groupValue: _selectedSegment,
+                        backgroundColor: isDark
+                            ? const Color(0xFF1E293B)
+                            : const Color(0xFFE2E8F0),
+                        thumbColor: isDark
+                            ? AppColors.indigoPrimary
+                            : Colors.white,
+                        padding: const EdgeInsets.all(4),
+                        children: {
+                          0: Padding(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 7,
                             ),
-                            const SizedBox(height: 16),
-                            Text(
-                              'O ponto de partida! 🚀',
+                            child: Text(
+                              'Resumo',
                               style: TextStyle(
-                                fontSize: 18,
-                                fontWeight: FontWeight.bold,
-                                color: isDark
-                                    ? AppColors.darkTextPrimary
-                                    : AppColors.lightTextPrimary,
+                                fontSize: 13,
+                                fontWeight: FontWeight.w700,
+                                color: _selectedSegment == 0
+                                    ? (isDark
+                                        ? Colors.white
+                                        : const Color(0xFF0F172A))
+                                    : (isDark
+                                        ? AppColors.darkTextSecondary
+                                        : const Color(0xFF64748B)),
                               ),
                             ),
-                            const SizedBox(height: 8),
-                            Text(
-                              'Registre sua primeira autoavaliação, ${profile.primeiroNome}, e dê o primeiro passo para acompanhar seus resultados!',
-                              textAlign: TextAlign.center,
+                          ),
+                          1: Padding(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 7,
+                            ),
+                            child: Text(
+                              'Pesagens',
                               style: TextStyle(
-                                fontSize: 14.5,
-                                height: 1.45,
-                                color: isDark
-                                    ? AppColors.darkTextSecondary
-                                    : AppColors.lightTextSecondary,
+                                fontSize: 13,
+                                fontWeight: FontWeight.w700,
+                                color: _selectedSegment == 1
+                                    ? (isDark
+                                        ? Colors.white
+                                        : const Color(0xFF0F172A))
+                                    : (isDark
+                                        ? AppColors.darkTextSecondary
+                                        : const Color(0xFF64748B)),
                               ),
-                            ),
-                            const SizedBox(height: 20),
-                            ElevatedButton.icon(
-                              onPressed: () => _openNewEvaluation(context),
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: AppColors.indigoPrimary,
-                                foregroundColor: Colors.white,
-                                minimumSize: const Size(200, 48),
-                                elevation: 0,
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                              ),
-                              icon: const Icon(Icons.add_rounded, size: 22),
-                              label: const Text(
-                                'Nova Avaliação',
-                                style: TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      )
-                    : Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          // Header Visão Geral + Botão Pílula Nova Avaliação
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Expanded(
-                                child: Text(
-                                  'Visão Geral',
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: TextStyle(
-                                    fontSize: 22,
-                                    fontWeight: FontWeight.bold,
-                                    color: isDark
-                                        ? AppColors.darkTextPrimary
-                                        : AppColors.lightTextPrimary,
-                                  ),
-                                ),
-                              ),
-                              const SizedBox(width: 8),
-                              Wrap(
-                                spacing: 8,
-                                crossAxisAlignment: WrapCrossAlignment.center,
-                                children: [
-                                  if (evaluations.length >= 2)
-                                    OutlinedButton.icon(
-                                      key: const ValueKey(
-                                          'btn_open_comparator_header'),
-                                      onPressed: () => _openComparator(context),
-                                      style: OutlinedButton.styleFrom(
-                                        foregroundColor: AppColors.indigoPrimary,
-                                        side: const BorderSide(
-                                          color: AppColors.indigoPrimary,
-                                        ),
-                                        padding: const EdgeInsets.symmetric(
-                                          horizontal: 12,
-                                          vertical: 9,
-                                        ),
-                                        shape: RoundedRectangleBorder(
-                                          borderRadius:
-                                              BorderRadius.circular(100),
-                                        ),
-                                      ),
-                                      icon: const Icon(
-                                        Icons.compare_arrows_rounded,
-                                        size: 17,
-                                      ),
-                                      label: const Text(
-                                        'Comparar',
-                                        style: TextStyle(
-                                          fontSize: 12.5,
-                                          fontWeight: FontWeight.w700,
-                                        ),
-                                      ),
-                                    ),
-                                  ElevatedButton.icon(
-                                    onPressed: () => _openNewEvaluation(context),
-                                    style: ElevatedButton.styleFrom(
-                                      backgroundColor: AppColors.indigoPrimary,
-                                      foregroundColor: Colors.white,
-                                      elevation: 0,
-                                      padding: const EdgeInsets.symmetric(
-                                        horizontal: 14,
-                                        vertical: 10,
-                                      ),
-                                      shape: RoundedRectangleBorder(
-                                        borderRadius: BorderRadius.circular(100),
-                                      ),
-                                    ),
-                                    icon: const Icon(Icons.add_rounded, size: 18),
-                                    label: const Text(
-                                      'Nova Avaliação',
-                                      style: TextStyle(
-                                        fontSize: 13,
-                                        fontWeight: FontWeight.w700,
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 12),
-
-                          // Barra de Filtro Rápido por Seção
-                          SingleChildScrollView(
-                            scrollDirection: Axis.horizontal,
-                            child: Row(
-                              children: DashboardSection.values.map((section) {
-                                final active = _activeSection == section;
-                                return Padding(
-                                  padding: const EdgeInsets.only(right: 8),
-                                  child: ChoiceChip(
-                                    avatar: Icon(
-                                      section.icon,
-                                      size: 16,
-                                      color: active
-                                          ? Colors.white
-                                          : (isDark
-                                              ? AppColors.darkTextSecondary
-                                              : const Color(0xFF475569)),
-                                    ),
-                                    label: Text(section.label),
-                                    selected: active,
-                                    showCheckmark: false,
-                                    onSelected: (_) {
-                                      HapticFeedback.selectionClick();
-                                      setState(() => _activeSection = section);
-                                    },
-                                    selectedColor: AppColors.indigoPrimary,
-                                    backgroundColor: isDark
-                                        ? AppColors.darkSurface
-                                        : Colors.white,
-                                    labelStyle: TextStyle(
-                                      fontSize: 12.5,
-                                      fontWeight: FontWeight.w600,
-                                      color: active
-                                          ? Colors.white
-                                          : (isDark
-                                              ? AppColors.darkTextSecondary
-                                              : const Color(0xFF475569)),
-                                    ),
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(100),
-                                      side: BorderSide(
-                                        color: active
-                                            ? Colors.transparent
-                                            : (isDark
-                                                ? AppColors.darkBorder
-                                                : AppColors.lightBorder),
-                                      ),
-                                    ),
-                                  ),
-                                );
-                              }).toList(),
                             ),
                           ),
-                          const SizedBox(height: 14),
-
-                          if (showResumo) ...[
-                            // 1. Card Resumo da Última Avaliação + Meta Pessoal
-                            LatestEvaluationCard(
-                              evaluations: evaluations,
-                              profile: profile,
-                              onUpdateProfile: (u) =>
-                                  widget.appState.saveUserProfile(u),
+                          2: Padding(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 7,
                             ),
-                            const SizedBox(height: 18),
-
-                            // 2. Rastreador de Pesagens Diárias & Média Semanal
-                            WeeklyWeightTracker(appState: widget.appState),
-                            const SizedBox(height: 18),
-
-                            // 3. Card Inteligente de Recomposição Corporal (quando houver >= 2 avaliações)
-                            if (evaluations.length >= 2) ...[
-                              BodyRecompositionInsight(
-                                evaluations: evaluations,
-                                onOpenComparator: () =>
-                                    _openComparator(context),
-                              ),
-                              const SizedBox(height: 18),
-                            ],
-                          ],
-
-                          if (showEvolucao) ...[
-                            // 4. Gráficos de Evolução (Peso/Massa Magra e BF%)
-                            EvolutionCharts(evaluations: evaluations),
-                            const SizedBox(height: 18),
-
-                            // 5. Comparativo Fotográfico (Antes/Depois com Slider e Zoom)
-                            PhotoComparison(
-                              appState: widget.appState,
-                              selectedAvaliacaoId: effectiveSelectedId,
-                            ),
-                            const SizedBox(height: 24),
-                          ],
-
-                          if (showFicha) ...[
-                            // 6. Seletor e Detalhes por Avaliação
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                Expanded(
-                                  child: Text(
-                                    'Detalhes por Avaliação',
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: TextStyle(
-                                      fontSize: 21,
-                                      fontWeight: FontWeight.bold,
-                                      color: isDark
-                                          ? AppColors.darkTextPrimary
-                                          : AppColors.lightTextPrimary,
-                                    ),
-                                  ),
-                                ),
-                                if (selectedJoined != null)
-                                  Row(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      TextButton.icon(
-                                        onPressed: () => _openEditEvaluation(
-                                          context,
-                                          selectedJoined!.avaliacao,
-                                        ),
-                                        style: TextButton.styleFrom(
-                                          visualDensity: VisualDensity.compact,
-                                        ),
-                                        icon: const Icon(
-                                          Icons.edit_outlined,
-                                          size: 16,
-                                          color: AppColors.indigoPrimary,
-                                        ),
-                                        label: const Text(
-                                          'Editar',
-                                          style: TextStyle(
-                                            color: AppColors.indigoPrimary,
-                                            fontSize: 14,
-                                            fontWeight: FontWeight.w600,
-                                          ),
-                                        ),
-                                      ),
-                                      TextButton(
-                                        onPressed: () =>
-                                            _confirmDeleteEvaluation(
-                                          context,
-                                          selectedJoined!.avaliacao.id,
-                                        ),
-                                        style: TextButton.styleFrom(
-                                          visualDensity: VisualDensity.compact,
-                                        ),
-                                        child: const Text(
-                                          'Excluir Atual',
-                                          style: TextStyle(
-                                            color: AppColors.rose,
-                                            fontSize: 14,
-                                            fontWeight: FontWeight.w600,
-                                          ),
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                              ],
-                            ),
-                            const SizedBox(height: 8),
-
-                            // Pílulas de Seleção de Avaliação
-                            SingleChildScrollView(
-                              scrollDirection: Axis.horizontal,
-                              child: Row(
-                                children: List.generate(
-                                  evaluations.length,
-                                  (idx) {
-                                    final ev = evaluations[idx];
-                                    final isSelected =
-                                        ev.avaliacao.id == effectiveSelectedId;
-                                    final label = idx == 0
-                                        ? 'Última (Atual)'
-                                        : DateFormat('dd/MM/yyyy')
-                                            .format(ev.avaliacao.dataAvaliacao);
-
-                                    return Padding(
-                                      padding: const EdgeInsets.only(right: 8),
-                                      child: ChoiceChip(
-                                        label: Text(label),
-                                        selected: isSelected,
-                                        showCheckmark: false,
-                                        onSelected: (_) {
-                                          HapticFeedback.selectionClick();
-                                          setState(() {
-                                            _selectedAvaliacaoId =
-                                                ev.avaliacao.id;
-                                          });
-                                        },
-                                        selectedColor: isDark
-                                            ? AppColors.indigoPrimary
-                                            : const Color(0xFF0F172A),
-                                        backgroundColor: isDark
-                                            ? AppColors.darkSurface
-                                            : Colors.white,
-                                        labelStyle: TextStyle(
-                                          fontSize: 14,
-                                          fontWeight: FontWeight.w600,
-                                          color: isSelected
-                                              ? Colors.white
-                                              : (isDark
-                                                  ? AppColors.darkTextSecondary
-                                                  : const Color(0xFF475569)),
-                                        ),
-                                        shape: RoundedRectangleBorder(
-                                          borderRadius:
-                                              BorderRadius.circular(100),
-                                          side: BorderSide(
-                                            color: isSelected
-                                                ? Colors.transparent
-                                                : (isDark
-                                                    ? AppColors.darkBorder
-                                                    : AppColors.lightBorder),
-                                          ),
-                                        ),
-                                      ),
-                                    );
-                                  },
-                                ),
+                            child: Text(
+                              'Evolução',
+                              style: TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w700,
+                                color: _selectedSegment == 2
+                                    ? (isDark
+                                        ? Colors.white
+                                        : const Color(0xFF0F172A))
+                                    : (isDark
+                                        ? AppColors.darkTextSecondary
+                                        : const Color(0xFF64748B)),
                               ),
                             ),
-                            const SizedBox(height: 16),
-
-                            if (selectedJoined != null) ...[
-                              EvaluationDetailsWidget(
-                                profile: profile,
-                                avaliacao: selectedJoined.avaliacao,
-                                resultado: selectedJoined.resultado,
-                                previousAvaliacao: previousAvaliacao,
-                              ),
-                              const SizedBox(height: 24),
-                            ],
-
-                            // 7. Área de Exportação (PDF e CSV)
-                            ExportDataCard(
-                              profile: profile,
-                              evaluations: evaluations,
-                              selectedEvaluation: selectedJoined,
+                          ),
+                          3: Padding(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 7,
                             ),
-                          ],
-                        ],
+                            child: Text(
+                              'Ficha',
+                              style: TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w700,
+                                color: _selectedSegment == 3
+                                    ? (isDark
+                                        ? Colors.white
+                                        : const Color(0xFF0F172A))
+                                    : (isDark
+                                        ? AppColors.darkTextSecondary
+                                        : const Color(0xFF64748B)),
+                              ),
+                            ),
+                          ),
+                        },
+                        onValueChanged: (val) {
+                          if (val != null) {
+                            HapticFeedback.selectionClick();
+                            setState(() => _selectedSegment = val);
+                          }
+                        },
                       ),
+                    ),
+
+                    const SizedBox(height: 18),
+
+                    // Conteúdo Dinâmico por Segmento
+                    _buildActiveTabContent(
+                      context,
+                      isDark: isDark,
+                      profile: profile,
+                      evaluations: evaluations,
+                      effectiveSelectedId: effectiveSelectedId,
+                      selectedJoined: selectedJoined,
+                      previousAvaliacao: previousAvaliacao,
+                    ),
+                  ],
+                ),
               ),
             ),
           ),
         ),
       ],
+    );
+  }
+
+  Widget _buildActiveTabContent(
+    BuildContext context, {
+    required bool isDark,
+    required UserProfile profile,
+    required List<JoinedEvaluation> evaluations,
+    required String? effectiveSelectedId,
+    required JoinedEvaluation? selectedJoined,
+    required Avaliacao? previousAvaliacao,
+  }) {
+    switch (_selectedSegment) {
+      case 0:
+        // 1. Aba Resumo (Destaques Apple Health style)
+        if (evaluations.isEmpty) {
+          return _buildEmptyState(context, isDark, profile);
+        }
+        return ProgressOverviewSection(
+          appState: widget.appState,
+          profile: profile,
+          evaluations: evaluations,
+          onQuickWeight: () => QuickWeightDialog.show(
+            context,
+            appState: widget.appState,
+          ),
+          onNewEvaluation: () => _openNewEvaluation(context),
+          onOpenComparator: () => _openComparator(context),
+          onNavigateToTab: (tabIdx) =>
+              setState(() => _selectedSegment = tabIdx),
+        );
+
+      case 1:
+        // 2. Aba Pesagens & Hábito Diário
+        return WeeklyWeightTracker(appState: widget.appState);
+
+      case 2:
+        // 3. Aba Evolução (Gráficos Longitudinais & Fotos)
+        if (evaluations.isEmpty) {
+          return _buildEmptyState(context, isDark, profile);
+        }
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            if (evaluations.length >= 2) ...[
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Expanded(
+                    child: Text(
+                      'CURVAS HISTÓRICAS',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: 0.8,
+                        color: isDark
+                            ? AppColors.darkTextSecondary
+                            : const Color(0xFF64748B),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  TextButton.icon(
+                    key: const ValueKey('btn_open_comparator_header'),
+                    onPressed: () => _openComparator(context),
+                    style: TextButton.styleFrom(
+                      foregroundColor: AppColors.indigoPrimary,
+                      visualDensity: VisualDensity.compact,
+                    ),
+                    icon: const Icon(Icons.compare_arrows_rounded, size: 17),
+                    label: const Text(
+                      'Comparar 2 Marcos',
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 6),
+            ],
+            EvolutionCharts(evaluations: evaluations),
+            const SizedBox(height: 20),
+            PhotoComparison(
+              appState: widget.appState,
+              selectedAvaliacaoId: effectiveSelectedId,
+            ),
+          ],
+        );
+
+      case 3:
+      default:
+        // 4. Aba Ficha Completa de Medidas & Nutrição
+        if (evaluations.isEmpty) {
+          return _buildEmptyState(context, isDark, profile);
+        }
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Expanded(
+                  child: Text(
+                    'DATA DA AVALIAÇÃO',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: 0.8,
+                      color: isDark
+                          ? AppColors.darkTextSecondary
+                          : const Color(0xFF64748B),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                if (selectedJoined != null)
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      TextButton.icon(
+                        onPressed: () => _openEditEvaluation(
+                          context,
+                          selectedJoined.avaliacao,
+                        ),
+                        style: TextButton.styleFrom(
+                          visualDensity: VisualDensity.compact,
+                        ),
+                        icon: const Icon(
+                          Icons.edit_outlined,
+                          size: 15,
+                          color: AppColors.indigoPrimary,
+                        ),
+                        label: const Text(
+                          'Editar',
+                          style: TextStyle(
+                            color: AppColors.indigoPrimary,
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                      TextButton(
+                        onPressed: () => _confirmDeleteEvaluation(
+                          context,
+                          selectedJoined.avaliacao.id,
+                        ),
+                        style: TextButton.styleFrom(
+                          visualDensity: VisualDensity.compact,
+                        ),
+                        child: const Text(
+                          'Excluir',
+                          style: TextStyle(
+                            color: AppColors.rose,
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+              ],
+            ),
+            const SizedBox(height: 8),
+
+            // Pílulas de Seleção de Avaliação
+            SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: Row(
+                children: List.generate(
+                  evaluations.length,
+                  (idx) {
+                    final ev = evaluations[idx];
+                    final isSelected = ev.avaliacao.id == effectiveSelectedId;
+                    final label = idx == 0
+                        ? 'Mais Recente'
+                        : DateFormat('dd/MM/yyyy')
+                            .format(ev.avaliacao.dataAvaliacao);
+
+                    return Padding(
+                      padding: const EdgeInsets.only(right: 8),
+                      child: ChoiceChip(
+                        label: Text(label),
+                        selected: isSelected,
+                        showCheckmark: false,
+                        onSelected: (_) {
+                          HapticFeedback.selectionClick();
+                          setState(() {
+                            _selectedAvaliacaoId = ev.avaliacao.id;
+                          });
+                        },
+                        selectedColor: isDark
+                            ? AppColors.indigoPrimary
+                            : const Color(0xFF0F172A),
+                        backgroundColor:
+                            isDark ? AppColors.darkSurface : Colors.white,
+                        labelStyle: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                          color: isSelected
+                              ? Colors.white
+                              : (isDark
+                                  ? AppColors.darkTextSecondary
+                                  : const Color(0xFF475569)),
+                        ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(100),
+                          side: BorderSide(
+                            color: isSelected
+                                ? Colors.transparent
+                                : (isDark
+                                    ? AppColors.darkBorder
+                                    : AppColors.lightBorder),
+                          ),
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
+
+            if (selectedJoined != null) ...[
+              EvaluationDetailsWidget(
+                profile: profile,
+                avaliacao: selectedJoined.avaliacao,
+                resultado: selectedJoined.resultado,
+                previousAvaliacao: previousAvaliacao,
+              ),
+              const SizedBox(height: 20),
+            ],
+
+            ExportDataCard(
+              profile: profile,
+              evaluations: evaluations,
+              selectedEvaluation: selectedJoined,
+            ),
+          ],
+        );
+    }
+  }
+
+  Widget _buildEmptyState(
+    BuildContext context,
+    bool isDark,
+    UserProfile profile,
+  ) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(28),
+      decoration: BoxDecoration(
+        color: isDark ? AppColors.darkSurface : Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: isDark ? AppColors.darkBorder : AppColors.lightBorder,
+        ),
+      ),
+      child: Column(
+        children: [
+          Container(
+            width: 56,
+            height: 56,
+            decoration: BoxDecoration(
+              color: AppColors.indigoPrimary.withValues(alpha: 0.1),
+              shape: BoxShape.circle,
+            ),
+            child: const Icon(
+              Icons.straighten_rounded,
+              size: 28,
+              color: AppColors.indigoPrimary,
+            ),
+          ),
+          const SizedBox(height: 14),
+          Text(
+            'Comece seu acompanhamento!',
+            style: TextStyle(
+              fontSize: 17,
+              fontWeight: FontWeight.bold,
+              color: isDark
+                  ? AppColors.darkTextPrimary
+                  : AppColors.lightTextPrimary,
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            'Registre sua primeira avaliação física para visualizar sua composição corporal, gráficos e fotos.',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontSize: 13.5,
+              height: 1.4,
+              color: isDark
+                  ? AppColors.darkTextSecondary
+                  : AppColors.lightTextSecondary,
+            ),
+          ),
+          const SizedBox(height: 18),
+          ElevatedButton.icon(
+            onPressed: () => _openNewEvaluation(context),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.indigoPrimary,
+              foregroundColor: Colors.white,
+              elevation: 0,
+              minimumSize: const Size(190, 44),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
+            icon: const Icon(Icons.add_rounded, size: 20),
+            label: const Text(
+              'Nova Avaliação',
+              style: TextStyle(
+                fontSize: 14.5,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

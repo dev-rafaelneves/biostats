@@ -79,7 +79,9 @@ void main() {
     await tester.tap(btnCalcular);
     await tester.pumpAndSettle();
 
-    // Verifica Card de Exportação (PDF e CSV)
+    // Navega para a aba Ficha para verificar Card de Exportação (PDF e CSV)
+    await tester.tap(find.text('Ficha'));
+    await tester.pumpAndSettle();
     expect(find.text('Exportar Meus Dados'), findsOneWidget);
     expect(find.text('Baixar Relatório (PDF)'), findsOneWidget);
     expect(find.text('Exportar Tabela (CSV)'), findsOneWidget);
@@ -119,6 +121,10 @@ void main() {
     final btnCalcular2 = find.text('Calcular Resultados');
     await tester.ensureVisible(btnCalcular2);
     await tester.tap(btnCalcular2);
+    await tester.pumpAndSettle();
+
+    // Navega para a aba Evolução para acessar o comparador
+    await tester.tap(find.text('Evolução'));
     await tester.pumpAndSettle();
 
     // 4.4 Valida Acesso e Recursos do Comparador Completo (Fase 4)

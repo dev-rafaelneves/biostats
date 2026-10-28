@@ -231,12 +231,12 @@ class _WeeklyWeightTrackerState extends State<WeeklyWeightTracker> {
                             : const Color(0xFF1E293B),
                       ),
                     ),
-                    const SizedBox(height: 4),
+                    const SizedBox(height: 2),
                     Text(
-                      'Só foca na média! O peso oscila todos os dias devido a líquidos e treinos. A média semanal é o único número confiável.',
+                      'Foque na tendência e na média semanal para filtrar oscilações diárias de água.',
                       style: TextStyle(
-                        fontSize: 13,
-                        height: 1.35,
+                        fontSize: 12.5,
+                        height: 1.3,
                         color: isDark
                             ? AppColors.darkTextSecondary
                             : const Color(0xFF64748B),
