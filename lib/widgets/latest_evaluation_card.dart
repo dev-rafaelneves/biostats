@@ -26,11 +26,6 @@ class LatestEvaluationCard extends StatelessWidget {
     return ev.resultado?.snapshot.metodoPrincipalLabel ?? 'Navy';
   }
 
-  bool _usedRfmFallback(JoinedEvaluation ev) {
-    final snap = ev.resultado?.snapshot;
-    return snap != null && snap.metodoPrincipal == 'rfm';
-  }
-
   Future<void> _showGoalDialog(BuildContext context, UserProfile user) async {
     final pesoCtrl = TextEditingController(
       text: user.metaPesoKg != null ? user.metaPesoKg!.toStringAsFixed(1) : '',
@@ -157,7 +152,6 @@ class LatestEvaluationCard extends StatelessWidget {
         (previous != null && previousBF > 0 && currentBF > 0)
             ? currentBF - previousBF
             : 0.0;
-    final isRfmFallback = _usedRfmFallback(current);
 
     final currentLBM = current.resultado?.snapshot.lbmFinal ?? 0.0;
     final previousLBM = previous?.resultado?.snapshot.lbmFinal ?? 0.0;

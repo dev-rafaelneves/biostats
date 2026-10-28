@@ -1,5 +1,4 @@
 import 'dart:convert';
-import 'dart:io';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -10,6 +9,10 @@ import '../models/models.dart';
 import '../services/app_state.dart';
 import '../theme/app_theme.dart';
 import '../utils/calculator.dart';
+import 'evaluation_form/live_preview_card.dart';
+import 'evaluation_form/measure_input_row.dart';
+import 'evaluation_form/photo_uploader_slot.dart';
+import 'evaluation_form/section_header.dart';
 
 class EvaluationFormScreen extends StatefulWidget {
   final AppState appState;
@@ -803,7 +806,7 @@ class _EvaluationFormScreenState extends State<EvaluationFormScreen> {
                         crossAxisAlignment: WrapCrossAlignment.center,
                         spacing: 8,
                         children: [
-                          const _SectionHeader(
+                          const SectionHeader(
                             title: 'MEDIDAS ESSENCIAIS',
                             bottomPadding: 0,
                           ),
@@ -950,7 +953,7 @@ class _EvaluationFormScreenState extends State<EvaluationFormScreen> {
                           ),
                         ),
                         const Divider(indent: 16, height: 1),
-                        _MeasureInputRow(
+                        MeasureInputRow(
                           label: 'Peso',
                           controller: _pesoCtrl,
                           unit: 'kg',
@@ -963,7 +966,7 @@ class _EvaluationFormScreenState extends State<EvaluationFormScreen> {
                           onChanged: (_) => setState(() {}),
                         ),
                         const Divider(indent: 16, height: 1),
-                        _MeasureInputRow(
+                        MeasureInputRow(
                           label: 'Pescoço',
                           subtitle: 'Usado no BF% US Navy',
                           controller: _pescocoCtrl,
@@ -976,7 +979,7 @@ class _EvaluationFormScreenState extends State<EvaluationFormScreen> {
                           onChanged: (_) => setState(() {}),
                         ),
                         const Divider(indent: 16, height: 1),
-                        _MeasureInputRow(
+                        MeasureInputRow(
                           label: 'Cintura',
                           controller: _cinturaCtrl,
                           unit: 'cm',
@@ -990,7 +993,7 @@ class _EvaluationFormScreenState extends State<EvaluationFormScreen> {
                         ),
                         if (profile?.sexo == Sexo.F) ...[
                           const Divider(indent: 16, height: 1),
-                          _MeasureInputRow(
+                          MeasureInputRow(
                             label: 'Quadril',
                             subtitle: 'Necessário no BF% US Navy feminino',
                             controller: _quadrilCtrl,
@@ -1016,7 +1019,7 @@ class _EvaluationFormScreenState extends State<EvaluationFormScreen> {
                     spacing: 8,
                     runSpacing: 4,
                     children: [
-                      const _SectionHeader(
+                      const SectionHeader(
                         title: 'MEMBROS E DETALHES',
                         bottomPadding: 0,
                       ),
@@ -1061,7 +1064,7 @@ class _EvaluationFormScreenState extends State<EvaluationFormScreen> {
                     clipBehavior: Clip.antiAlias,
                     child: Column(
                       children: [
-                        _MeasureInputRow(
+                        MeasureInputRow(
                           label: 'Abdômen',
                           subtitle: 'Linha da cicatriz umbilical',
                           controller: _abdomenCtrl,
@@ -1075,7 +1078,7 @@ class _EvaluationFormScreenState extends State<EvaluationFormScreen> {
                         ),
                         if (profile?.sexo == Sexo.M) ...[
                           const Divider(indent: 16, height: 1),
-                          _MeasureInputRow(
+                          MeasureInputRow(
                             label: 'Quadril',
                             subtitle: 'Usado no RCQ e BAI',
                             controller: _quadrilCtrl,
@@ -1089,7 +1092,7 @@ class _EvaluationFormScreenState extends State<EvaluationFormScreen> {
                           ),
                         ],
                         const Divider(indent: 16, height: 1),
-                        _MeasureInputRow(
+                        MeasureInputRow(
                           label: 'Braço',
                           subtitle: 'Ponto médio do bíceps',
                           controller: _bracoCtrl,
@@ -1102,7 +1105,7 @@ class _EvaluationFormScreenState extends State<EvaluationFormScreen> {
                           onChanged: (_) => setState(() {}),
                         ),
                         const Divider(indent: 16, height: 1),
-                        _MeasureInputRow(
+                        MeasureInputRow(
                           label: 'Coxa',
                           subtitle: 'Ponto médio do quadríceps',
                           controller: _coxaCtrl,
@@ -1115,7 +1118,7 @@ class _EvaluationFormScreenState extends State<EvaluationFormScreen> {
                           onChanged: (_) => setState(() {}),
                         ),
                         const Divider(indent: 16, height: 1),
-                        _MeasureInputRow(
+                        MeasureInputRow(
                           label: 'Panturrilha',
                           subtitle: 'Maior circunferência',
                           controller: _panturrilhaCtrl,
@@ -1135,7 +1138,7 @@ class _EvaluationFormScreenState extends State<EvaluationFormScreen> {
                   // Card de Prévia em Tempo Real
                   if (livePreview != null) ...[
                     const SizedBox(height: 16),
-                    _LivePreviewCard(
+                    LivePreviewCard(
                       calculos: livePreview,
                       sexo: profile?.sexo ?? Sexo.M,
                       hasPescoco: _parseField(_pescocoCtrl) != null,
@@ -1146,7 +1149,7 @@ class _EvaluationFormScreenState extends State<EvaluationFormScreen> {
                   const SizedBox(height: 24),
 
                   // Seção 2: Metabolismo e Metas
-                  const _SectionHeader(title: 'METABOLISMO E METAS'),
+                  const SectionHeader(title: 'METABOLISMO E METAS'),
                   Material(
                     color: isDark ? AppColors.darkSurface : Colors.white,
                     shape: RoundedRectangleBorder(
@@ -1319,7 +1322,7 @@ class _EvaluationFormScreenState extends State<EvaluationFormScreen> {
                     child: Row(
                       children: [
                         Expanded(
-                          child: _PhotoUploaderSlot(
+                          child: PhotoUploaderSlot(
                             label: 'Frente',
                             photoBase64: _fotoFrente,
                             onSelect: () => _promptPhotoSource(FotoTipo.frente),
@@ -1328,7 +1331,7 @@ class _EvaluationFormScreenState extends State<EvaluationFormScreen> {
                         ),
                         const SizedBox(width: 12),
                         Expanded(
-                          child: _PhotoUploaderSlot(
+                          child: PhotoUploaderSlot(
                             label: 'Lado',
                             photoBase64: _fotoLado,
                             onSelect: () => _promptPhotoSource(FotoTipo.lado),
@@ -1337,7 +1340,7 @@ class _EvaluationFormScreenState extends State<EvaluationFormScreen> {
                         ),
                         const SizedBox(width: 12),
                         Expanded(
-                          child: _PhotoUploaderSlot(
+                          child: PhotoUploaderSlot(
                             label: 'Costas',
                             photoBase64: _fotoCostas,
                             onSelect: () => _promptPhotoSource(FotoTipo.costas),
@@ -1390,445 +1393,4 @@ class _EvaluationFormScreenState extends State<EvaluationFormScreen> {
     ),
   );
 }
-}
-
-class _LivePreviewCard extends StatelessWidget {
-  final CalculosSnapshot calculos;
-  final Sexo sexo;
-  final bool hasPescoco;
-  final bool hasQuadril;
-
-  const _LivePreviewCard({
-    required this.calculos,
-    required this.sexo,
-    required this.hasPescoco,
-    required this.hasQuadril,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final imc = calculos.imc;
-    final bfNavy = calculos.bfNavy;
-    final bfRfm = calculos.bfRfm;
-    final bfPrinc = calculos.bfPrincipal;
-    final metodoLabel = calculos.metodoPrincipalLabel;
-    final lbm = calculos.lbmFinal;
-    final metaKcal = calculos.macros.targetCalories;
-
-    final missingNavyField =
-        !hasPescoco || (sexo == Sexo.F && !hasQuadril);
-
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: AppColors.indigoPrimary.withValues(alpha: isDark ? 0.14 : 0.06),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: AppColors.indigoPrimary.withValues(alpha: 0.25),
-        ),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              const Icon(
-                Icons.auto_graph_rounded,
-                size: 16,
-                color: AppColors.indigoPrimary,
-              ),
-              const SizedBox(width: 6),
-              Text(
-                'PRÉVIA EM TEMPO REAL',
-                style: TextStyle(
-                  fontSize: 11,
-                  fontWeight: FontWeight.w700,
-                  letterSpacing: 0.6,
-                  color: isDark
-                      ? AppColors.indigoLight
-                      : AppColors.indigoPrimary,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 10),
-          Wrap(
-            spacing: 16,
-            runSpacing: 8,
-            children: [
-              _PreviewMetric(
-                label: 'IMC',
-                value: imc > 0 ? imc.toStringAsFixed(1) : '--',
-              ),
-              _PreviewMetric(
-                label: 'BF% ($metodoLabel)',
-                value: bfPrinc > 0 ? '${bfPrinc.toStringAsFixed(1)}%' : '--',
-              ),
-              if (bfNavy > 0 && metodoLabel != 'US Navy')
-                _PreviewMetric(
-                  label: 'BF% (Navy)',
-                  value: '${bfNavy.toStringAsFixed(1)}%',
-                ),
-              if (bfRfm > 0 && metodoLabel != 'RFM')
-                _PreviewMetric(
-                  label: 'BF% (RFM)',
-                  value: '${bfRfm.toStringAsFixed(1)}%',
-                ),
-              _PreviewMetric(
-                label: 'Massa Magra',
-                value: lbm > 0 ? '${lbm.toStringAsFixed(1)}kg' : '--',
-              ),
-              _PreviewMetric(
-                label: 'Meta',
-                value: metaKcal > 0 ? '${metaKcal.toStringAsFixed(0)}kcal' : '--',
-              ),
-            ],
-          ),
-          if (missingNavyField) ...[
-            const SizedBox(height: 8),
-            Text(
-              sexo == Sexo.F
-                  ? '💡 Dica: Preencha Pescoço e Quadril para calcular também o % de Gordura US Navy.'
-                  : '💡 Dica: Preencha o Pescoço para calcular também o % de Gordura US Navy.',
-              style: TextStyle(
-                fontSize: 11.5,
-                color: isDark
-                    ? AppColors.darkTextSecondary
-                    : const Color(0xFF475569),
-              ),
-            ),
-          ],
-        ],
-      ),
-    );
-  }
-}
-
-class _PreviewMetric extends StatelessWidget {
-  final String label;
-  final String value;
-
-  const _PreviewMetric({required this.label, required this.value});
-
-  @override
-  Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          label,
-          style: TextStyle(
-            fontSize: 10.5,
-            color: isDark
-                ? AppColors.darkTextSecondary
-                : const Color(0xFF64748B),
-          ),
-        ),
-        const SizedBox(height: 2),
-        Text(
-          value,
-          style: TextStyle(
-            fontSize: 13.5,
-            fontWeight: FontWeight.bold,
-            color: isDark
-                ? AppColors.darkTextPrimary
-                : const Color(0xFF0F172A),
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class _SectionHeader extends StatelessWidget {
-  final String title;
-  final double bottomPadding;
-
-  const _SectionHeader({
-    required this.title,
-    this.bottomPadding = 8,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    return Padding(
-      padding: EdgeInsets.only(left: 14, bottom: bottomPadding),
-      child: Text(
-        title,
-        style: TextStyle(
-          fontSize: 12.5,
-          fontWeight: FontWeight.w600,
-          letterSpacing: 0.8,
-          color: isDark
-              ? AppColors.darkTextSecondary
-              : AppColors.lightTextSecondary,
-        ),
-      ),
-    );
-  }
-}
-
-class _MeasureInputRow extends StatelessWidget {
-  final String label;
-  final String? subtitle;
-  final String? warningText;
-  final TextEditingController controller;
-  final String unit;
-  final bool requiredField;
-  final String hintText;
-  final TextInputAction textInputAction;
-  final ValueChanged<String> onChanged;
-
-  const _MeasureInputRow({
-    required this.label,
-    this.subtitle,
-    this.warningText,
-    required this.controller,
-    required this.unit,
-    this.requiredField = false,
-    this.hintText = '0.0',
-    this.textInputAction = TextInputAction.next,
-    required this.onChanged,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-
-    return Container(
-      constraints: const BoxConstraints(minHeight: 48),
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 5),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Expanded(
-                flex: 5,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Flexible(
-                          child: Text(
-                            label,
-                            overflow: TextOverflow.ellipsis,
-                            style: TextStyle(
-                              fontSize: 16.5,
-                              color: isDark
-                                  ? AppColors.darkTextPrimary
-                                  : AppColors.lightTextPrimary,
-                            ),
-                          ),
-                        ),
-                        if (requiredField) ...[
-                          const SizedBox(width: 4),
-                          const Text(
-                            '*',
-                            style: TextStyle(
-                              color: AppColors.rose,
-                              fontSize: 16.5,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ],
-                      ],
-                    ),
-                    if (subtitle != null)
-                      Text(
-                        subtitle!,
-                        style: TextStyle(
-                          fontSize: 11,
-                          color: isDark
-                              ? AppColors.darkTextSecondary
-                              : const Color(0xFF94A3B8),
-                        ),
-                      ),
-                  ],
-                ),
-              ),
-              Expanded(
-                flex: 4,
-                child: TextField(
-                  key: ValueKey('input_$label'),
-                  controller: controller,
-                  textInputAction: textInputAction,
-                  keyboardType:
-                      const TextInputType.numberWithOptions(decimal: true),
-                  textAlign: TextAlign.right,
-                  style: TextStyle(
-                    fontSize: 16.5,
-                    color: isDark
-                        ? AppColors.darkTextPrimary
-                        : AppColors.lightTextPrimary,
-                  ),
-                  decoration: InputDecoration(
-                    hintText: hintText,
-                    hintStyle: TextStyle(
-                      fontSize: 14,
-                      color: isDark
-                          ? const Color(0xFF475569)
-                          : const Color(0xFF94A3B8),
-                    ),
-                    border: InputBorder.none,
-                    isDense: true,
-                  ),
-                  onChanged: onChanged,
-                ),
-              ),
-              const SizedBox(width: 6),
-              Text(
-                unit,
-                style: TextStyle(
-                  fontSize: 16,
-                  color: isDark
-                      ? AppColors.darkTextSecondary
-                      : const Color(0xFF94A3B8),
-                ),
-              ),
-            ],
-          ),
-          if (warningText != null)
-            Padding(
-              padding: const EdgeInsets.only(top: 2, bottom: 2),
-              child: Row(
-                children: [
-                  const Icon(
-                    Icons.info_outline_rounded,
-                    size: 13,
-                    color: Color(0xFFD97706),
-                  ),
-                  const SizedBox(width: 4),
-                  Expanded(
-                    child: Text(
-                      warningText!,
-                      style: const TextStyle(
-                        fontSize: 11,
-                        color: Color(0xFFD97706),
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-        ],
-      ),
-    );
-  }
-}
-
-class _PhotoUploaderSlot extends StatelessWidget {
-  final String label;
-  final String? photoBase64;
-  final VoidCallback onSelect;
-  final VoidCallback onClear;
-
-  const _PhotoUploaderSlot({
-    required this.label,
-    required this.photoBase64,
-    required this.onSelect,
-    required this.onClear,
-  });
-
-  Uint8List? _decodePhoto(String? raw) {
-    if (raw == null || raw.isEmpty) return null;
-    try {
-      if (!raw.startsWith('data:') && raw.length < 500) {
-        final file = File(raw);
-        if (file.existsSync()) {
-          return file.readAsBytesSync();
-        }
-      }
-      final clean = raw.contains(',') ? raw.split(',').last : raw;
-      return base64Decode(clean);
-    } catch (_) {
-      return null;
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final bytes = _decodePhoto(photoBase64);
-
-    return Column(
-      children: [
-        Text(
-          label,
-          style: TextStyle(
-            fontSize: 12,
-            fontWeight: FontWeight.w500,
-            color: isDark
-                ? AppColors.darkTextSecondary
-                : AppColors.lightTextSecondary,
-          ),
-        ),
-        const SizedBox(height: 8),
-        AspectRatio(
-          aspectRatio: 3 / 4,
-          child: InkWell(
-            onTap: bytes != null ? onClear : onSelect,
-            borderRadius: BorderRadius.circular(12),
-            child: Container(
-              decoration: BoxDecoration(
-                color: isDark ? AppColors.darkBackground : Colors.white,
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(
-                  color: isDark
-                      ? AppColors.darkBorder
-                      : const Color(0xFFE2E8F0),
-                  width: 1.5,
-                ),
-              ),
-              clipBehavior: Clip.antiAlias,
-              child: bytes != null
-                  ? Stack(
-                      fit: StackFit.expand,
-                      children: [
-                        Image.memory(
-                          bytes,
-                          fit: BoxFit.cover,
-                          gaplessPlayback: true,
-                        ),
-                        Positioned(
-                          right: 6,
-                          top: 6,
-                          child: Container(
-                            padding: const EdgeInsets.all(4),
-                            decoration: BoxDecoration(
-                              color: Colors.black.withValues(alpha: 0.65),
-                              shape: BoxShape.circle,
-                            ),
-                            child: const Icon(
-                              Icons.close_rounded,
-                              size: 16,
-                              color: Colors.white,
-                            ),
-                          ),
-                        ),
-                      ],
-                    )
-                  : Center(
-                      child: Icon(
-                        Icons.add_a_photo_outlined,
-                        size: 26,
-                        color: isDark
-                            ? const Color(0xFF475569)
-                            : const Color(0xFFCBD5E1),
-                      ),
-                    ),
-            ),
-          ),
-        ),
-      ],
-    );
-  }
 }

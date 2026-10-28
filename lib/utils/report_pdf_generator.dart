@@ -126,7 +126,7 @@ class ReportPdfGenerator {
             pw.SizedBox(height: 4),
             pw.Text(
               value,
-              style: pw.TextStyle(
+              style: const pw.TextStyle(
                 fontSize: 18,
                 fontWeight: pw.FontWeight.bold,
                 color: blue900,
@@ -148,7 +148,7 @@ class ReportPdfGenerator {
         ),
         child: pw.Text(
           text,
-          style: pw.TextStyle(
+          style: const pw.TextStyle(
             fontSize: 13,
             fontWeight: pw.FontWeight.bold,
             color: slate700,
@@ -183,7 +183,7 @@ class ReportPdfGenerator {
                       children: [
                         pw.Text(
                           'Autoavaliação Corporal',
-                          style: pw.TextStyle(
+                          style: const pw.TextStyle(
                             fontSize: 22,
                             fontWeight: pw.FontWeight.bold,
                             color: slate800,
@@ -212,7 +212,7 @@ class ReportPdfGenerator {
                         pw.SizedBox(height: 2),
                         pw.Text(
                           dataAvaliacaoStr,
-                          style: pw.TextStyle(
+                          style: const pw.TextStyle(
                             fontSize: 11,
                             fontWeight: pw.FontWeight.bold,
                             color: slate900,
@@ -310,7 +310,7 @@ class ReportPdfGenerator {
                     children: [
                       pw.Text(
                         'Sugestão de Macronutrientes Diários:',
-                        style: pw.TextStyle(
+                        style: const pw.TextStyle(
                           fontSize: 10,
                           fontWeight: pw.FontWeight.bold,
                           color: slate700,

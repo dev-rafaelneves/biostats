@@ -87,18 +87,17 @@ class AppState extends ChangeNotifier {
   int get remainingLockoutSeconds =>
       SecurityService.getRemainingLockoutSeconds(_lockoutUntil);
 
-  List<Avaliacao> get avaliacoes {
-    final sorted = [..._avaliacoes]
-      ..sort((a, b) => b.dataAvaliacao.compareTo(a.dataAvaliacao));
-    return sorted;
-  }
-
+  List<Avaliacao> get avaliacoes => List.unmodifiable(_avaliacoes);
   List<Resultados> get resultados => List.unmodifiable(_resultados);
   List<FotoAvaliacao> get fotos => List.unmodifiable(_fotos);
+  List<Pesagem> get pesagens => List.unmodifiable(_pesagens);
 
-  List<Pesagem> get pesagens {
-    final sorted = [..._pesagens]..sort((a, b) => a.data.compareTo(b.data));
-    return sorted;
+  void _sortAvaliacoes() {
+    _avaliacoes.sort((a, b) => b.dataAvaliacao.compareTo(a.dataAvaliacao));
+  }
+
+  void _sortPesagens() {
+    _pesagens.sort((a, b) => a.data.compareTo(b.data));
   }
 
   /// Retorna todas as avaliações unidas aos seus resultados em O(1) por item
@@ -265,6 +264,9 @@ class AppState extends ChangeNotifier {
       }
     }
 
+    _sortAvaliacoes();
+    _sortPesagens();
+
     _rebuildResultadosIndex();
 
     // 5. Auto-recalcula resultados com versão antiga (calcVersion < 2) com fórmulas científicas
@@ -353,6 +355,9 @@ class AppState extends ChangeNotifier {
         await DatabaseService.upsertPesagem(p);
       }
       _pesagens = legacyPesagens;
+
+      _sortAvaliacoes();
+      _sortPesagens();
 
       // 6. Settings
       await DatabaseService.setSetting(_keyThemeMode, _themeMode == ThemeMode.dark ? 'dark' : 'light');
@@ -663,6 +668,7 @@ class AppState extends ChangeNotifier {
     }
 
     _avaliacoes.add(avaliacao);
+    _sortAvaliacoes();
     _resultados.add(resultado);
     _resultadosByAvaliacaoId[avaliacao.id] = resultado;
     if (processedFotos.isNotEmpty) {
@@ -686,6 +692,7 @@ class AppState extends ChangeNotifier {
         data: avaliacao.dataAvaliacao,
         pesoKg: avaliacao.pesoKg,
       );
+      _sortPesagens();
       try {
         await DatabaseService.upsertPesagem(pesagem);
       } catch (_) {}
@@ -723,6 +730,7 @@ class AppState extends ChangeNotifier {
     } else {
       _avaliacoes.add(avaliacao);
     }
+    _sortAvaliacoes();
 
     _resultados.removeWhere((r) => r.avaliacaoId == avaliacao.id);
     _resultados.add(resultado);
@@ -758,6 +766,7 @@ class AppState extends ChangeNotifier {
         data: avaliacao.dataAvaliacao,
         pesoKg: avaliacao.pesoKg,
       );
+      _sortPesagens();
       try {
         await DatabaseService.upsertPesagem(pesagem);
       } catch (_) {}
@@ -831,6 +840,7 @@ class AppState extends ChangeNotifier {
       );
       _pesagens.add(toSave);
     }
+    _sortPesagens();
 
     try {
       await DatabaseService.upsertPesagem(toSave);
@@ -1041,6 +1051,9 @@ class AppState extends ChangeNotifier {
       }
       _pesagens = pesMap.values.toList();
     }
+
+    _sortAvaliacoes();
+    _sortPesagens();
 
     _rebuildResultadosIndex();
     notifyListeners();

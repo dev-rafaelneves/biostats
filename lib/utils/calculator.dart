@@ -1,6 +1,18 @@
 import 'dart:math' as math;
 import '../models/models.dart';
 
+double _numToDouble(dynamic val) {
+  if (val is num) return val.toDouble();
+  if (val is String) return double.tryParse(val) ?? 0.0;
+  return 0.0;
+}
+
+int _numToInt(dynamic val) {
+  if (val is num) return val.toInt();
+  if (val is String) return int.tryParse(val) ?? 0;
+  return 0;
+}
+
 class IbwResult {
   final double devine;
   final double robinson;
@@ -22,10 +34,10 @@ class IbwResult {
       };
 
   factory IbwResult.fromJson(Map<String, dynamic> json) => IbwResult(
-        devine: (json['devine'] as num?)?.toDouble() ?? 0.0,
-        robinson: (json['robinson'] as num?)?.toDouble() ?? 0.0,
-        miller: (json['miller'] as num?)?.toDouble() ?? 0.0,
-        hamwi: (json['hamwi'] as num?)?.toDouble() ?? 0.0,
+        devine: _numToDouble(json['devine']),
+        robinson: _numToDouble(json['robinson']),
+        miller: _numToDouble(json['miller']),
+        hamwi: _numToDouble(json['hamwi']),
       );
 }
 
@@ -47,9 +59,9 @@ class MacroSplit {
       };
 
   factory MacroSplit.fromJson(Map<String, dynamic> json) => MacroSplit(
-        protein: (json['protein'] as num?)?.toInt() ?? 0,
-        carbs: (json['carbs'] as num?)?.toInt() ?? 0,
-        fat: (json['fat'] as num?)?.toInt() ?? 0,
+        protein: _numToInt(json['protein']),
+        carbs: _numToInt(json['carbs']),
+        fat: _numToInt(json['fat']),
       );
 }
 
@@ -72,7 +84,7 @@ class MacrosAndGoalsResult {
 
   factory MacrosAndGoalsResult.fromJson(Map<String, dynamic> json) =>
       MacrosAndGoalsResult(
-        targetCalories: (json['targetCalories'] as num?)?.toDouble() ?? 0.0,
+        targetCalories: _numToDouble(json['targetCalories']),
         macros: json['macros'] != null
             ? MacroSplit.fromJson(
                 Map<String, dynamic>.from(json['macros'] as Map))
@@ -160,12 +172,12 @@ class CalculosSnapshot {
       };
 
   factory CalculosSnapshot.fromJson(Map<String, dynamic> json) {
-    final bfNavy = (json['bfNavy'] as num?)?.toDouble() ?? 0.0;
-    final bfRfm = (json['bfRfm'] as num?)?.toDouble() ?? 0.0;
-    final bfDeur = (json['bfDeurenberg'] as num?)?.toDouble() ?? 0.0;
+    final bfNavy = _numToDouble(json['bfNavy']);
+    final bfRfm = _numToDouble(json['bfRfm']);
+    final bfDeur = _numToDouble(json['bfDeurenberg']);
 
     String metodo = (json['metodoPrincipal'] as String?) ?? '';
-    double bfPrinc = (json['bfPrincipal'] as num?)?.toDouble() ?? 0.0;
+    double bfPrinc = _numToDouble(json['bfPrincipal']);
 
     if (bfPrinc <= 0) {
       if (bfNavy > 0) {
@@ -188,8 +200,10 @@ class CalculosSnapshot {
           : (bfRfm > 0 ? 'rfm' : (bfDeur > 0 ? 'deurenberg' : 'none'));
     }
 
-    final lbmBoer = (json['lbmBoer'] as num?)?.toDouble() ?? 0.0;
-    final lbmFinal = (json['lbmFinal'] as num?)?.toDouble() ?? lbmBoer;
+    final lbmBoer = _numToDouble(json['lbmBoer']);
+    final lbmFinal = json['lbmFinal'] != null
+        ? _numToDouble(json['lbmFinal'])
+        : lbmBoer;
 
     final ibwRaw = json['ibw'];
     final ibw = ibwRaw is Map<String, dynamic>
@@ -211,9 +225,9 @@ class CalculosSnapshot {
               ));
 
     return CalculosSnapshot(
-      imc: (json['imc'] as num?)?.toDouble() ?? 0.0,
-      rcq: (json['rcq'] as num?)?.toDouble() ?? 0.0,
-      rcEst: (json['rcEst'] as num?)?.toDouble() ?? 0.0,
+      imc: _numToDouble(json['imc']),
+      rcq: _numToDouble(json['rcq']),
+      rcEst: _numToDouble(json['rcEst']),
       bfNavy: bfNavy,
       bfRfm: bfRfm,
       bfDeurenberg: bfDeur,
@@ -221,14 +235,16 @@ class CalculosSnapshot {
       metodoPrincipal: metodo,
       lbmBoer: lbmBoer,
       lbmFinal: lbmFinal,
-      bmrKatch: (json['bmrKatch'] as num?)?.toDouble() ?? 0.0,
-      tdee: (json['tdee'] as num?)?.toDouble() ?? 0.0,
+      bmrKatch: _numToDouble(json['bmrKatch']),
+      tdee: _numToDouble(json['tdee']),
       ibw: ibw,
       macros: macros,
-      bai: (json['bai'] as num?)?.toDouble() ?? 0.0,
-      bri: (json['bri'] as num?)?.toDouble() ?? 0.0,
-      ci: (json['ci'] as num?)?.toDouble() ?? 0.0,
-      calcVersion: (json['calcVersion'] as num?)?.toInt() ?? 1,
+      bai: _numToDouble(json['bai']),
+      bri: _numToDouble(json['bri']),
+      ci: _numToDouble(json['ci']),
+      calcVersion: json['calcVersion'] != null
+          ? _numToInt(json['calcVersion'])
+          : 1,
     );
   }
 }

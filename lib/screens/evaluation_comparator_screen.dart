@@ -4,6 +4,12 @@ import 'package:intl/intl.dart';
 import '../models/models.dart';
 import '../services/app_state.dart';
 import '../theme/app_theme.dart';
+import 'evaluation_comparator/comparison_section_card.dart';
+import 'evaluation_comparator/evaluation_selector_chip.dart';
+import 'evaluation_comparator/fractional_horizontal_clipper.dart';
+import 'evaluation_comparator/photos_comparison_tab.dart';
+import 'evaluation_comparator/summary_metric_pill.dart';
+import 'evaluation_comparator/tab_button.dart';
 
 class EvaluationComparatorScreen extends StatefulWidget {
   final AppState appState;
@@ -286,7 +292,7 @@ class _EvaluationComparatorScreenState
                                 ),
                               if (bytesA != null)
                                 ClipRect(
-                                  clipper: _FractionalHorizontalClipper(
+                                  clipper: FractionalHorizontalClipper(
                                     fraction: hasBoth ? modalSlider : 1.0,
                                   ),
                                   child: Image.memory(
@@ -572,7 +578,7 @@ class _EvaluationComparatorScreenState
                         Row(
                           children: [
                             Expanded(
-                              child: _EvaluationSelectorChip(
+                              child: EvaluationSelectorChip(
                                 key: const ValueKey('selector_base_a'),
                                 label: 'MARCO BASE (A)',
                                 dateStr: dateAStr,
@@ -599,7 +605,7 @@ class _EvaluationComparatorScreenState
                               ),
                             ),
                             Expanded(
-                              child: _EvaluationSelectorChip(
+                              child: EvaluationSelectorChip(
                                 key: const ValueKey('selector_compare_b'),
                                 label: 'COMPARAÇÃO (B)',
                                 dateStr: dateBStr,
@@ -724,7 +730,7 @@ class _EvaluationComparatorScreenState
                       Row(
                         children: [
                           Expanded(
-                            child: _SummaryMetricPill(
+                            child: SummaryMetricPill(
                               label: 'Peso',
                               value:
                                   '${deltaPeso >= 0 ? "+" : ""}${deltaPeso.toStringAsFixed(1)} kg',
@@ -737,7 +743,7 @@ class _EvaluationComparatorScreenState
                           ),
                           const SizedBox(width: 8),
                           Expanded(
-                            child: _SummaryMetricPill(
+                            child: SummaryMetricPill(
                               label: 'Gordura (BF)',
                               value: deltaBf != null
                                   ? '${deltaBf >= 0 ? "+" : ""}${deltaBf.toStringAsFixed(1)}%'
@@ -751,7 +757,7 @@ class _EvaluationComparatorScreenState
                           ),
                           const SizedBox(width: 8),
                           Expanded(
-                            child: _SummaryMetricPill(
+                            child: SummaryMetricPill(
                               label: 'Massa Magra',
                               value: deltaLean != null
                                   ? '${deltaLean >= 0 ? "+" : ""}${deltaLean.toStringAsFixed(1)} kg'
@@ -819,7 +825,7 @@ class _EvaluationComparatorScreenState
                   child: Row(
                     children: [
                       Expanded(
-                        child: _TabButton(
+                        child: TabButton(
                           label: 'Métricas & Medidas',
                           icon: Icons.table_chart_rounded,
                           isSelected: _tabIndex == 0,
@@ -830,7 +836,7 @@ class _EvaluationComparatorScreenState
                         ),
                       ),
                       Expanded(
-                        child: _TabButton(
+                        child: TabButton(
                           label: 'Fotos Lado a Lado',
                           icon: Icons.photo_library_outlined,
                           isSelected: _tabIndex == 1,
@@ -848,14 +854,14 @@ class _EvaluationComparatorScreenState
                 // 4. Conteúdo da Aba Selecionada
                 if (_tabIndex == 0) ...[
                   // Seção A: Composição Corporal
-                  _ComparisonSectionCard(
+                  ComparisonSectionCard(
                     title: 'COMPOSIÇÃO CORPORAL',
                     icon: Icons.pie_chart_outline_rounded,
                     isDark: isDark,
                     dateAStr: dateAStr,
                     dateBStr: dateBStr,
                     rows: [
-                      _ComparisonRowData(
+                      ComparisonRowData(
                         label: 'Peso Corporal',
                         valA: '${pesoA.toStringAsFixed(1)} kg',
                         valB: '${pesoB.toStringAsFixed(1)} kg',
@@ -865,7 +871,7 @@ class _EvaluationComparatorScreenState
                         isPositiveGood: false,
                       ),
                       if (bfA > 0 || bfB > 0)
-                        _ComparisonRowData(
+                        ComparisonRowData(
                           label: 'Percentual de Gordura',
                           valA: bfA > 0 ? '${bfA.toStringAsFixed(1)}%' : '--',
                           valB: bfB > 0 ? '${bfB.toStringAsFixed(1)}%' : '--',
@@ -876,7 +882,7 @@ class _EvaluationComparatorScreenState
                           isPositiveGood: false,
                         ),
                       if (leanA != null || leanB != null)
-                        _ComparisonRowData(
+                        ComparisonRowData(
                           label: 'Massa Magra Estimada',
                           valA: leanA != null
                               ? '${leanA.toStringAsFixed(1)} kg'
@@ -891,7 +897,7 @@ class _EvaluationComparatorScreenState
                           isPositiveGood: true,
                         ),
                       if (fatA != null || fatB != null)
-                        _ComparisonRowData(
+                        ComparisonRowData(
                           label: 'Massa Gorda Estimada',
                           valA: fatA != null
                               ? '${fatA.toStringAsFixed(1)} kg'
@@ -905,7 +911,7 @@ class _EvaluationComparatorScreenState
                               : null,
                           isPositiveGood: false,
                         ),
-                      _ComparisonRowData(
+                      ComparisonRowData(
                         label: 'Índice IMC',
                         valA: (evalA.resultado?.snapshot.imc ?? 0.0)
                             .toStringAsFixed(1),
@@ -920,7 +926,7 @@ class _EvaluationComparatorScreenState
                   const SizedBox(height: 16),
 
                   // Seção B: Circunferências Corporais (Fita Métrica)
-                  _ComparisonSectionCard(
+                  ComparisonSectionCard(
                     title: 'CIRCUNFERÊNCIAS CORPORAIS (cm)',
                     icon: Icons.straighten_rounded,
                     isDark: isDark,
@@ -969,12 +975,12 @@ class _EvaluationComparatorScreenState
                         evalB.avaliacao.medidas.panturrilha,
                         isPositiveGood: true,
                       ),
-                    ].whereType<_ComparisonRowData>().toList(),
+                    ].whereType<ComparisonRowData>().toList(),
                   ),
                   const SizedBox(height: 16),
 
                   // Seção C: Risco Metabólico & Saúde
-                  _ComparisonSectionCard(
+                  ComparisonSectionCard(
                     title: 'ÍNDICES CLÍNICOS E RISCO',
                     icon: Icons.health_and_safety_outlined,
                     isDark: isDark,
@@ -1005,11 +1011,11 @@ class _EvaluationComparatorScreenState
                         evalB.resultado?.snapshot.ci,
                         isPositiveGood: false,
                       ),
-                    ].whereType<_ComparisonRowData>().toList(),
+                    ].whereType<ComparisonRowData>().toList(),
                   ),
                 ] else ...[
                   // 5. Comparativo Fotográfico Lado a Lado
-                  _PhotosComparisonTab(
+                  PhotosComparisonTab(
                     appState: widget.appState,
                     evalA: evalA,
                     evalB: evalB,
@@ -1040,7 +1046,7 @@ class _EvaluationComparatorScreenState
     );
   }
 
-  _ComparisonRowData? _buildCircunferenciaRow(
+  ComparisonRowData? _buildCircunferenciaRow(
     String label,
     double? a,
     double? b, {
@@ -1050,7 +1056,7 @@ class _EvaluationComparatorScreenState
     final valA = a != null ? '${a.toStringAsFixed(1)} cm' : '--';
     final valB = b != null ? '${b.toStringAsFixed(1)} cm' : '--';
     final delta = (a != null && b != null) ? (b - a) : null;
-    return _ComparisonRowData(
+    return ComparisonRowData(
       label: label,
       valA: valA,
       valB: valB,
@@ -1062,7 +1068,7 @@ class _EvaluationComparatorScreenState
     );
   }
 
-  _ComparisonRowData? _buildCalcRow(
+  ComparisonRowData? _buildCalcRow(
     String label,
     dynamic rawA,
     dynamic rawB, {
@@ -1072,7 +1078,7 @@ class _EvaluationComparatorScreenState
     final b = (rawB as num?)?.toDouble() ?? 0.0;
     if (a <= 0 && b <= 0) return null;
     final delta = (a > 0 && b > 0) ? (b - a) : null;
-    return _ComparisonRowData(
+    return ComparisonRowData(
       label: label,
       valA: a > 0 ? a.toStringAsFixed(2) : '--',
       valB: b > 0 ? b.toStringAsFixed(2) : '--',
@@ -1084,691 +1090,6 @@ class _EvaluationComparatorScreenState
   }
 }
 
-// ==========================================
-// Subcomponentes Auxiliares
-// ==========================================
 
-class _EvaluationSelectorChip extends StatelessWidget {
-  final String label;
-  final String dateStr;
-  final double weightKg;
-  final bool isDark;
-  final Color color;
-  final VoidCallback onTap;
 
-  const _EvaluationSelectorChip({
-    super.key,
-    required this.label,
-    required this.dateStr,
-    required this.weightKg,
-    required this.isDark,
-    required this.color,
-    required this.onTap,
-  });
 
-  @override
-  Widget build(BuildContext context) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(12),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-        decoration: BoxDecoration(
-          color: color.withValues(alpha: 0.08),
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: color.withValues(alpha: 0.3)),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Container(
-                  width: 6,
-                  height: 6,
-                  decoration: BoxDecoration(
-                    color: color,
-                    shape: BoxShape.circle,
-                  ),
-                ),
-                const SizedBox(width: 5),
-                Expanded(
-                  child: Text(
-                    label,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      fontSize: 9.5,
-                      fontWeight: FontWeight.w700,
-                      letterSpacing: 0.5,
-                      color: color,
-                    ),
-                  ),
-                ),
-                const Icon(Icons.arrow_drop_down_rounded, size: 18),
-              ],
-            ),
-            const SizedBox(height: 4),
-            Text(
-              dateStr,
-              style: TextStyle(
-                fontSize: 14.5,
-                fontWeight: FontWeight.bold,
-                color: isDark
-                    ? AppColors.darkTextPrimary
-                    : AppColors.lightTextPrimary,
-              ),
-            ),
-            Text(
-              '${weightKg.toStringAsFixed(1)} kg',
-              style: TextStyle(
-                fontSize: 12,
-                color: isDark
-                    ? AppColors.darkTextSecondary
-                    : const Color(0xFF64748B),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _SummaryMetricPill extends StatelessWidget {
-  final String label;
-  final String value;
-  final String? subText;
-  final bool isPositiveGood;
-  final double delta;
-
-  const _SummaryMetricPill({
-    required this.label,
-    required this.value,
-    this.subText,
-    required this.isPositiveGood,
-    required this.delta,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final isZero = delta.abs() < 0.01;
-    final isGood = isZero ? null : (isPositiveGood ? delta > 0 : delta < 0);
-    final color = isZero
-        ? Colors.white70
-        : (isGood == true
-            ? const Color(0xFF34D399) // emerald-400
-            : const Color(0xFFFB7185)); // rose-400
-
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-      decoration: BoxDecoration(
-        color: const Color(0xFF334155).withValues(alpha: 0.5),
-        borderRadius: BorderRadius.circular(10),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            label,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: const TextStyle(
-              fontSize: 10.5,
-              fontWeight: FontWeight.w600,
-              color: Color(0xFF94A3B8),
-            ),
-          ),
-          const SizedBox(height: 2),
-          Text(
-            value,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: TextStyle(
-              fontSize: 14.5,
-              fontWeight: FontWeight.w800,
-              color: color,
-            ),
-          ),
-          if (subText != null)
-            Text(
-              subText!,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: const TextStyle(
-                fontSize: 10,
-                color: Color(0xFF94A3B8),
-              ),
-            ),
-        ],
-      ),
-    );
-  }
-}
-
-class _TabButton extends StatelessWidget {
-  final String label;
-  final IconData icon;
-  final bool isSelected;
-  final VoidCallback onTap;
-
-  const _TabButton({
-    required this.label,
-    required this.icon,
-    required this.isSelected,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(11),
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 10),
-        decoration: BoxDecoration(
-          color: isSelected
-              ? (isDark ? AppColors.indigoLight : AppColors.indigoPrimary)
-              : Colors.transparent,
-          borderRadius: BorderRadius.circular(11),
-        ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              icon,
-              size: 17,
-              color: isSelected
-                  ? Colors.white
-                  : (isDark
-                      ? AppColors.darkTextSecondary
-                      : const Color(0xFF64748B)),
-            ),
-            const SizedBox(width: 6),
-            Flexible(
-              child: Text(
-                label,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(
-                  fontSize: 13,
-                  fontWeight: isSelected ? FontWeight.w700 : FontWeight.w600,
-                  color: isSelected
-                      ? Colors.white
-                      : (isDark
-                          ? AppColors.darkTextSecondary
-                          : const Color(0xFF64748B)),
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _ComparisonRowData {
-  final String label;
-  final String valA;
-  final String valB;
-  final double? delta;
-  final String? deltaFormatted;
-  final bool? isPositiveGood;
-
-  _ComparisonRowData({
-    required this.label,
-    required this.valA,
-    required this.valB,
-    this.delta,
-    this.deltaFormatted,
-    this.isPositiveGood,
-  });
-}
-
-class _ComparisonSectionCard extends StatelessWidget {
-  final String title;
-  final IconData icon;
-  final bool isDark;
-  final String dateAStr;
-  final String dateBStr;
-  final List<_ComparisonRowData> rows;
-
-  const _ComparisonSectionCard({
-    required this.title,
-    required this.icon,
-    required this.isDark,
-    required this.dateAStr,
-    required this.dateBStr,
-    required this.rows,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    if (rows.isEmpty) return const SizedBox.shrink();
-
-    return Material(
-      color: isDark ? AppColors.darkSurface : Colors.white,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
-        side: BorderSide(
-          color: isDark ? AppColors.darkBorder : AppColors.lightBorder,
-        ),
-      ),
-      clipBehavior: Clip.antiAlias,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 14, 16, 10),
-            child: Row(
-              children: [
-                Icon(icon, size: 18, color: AppColors.indigoPrimary),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    title,
-                    style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w700,
-                      letterSpacing: 0.6,
-                      color: isDark
-                          ? AppColors.indigoLight
-                          : AppColors.indigoPrimary,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          // Cabeçalho da Tabela
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
-            color: isDark ? const Color(0xFF1E293B) : const Color(0xFFF8FAFC),
-            child: Row(
-              children: [
-                const Expanded(
-                  flex: 4,
-                  child: Text(
-                    'Métrica',
-                    style: TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w600,
-                      color: Color(0xFF94A3B8),
-                    ),
-                  ),
-                ),
-                Expanded(
-                  flex: 3,
-                  child: Text(
-                    dateAStr,
-                    textAlign: TextAlign.center,
-                    style: const TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w600,
-                      color: Color(0xFF94A3B8),
-                    ),
-                  ),
-                ),
-                Expanded(
-                  flex: 3,
-                  child: Text(
-                    dateBStr,
-                    textAlign: TextAlign.center,
-                    style: const TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w600,
-                      color: Color(0xFF94A3B8),
-                    ),
-                  ),
-                ),
-                const Expanded(
-                  flex: 4,
-                  child: Text(
-                    'Evolução',
-                    textAlign: TextAlign.right,
-                    style: TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w600,
-                      color: Color(0xFF94A3B8),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const Divider(height: 1),
-          ListView.separated(
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            itemCount: rows.length,
-            separatorBuilder: (_, __) => const Divider(height: 1, indent: 14),
-            itemBuilder: (ctx, idx) {
-              final r = rows[idx];
-              final delta = r.delta;
-              final isZero = delta == null || delta.abs() < 0.001;
-              final isGood = isZero || r.isPositiveGood == null
-                  ? null
-                  : (r.isPositiveGood! ? delta > 0 : delta < 0);
-
-              final Color deltaColor;
-              if (isZero || isGood == null) {
-                deltaColor = isDark
-                    ? AppColors.darkTextSecondary
-                    : const Color(0xFF64748B);
-              } else if (isGood) {
-                deltaColor = AppColors.emerald;
-              } else {
-                deltaColor = AppColors.rose;
-              }
-
-              return Padding(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                child: Row(
-                  children: [
-                    Expanded(
-                      flex: 4,
-                      child: Text(
-                        r.label,
-                        style: TextStyle(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w500,
-                          color: isDark
-                              ? AppColors.darkTextPrimary
-                              : AppColors.lightTextPrimary,
-                        ),
-                      ),
-                    ),
-                    Expanded(
-                      flex: 3,
-                      child: Text(
-                        r.valA,
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                          fontSize: 13,
-                          color: isDark
-                              ? AppColors.darkTextSecondary
-                              : const Color(0xFF475569),
-                        ),
-                      ),
-                    ),
-                    Expanded(
-                      flex: 3,
-                      child: Text(
-                        r.valB,
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w600,
-                          color: isDark
-                              ? AppColors.darkTextPrimary
-                              : AppColors.lightTextPrimary,
-                        ),
-                      ),
-                    ),
-                    Expanded(
-                      flex: 4,
-                      child: Text(
-                        r.deltaFormatted ??
-                            (delta != null
-                                ? '${delta >= 0 ? "+" : ""}${delta.toStringAsFixed(1)}'
-                                : '--'),
-                        textAlign: TextAlign.right,
-                        style: TextStyle(
-                          fontSize: 12.5,
-                          fontWeight: FontWeight.w700,
-                          color: deltaColor,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              );
-            },
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _PhotosComparisonTab extends StatelessWidget {
-  final AppState appState;
-  final JoinedEvaluation evalA;
-  final JoinedEvaluation evalB;
-  final FotoTipo selectedTipo;
-  final bool isDark;
-  final ValueChanged<FotoTipo> onSelectTipo;
-  final VoidCallback onOpenZoom;
-
-  const _PhotosComparisonTab({
-    required this.appState,
-    required this.evalA,
-    required this.evalB,
-    required this.selectedTipo,
-    required this.isDark,
-    required this.onSelectTipo,
-    required this.onOpenZoom,
-  });
-
-  Uint8List? _getPhoto(JoinedEvaluation ev) {
-    final photos = appState.getFotosForAvaliacao(ev.avaliacao.id);
-    for (final p in photos) {
-      if (p.tipo == selectedTipo) {
-        return appState.getDecodedPhotoBytes(p);
-      }
-    }
-    return null;
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final dateFmt = DateFormat('dd/MM/yyyy');
-    final dateAStr = dateFmt.format(evalA.avaliacao.dataAvaliacao);
-    final dateBStr = dateFmt.format(evalB.avaliacao.dataAvaliacao);
-
-    final bytesA = _getPhoto(evalA);
-    final bytesB = _getPhoto(evalB);
-    final hasBoth = bytesA != null && bytesB != null;
-
-    return Column(
-      children: [
-        // Seletor de Ângulo
-        SingleChildScrollView(
-          scrollDirection: Axis.horizontal,
-          child: Row(
-            children: FotoTipo.values.map((tipo) {
-              final isSel = tipo == selectedTipo;
-              return Padding(
-                padding: const EdgeInsets.only(right: 8),
-                child: ChoiceChip(
-                  label: Text(tipo.label),
-                  selected: isSel,
-                  showCheckmark: false,
-                  selectedColor: AppColors.indigoPrimary,
-                  backgroundColor:
-                      isDark ? AppColors.darkSurface : Colors.white,
-                  labelStyle: TextStyle(
-                    fontSize: 12.5,
-                    fontWeight: FontWeight.w600,
-                    color: isSel
-                        ? Colors.white
-                        : (isDark
-                            ? AppColors.darkTextSecondary
-                            : const Color(0xFF64748B)),
-                  ),
-                  onSelected: (_) => onSelectTipo(tipo),
-                ),
-              );
-            }).toList(),
-          ),
-        ),
-        const SizedBox(height: 14),
-
-        // Comparação Lado a Lado
-        Row(
-          children: [
-            Expanded(
-              child: _PhotoPreviewCard(
-                bytes: bytesA,
-                tag: 'Base (A) • $dateAStr',
-                subTag: '${evalA.avaliacao.pesoKg.toStringAsFixed(1)} kg',
-                isDark: isDark,
-              ),
-            ),
-            const SizedBox(width: 10),
-            Expanded(
-              child: _PhotoPreviewCard(
-                bytes: bytesB,
-                tag: 'Atual (B) • $dateBStr',
-                subTag: '${evalB.avaliacao.pesoKg.toStringAsFixed(1)} kg',
-                isDark: isDark,
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 16),
-
-        // Botão para Modo Tela Cheia / Slider
-        ElevatedButton.icon(
-          key: const ValueKey('btn_open_zoom_comparator'),
-          onPressed: onOpenZoom,
-          style: ElevatedButton.styleFrom(
-            backgroundColor: AppColors.indigoPrimary,
-            foregroundColor: Colors.white,
-            minimumSize: const Size.fromHeight(48),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
-            ),
-          ),
-          icon: const Icon(Icons.fullscreen_rounded, size: 20),
-          label: Text(
-            hasBoth
-                ? 'Abrir Slider Antes/Depois & Zoom 4x'
-                : 'Visualizar em Tela Cheia',
-            style: const TextStyle(fontWeight: FontWeight.w700),
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class _PhotoPreviewCard extends StatelessWidget {
-  final Uint8List? bytes;
-  final String tag;
-  final String subTag;
-  final bool isDark;
-
-  const _PhotoPreviewCard({
-    required this.bytes,
-    required this.tag,
-    required this.subTag,
-    required this.isDark,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Material(
-      color: isDark ? AppColors.darkSurface : Colors.white,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(14),
-        side: BorderSide(
-          color: isDark ? AppColors.darkBorder : AppColors.lightBorder,
-        ),
-      ),
-      clipBehavior: Clip.antiAlias,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-            color: isDark ? const Color(0xFF1E293B) : const Color(0xFFF1F5F9),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  tag,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    fontSize: 10.5,
-                    fontWeight: FontWeight.w700,
-                    color: isDark
-                        ? AppColors.darkTextPrimary
-                        : AppColors.lightTextPrimary,
-                  ),
-                ),
-                Text(
-                  subTag,
-                  style: TextStyle(
-                    fontSize: 10,
-                    color: isDark
-                        ? AppColors.darkTextSecondary
-                        : const Color(0xFF64748B),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          AspectRatio(
-            aspectRatio: 3 / 4,
-            child: bytes != null
-                ? Image.memory(
-                    bytes!,
-                    fit: BoxFit.cover,
-                    gaplessPlayback: true,
-                  )
-                : Container(
-                    color: isDark
-                        ? const Color(0xFF0F172A)
-                        : const Color(0xFFF8FAFC),
-                    child: Center(
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(
-                            Icons.no_photography_outlined,
-                            size: 28,
-                            color: isDark
-                                ? const Color(0xFF475569)
-                                : const Color(0xFFCBD5E1),
-                          ),
-                          const SizedBox(height: 6),
-                          Text(
-                            'Sem foto',
-                            style: TextStyle(
-                              fontSize: 11,
-                              color: isDark
-                                  ? const Color(0xFF64748B)
-                                  : const Color(0xFF94A3B8),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _FractionalHorizontalClipper extends CustomClipper<Rect> {
-  final double fraction;
-
-  _FractionalHorizontalClipper({required this.fraction});
-
-  @override
-  Rect getClip(Size size) {
-    return Rect.fromLTWH(0, 0, size.width * fraction, size.height);
-  }
-
-  @override
-  bool shouldReclip(_FractionalHorizontalClipper oldClipper) {
-    return oldClipper.fraction != fraction;
-  }
-}

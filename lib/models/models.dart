@@ -217,12 +217,16 @@ class Avaliacao {
       (e) => e.name == objStr,
       orElse: () => Objetivo.manutencao,
     );
+    final dateRaw = (json['data_avaliacao'] ?? json['dataAvaliacao'] ?? json['data']) as String?;
+    final date = dateRaw != null ? DateTime.tryParse(dateRaw) ?? DateTime.now() : DateTime.now();
+    final pesoRaw = (json['peso_kg'] ?? json['pesoKg'] ?? 0.0) as num;
+    final userId = (json['cliente_id'] ?? json['user_id'] ?? json['userId'] ?? '') as String;
     return Avaliacao(
-      id: json['id'] as String,
-      userId: (json['cliente_id'] ?? json['user_id'] ?? '') as String,
-      dataAvaliacao: DateTime.parse(json['data_avaliacao'] as String),
-      pesoKg: (json['peso_kg'] as num).toDouble(),
-      nivelAtividade: (json['nivel_atividade'] as num?)?.toDouble() ?? 1.2,
+      id: (json['id'] ?? '') as String,
+      userId: userId,
+      dataAvaliacao: date,
+      pesoKg: pesoRaw.toDouble(),
+      nivelAtividade: (json['nivel_atividade'] ?? json['nivelAtividade'] as num?)?.toDouble() ?? 1.2,
       objetivo: obj,
       medidas: MedidasCorporais.fromJson(
         Map<String, dynamic>.from(json['medidas'] as Map? ?? {}),
