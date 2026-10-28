@@ -361,6 +361,150 @@ class SettingsTab extends StatelessWidget {
 
                     const SizedBox(height: 20),
 
+                    // Lembretes e Rotina de Acompanhamento
+                    Material(
+                      color: isDark ? AppColors.darkSurface : Colors.white,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(14),
+                        side: BorderSide(
+                          color: isDark
+                              ? AppColors.darkBorder
+                              : AppColors.lightBorder,
+                        ),
+                      ),
+                      clipBehavior: Clip.antiAlias,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Padding(
+                            padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+                            child: Text(
+                              'Lembretes e Rotina',
+                              style: TextStyle(
+                                fontSize: 17,
+                                fontWeight: FontWeight.w600,
+                                color: isDark
+                                    ? AppColors.darkTextPrimary
+                                    : AppColors.lightTextPrimary,
+                              ),
+                            ),
+                          ),
+                          SwitchListTile.adaptive(
+                            value: appState.dailyWeightReminderEnabled,
+                            onChanged: (val) async {
+                              HapticFeedback.selectionClick();
+                              await appState.updateDailyWeightReminder(
+                                enabled: val,
+                              );
+                            },
+                            activeTrackColor: AppColors.indigoPrimary,
+                            secondary: const Icon(
+                              Icons.alarm_rounded,
+                              color: AppColors.indigoPrimary,
+                              size: 20,
+                            ),
+                            title: const Text(
+                              'Pesagem Matinal Diária',
+                              style: TextStyle(
+                                fontSize: 15.5,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                            subtitle: Text(
+                              appState.dailyWeightReminderEnabled
+                                  ? 'Ativado às ${appState.dailyWeightReminderHour.toString().padLeft(2, '0')}:${appState.dailyWeightReminderMinute.toString().padLeft(2, '0')} • Toque para mudar horário'
+                                  : 'Desativado • Notificação matinal para pesar em jejum',
+                              style: const TextStyle(fontSize: 12.5),
+                            ),
+                          ),
+                          if (appState.dailyWeightReminderEnabled)
+                            ListTile(
+                              dense: true,
+                              contentPadding:
+                                  const EdgeInsets.symmetric(horizontal: 16),
+                              leading: const SizedBox(width: 20),
+                              title: const Text(
+                                'Alterar horário da pesagem',
+                                style: TextStyle(
+                                  fontSize: 13.5,
+                                  color: AppColors.indigoPrimary,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                              trailing: Text(
+                                '${appState.dailyWeightReminderHour.toString().padLeft(2, '0')}:${appState.dailyWeightReminderMinute.toString().padLeft(2, '0')}',
+                                style: TextStyle(
+                                  fontSize: 14.5,
+                                  fontWeight: FontWeight.bold,
+                                  color: isDark
+                                      ? AppColors.darkTextPrimary
+                                      : const Color(0xFF1E293B),
+                                ),
+                              ),
+                              onTap: () => _pickDailyWeightTime(context),
+                            ),
+                          const Divider(indent: 16, height: 1),
+                          SwitchListTile.adaptive(
+                            value: appState.weeklyEvalReminderEnabled,
+                            onChanged: (val) async {
+                              HapticFeedback.selectionClick();
+                              await appState.updateWeeklyEvalReminder(
+                                enabled: val,
+                              );
+                            },
+                            activeTrackColor: AppColors.indigoPrimary,
+                            secondary: const Icon(
+                              Icons.calendar_month_rounded,
+                              color: AppColors.indigoPrimary,
+                              size: 20,
+                            ),
+                            title: const Text(
+                              'Avaliação Física Semanal',
+                              style: TextStyle(
+                                fontSize: 15.5,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                            subtitle: Text(
+                              appState.weeklyEvalReminderEnabled
+                                  ? 'Ativado: ${_weekdayName(appState.weeklyEvalReminderWeekday)} às ${appState.weeklyEvalReminderHour.toString().padLeft(2, '0')}:${appState.weeklyEvalReminderMinute.toString().padLeft(2, '0')}'
+                                  : 'Desativado • Lembrete para fotos e medidas',
+                              style: const TextStyle(fontSize: 12.5),
+                            ),
+                          ),
+                          if (appState.weeklyEvalReminderEnabled)
+                            ListTile(
+                              dense: true,
+                              contentPadding:
+                                  const EdgeInsets.symmetric(horizontal: 16),
+                              leading: const SizedBox(width: 20),
+                              title: const Text(
+                                'Alterar dia e horário da avaliação',
+                                style: TextStyle(
+                                  fontSize: 13.5,
+                                  color: AppColors.indigoPrimary,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                              trailing: Text(
+                                '${_weekdayName(appState.weeklyEvalReminderWeekday).substring(0, 3)}, ${appState.weeklyEvalReminderHour.toString().padLeft(2, '0')}:${appState.weeklyEvalReminderMinute.toString().padLeft(2, '0')}',
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.bold,
+                                  color: isDark
+                                      ? AppColors.darkTextPrimary
+                                      : const Color(0xFF1E293B),
+                                ),
+                              ),
+                              onTap: () =>
+                                  _configureWeeklyEvaluation(context),
+                            ),
+                        ],
+                      ),
+                    ),
+
+                    const SizedBox(height: 20),
+
                     // Gerenciador de Backup de Dados (JSON)
                     DataBackupManager(appState: appState),
 
@@ -499,6 +643,155 @@ class SettingsTab extends StatelessWidget {
           ),
         ),
       ],
+    );
+  }
+
+  static String _weekdayName(int weekday) {
+    switch (weekday) {
+      case 1:
+        return 'Segunda-feira';
+      case 2:
+        return 'Terça-feira';
+      case 3:
+        return 'Quarta-feira';
+      case 4:
+        return 'Quinta-feira';
+      case 5:
+        return 'Sexta-feira';
+      case 6:
+        return 'Sábado';
+      case 7:
+      default:
+        return 'Domingo';
+    }
+  }
+
+  Future<void> _pickDailyWeightTime(BuildContext context) async {
+    final picked = await showTimePicker(
+      context: context,
+      initialTime: TimeOfDay(
+        hour: appState.dailyWeightReminderHour,
+        minute: appState.dailyWeightReminderMinute,
+      ),
+      helpText: 'Horário da Pesagem Matinal',
+      cancelText: 'Cancelar',
+      confirmText: 'Salvar',
+    );
+    if (picked != null) {
+      await appState.updateDailyWeightReminder(
+        enabled: true,
+        hour: picked.hour,
+        minute: picked.minute,
+      );
+    }
+  }
+
+  Future<void> _configureWeeklyEvaluation(BuildContext context) async {
+    int selectedWeekday = appState.weeklyEvalReminderWeekday;
+    TimeOfDay selectedTime = TimeOfDay(
+      hour: appState.weeklyEvalReminderHour,
+      minute: appState.weeklyEvalReminderMinute,
+    );
+
+    await showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) {
+        return StatefulBuilder(
+          builder: (context, setModalState) {
+            final isDark = Theme.of(context).brightness == Brightness.dark;
+            return SafeArea(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Lembrete de Avaliação Semanal',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: isDark
+                            ? AppColors.darkTextPrimary
+                            : AppColors.lightTextPrimary,
+                      ),
+                    ),
+                    const SizedBox(height: 14),
+                    const Text('Escolha o dia da semana:'),
+                    const SizedBox(height: 8),
+                    Wrap(
+                      spacing: 8,
+                      children: List.generate(7, (idx) {
+                        final wd = idx + 1; // 1 = Seg ... 7 = Dom
+                        final isSelected = selectedWeekday == wd;
+                        return ChoiceChip(
+                          label: Text(_weekdayName(wd).substring(0, 3)),
+                          selected: isSelected,
+                          onSelected: (selected) {
+                            if (selected) {
+                              setModalState(() => selectedWeekday = wd);
+                            }
+                          },
+                        );
+                      }),
+                    ),
+                    const SizedBox(height: 16),
+                    ListTile(
+                      contentPadding: EdgeInsets.zero,
+                      leading: const Icon(
+                        Icons.access_time_rounded,
+                        color: AppColors.indigoPrimary,
+                      ),
+                      title: const Text('Horário da notificação'),
+                      trailing: Text(
+                        '${selectedTime.hour.toString().padLeft(2, '0')}:${selectedTime.minute.toString().padLeft(2, '0')}',
+                        style: const TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 16,
+                        ),
+                      ),
+                      onTap: () async {
+                        final t = await showTimePicker(
+                          context: context,
+                          initialTime: selectedTime,
+                        );
+                        if (t != null) {
+                          setModalState(() => selectedTime = t);
+                        }
+                      },
+                    ),
+                    const SizedBox(height: 16),
+                    SizedBox(
+                      width: double.infinity,
+                      height: 46,
+                      child: ElevatedButton(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.indigoPrimary,
+                          foregroundColor: Colors.white,
+                        ),
+                        onPressed: () async {
+                          await appState.updateWeeklyEvalReminder(
+                            enabled: true,
+                            weekday: selectedWeekday,
+                            hour: selectedTime.hour,
+                            minute: selectedTime.minute,
+                          );
+                          if (ctx.mounted) Navigator.of(ctx).pop();
+                        },
+                        child: const Text('Salvar Lembrete'),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
     );
   }
 }

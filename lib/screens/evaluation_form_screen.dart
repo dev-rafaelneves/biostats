@@ -9,6 +9,7 @@ import '../models/models.dart';
 import '../services/app_state.dart';
 import '../theme/app_theme.dart';
 import '../utils/calculator.dart';
+import '../widgets/measurement_guide_modal.dart';
 import 'evaluation_form/live_preview_card.dart';
 import 'evaluation_form/measure_input_row.dart';
 import 'evaluation_form/photo_uploader_slot.dart';
@@ -364,170 +365,7 @@ class _EvaluationFormScreenState extends State<EvaluationFormScreen> {
   }
 
   void _showMeasurementGuide(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    const guides = [
-      (
-        'Pescoço',
-        'Meça logo abaixo da laringe (pomo de Adão), mantendo a fita levemente inclinada para baixo na parte frontal e os ombros relaxados.'
-      ),
-      (
-        'Cintura',
-        'Meça no ponto mais estreito do tronco (geralmente 2 cm acima do umbigo), ao final de uma expiração normal, sem encolher a barriga.'
-      ),
-      (
-        'Abdômen',
-        'Meça exatamente na linha horizontal sobre a cicatriz umbilical (umbigo), mantendo o abdômen relaxado.'
-      ),
-      (
-        'Quadril',
-        'Meça na circunferência de maior volume dos glúteos, mantendo os pés juntos e a fita perfeitamente paralela ao chão.'
-      ),
-      (
-        'Braço',
-        'Meça no ponto médio entre o ombro (acrômio) e o cotovelo, mantendo o braço relaxado ao lado do corpo (ou contraído, desde que siga sempre o mesmo padrão).'
-      ),
-      (
-        'Coxa',
-        'Meça no ponto médio entre a linha inguinal (virilha) e a borda superior da patela (joelho), em pé com o peso distribuído igualmente.'
-      ),
-      (
-        'Panturrilha',
-        'Meça no ponto de maior circunferência da batata da perna, mantendo os calcanhares apoiados no chão.'
-      ),
-    ];
-
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: isDark ? AppColors.darkSurface : Colors.white,
-      isScrollControlled: true,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-      ),
-      builder: (ctx) {
-        return SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Center(
-                  child: Container(
-                    width: 40,
-                    height: 4,
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF94A3B8).withValues(alpha: 0.4),
-                      borderRadius: BorderRadius.circular(100),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 16),
-                Row(
-                  children: [
-                    const Icon(
-                      Icons.straighten_rounded,
-                      color: AppColors.indigoPrimary,
-                      size: 22,
-                    ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: Text(
-                        'Guia Anatômico de Medição',
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                          color: isDark
-                              ? AppColors.darkTextPrimary
-                              : AppColors.lightTextPrimary,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 6),
-                Text(
-                  'Meça sempre nas mesmas condições (preferencialmente pela manhã em jejum) para máxima precisão científica.',
-                  style: TextStyle(
-                    fontSize: 13,
-                    color: isDark
-                        ? AppColors.darkTextSecondary
-                        : AppColors.lightTextSecondary,
-                  ),
-                ),
-                const SizedBox(height: 14),
-                Flexible(
-                  child: SingleChildScrollView(
-                    child: Column(
-                      children: guides.map((item) {
-                        return Padding(
-                          padding: const EdgeInsets.only(bottom: 12),
-                          child: Row(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Container(
-                                margin: const EdgeInsets.only(top: 4),
-                                width: 8,
-                                height: 8,
-                                decoration: const BoxDecoration(
-                                  color: AppColors.indigoPrimary,
-                                  shape: BoxShape.circle,
-                                ),
-                              ),
-                              const SizedBox(width: 10),
-                              Expanded(
-                                child: RichText(
-                                  text: TextSpan(
-                                    style: TextStyle(
-                                      fontSize: 13.5,
-                                      height: 1.4,
-                                      color: isDark
-                                          ? AppColors.darkTextSecondary
-                                          : const Color(0xFF475569),
-                                    ),
-                                    children: [
-                                      TextSpan(
-                                        text: '${item.$1}: ',
-                                        style: TextStyle(
-                                          fontWeight: FontWeight.bold,
-                                          color: isDark
-                                              ? AppColors.darkTextPrimary
-                                              : const Color(0xFF0F172A),
-                                        ),
-                                      ),
-                                      TextSpan(text: item.$2),
-                                    ],
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        );
-                      }).toList(),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 8),
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton(
-                    onPressed: () => Navigator.of(ctx).pop(),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.indigoPrimary,
-                      foregroundColor: Colors.white,
-                      elevation: 0,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                    ),
-                    child: const Text('Entendi'),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        );
-      },
-    );
+    MeasurementGuideModal.show(context, MeasurementGuideType.cintura);
   }
 
   Future<void> _promptPhotoSource(FotoTipo tipo) async {
@@ -963,6 +801,10 @@ class _EvaluationFormScreenState extends State<EvaluationFormScreen> {
                             'Peso',
                             _parseField(_pesoCtrl),
                           ),
+                          onHelpTap: () => MeasurementGuideModal.show(
+                            context,
+                            MeasurementGuideType.peso,
+                          ),
                           onChanged: (_) => setState(() {}),
                         ),
                         const Divider(indent: 16, height: 1),
@@ -975,6 +817,10 @@ class _EvaluationFormScreenState extends State<EvaluationFormScreen> {
                           warningText: _validateAnatomicalRange(
                             'Pescoço',
                             _parseField(_pescocoCtrl),
+                          ),
+                          onHelpTap: () => MeasurementGuideModal.show(
+                            context,
+                            MeasurementGuideType.pescoco,
                           ),
                           onChanged: (_) => setState(() {}),
                         ),
@@ -989,6 +835,10 @@ class _EvaluationFormScreenState extends State<EvaluationFormScreen> {
                             'Cintura',
                             _parseField(_cinturaCtrl),
                           ),
+                          onHelpTap: () => MeasurementGuideModal.show(
+                            context,
+                            MeasurementGuideType.cintura,
+                          ),
                           onChanged: (_) => setState(() {}),
                         ),
                         if (profile?.sexo == Sexo.F) ...[
@@ -1002,6 +852,10 @@ class _EvaluationFormScreenState extends State<EvaluationFormScreen> {
                             warningText: _validateAnatomicalRange(
                               'Quadril',
                               _parseField(_quadrilCtrl),
+                            ),
+                            onHelpTap: () => MeasurementGuideModal.show(
+                              context,
+                              MeasurementGuideType.quadril,
                             ),
                             onChanged: (_) => setState(() {}),
                           ),
@@ -1074,6 +928,10 @@ class _EvaluationFormScreenState extends State<EvaluationFormScreen> {
                             'Abdômen',
                             _parseField(_abdomenCtrl),
                           ),
+                          onHelpTap: () => MeasurementGuideModal.show(
+                            context,
+                            MeasurementGuideType.abdomen,
+                          ),
                           onChanged: (_) => setState(() {}),
                         ),
                         if (profile?.sexo == Sexo.M) ...[
@@ -1087,6 +945,10 @@ class _EvaluationFormScreenState extends State<EvaluationFormScreen> {
                             warningText: _validateAnatomicalRange(
                               'Quadril',
                               _parseField(_quadrilCtrl),
+                            ),
+                            onHelpTap: () => MeasurementGuideModal.show(
+                              context,
+                              MeasurementGuideType.quadril,
                             ),
                             onChanged: (_) => setState(() {}),
                           ),
@@ -1102,6 +964,10 @@ class _EvaluationFormScreenState extends State<EvaluationFormScreen> {
                             'Braço',
                             _parseField(_bracoCtrl),
                           ),
+                          onHelpTap: () => MeasurementGuideModal.show(
+                            context,
+                            MeasurementGuideType.braco,
+                          ),
                           onChanged: (_) => setState(() {}),
                         ),
                         const Divider(indent: 16, height: 1),
@@ -1114,6 +980,10 @@ class _EvaluationFormScreenState extends State<EvaluationFormScreen> {
                           warningText: _validateAnatomicalRange(
                             'Coxa',
                             _parseField(_coxaCtrl),
+                          ),
+                          onHelpTap: () => MeasurementGuideModal.show(
+                            context,
+                            MeasurementGuideType.coxa,
                           ),
                           onChanged: (_) => setState(() {}),
                         ),
@@ -1128,6 +998,10 @@ class _EvaluationFormScreenState extends State<EvaluationFormScreen> {
                           warningText: _validateAnatomicalRange(
                             'Panturrilha',
                             _parseField(_panturrilhaCtrl),
+                          ),
+                          onHelpTap: () => MeasurementGuideModal.show(
+                            context,
+                            MeasurementGuideType.panturrilha,
                           ),
                           onChanged: (_) => setState(() {}),
                         ),

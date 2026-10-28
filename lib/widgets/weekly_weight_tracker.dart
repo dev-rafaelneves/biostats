@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
@@ -5,6 +7,8 @@ import 'package:uuid/uuid.dart';
 import '../models/models.dart';
 import '../services/app_state.dart';
 import '../theme/app_theme.dart';
+import '../utils/weight_trend_calculator.dart';
+import 'consistency_heatmap.dart';
 
 class WeeklyWeightTracker extends StatefulWidget {
   final AppState appState;
@@ -133,6 +137,11 @@ class _WeeklyWeightTrackerState extends State<WeeklyWeightTracker> {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final pesagens = widget.appState.pesagens;
     final weeklyData = _computeWeeklyData(pesagens);
+    final profile = widget.appState.userProfile;
+    final projection = WeightTrendCalculator.computeProjection(
+      pesagens: pesagens,
+      metaPesoKg: profile?.metaPesoKg,
+    );
     final dateFmt = DateFormat('dd/MM/yyyy');
     final shortDateFmt = DateFormat('dd MMM', 'pt_BR');
     final fullDateFmt = DateFormat("dd 'de' MMM, yyyy", 'pt_BR');
@@ -378,6 +387,24 @@ class _WeeklyWeightTrackerState extends State<WeeklyWeightTracker> {
           ),
 
           const SizedBox(height: 18),
+
+          // 1. Card de Projeção & Meta
+          if (pesagens.isNotEmpty) ...[
+            _buildProjectionCard(context, projection, isDark),
+            const SizedBox(height: 16),
+          ],
+
+          // 2. Gráfico de Tendência com EMA (α=0.1)
+          if (pesagens.length >= 2) ...[
+            _buildTrendChart(context, pesagens, profile?.metaPesoKg, isDark),
+            const SizedBox(height: 16),
+          ],
+
+          // 3. Heatmap de Consistência das últimas 12 semanas
+          if (pesagens.isNotEmpty) ...[
+            ConsistencyHeatmap(pesagens: pesagens),
+            const SizedBox(height: 18),
+          ],
 
           // Lista de Médias Semanais ou Estado Vazio
           if (weeklyData.isNotEmpty)
@@ -673,6 +700,387 @@ class _WeeklyWeightTrackerState extends State<WeeklyWeightTracker> {
               ),
             ],
           ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildProjectionCard(
+    BuildContext context,
+    WeightProjectionResult projection,
+    bool isDark,
+  ) {
+    Color cardBg;
+    Color borderCol;
+    Color iconCol;
+    IconData iconData;
+
+    switch (projection.direction) {
+      case TrendDirection.losing:
+      case TrendDirection.gaining:
+        cardBg =
+            const Color(0xFF10B981).withValues(alpha: isDark ? 0.15 : 0.08);
+        borderCol = const Color(0xFF10B981).withValues(alpha: 0.3);
+        iconCol = const Color(0xFF059669);
+        iconData = Icons.flag_rounded;
+        break;
+      case TrendDirection.diverging:
+        cardBg =
+            const Color(0xFFF59E0B).withValues(alpha: isDark ? 0.15 : 0.08);
+        borderCol = const Color(0xFFF59E0B).withValues(alpha: 0.35);
+        iconCol = const Color(0xFFD97706);
+        iconData = Icons.warning_amber_rounded;
+        break;
+      case TrendDirection.stable:
+        cardBg =
+            AppColors.indigoPrimary.withValues(alpha: isDark ? 0.15 : 0.08);
+        borderCol = AppColors.indigoPrimary.withValues(alpha: 0.25);
+        iconCol = AppColors.indigoPrimary;
+        iconData = Icons.balance_rounded;
+        break;
+      case TrendDirection.insufficientData:
+        cardBg = isDark ? const Color(0xFF1E293B) : const Color(0xFFF1F5F9);
+        borderCol = isDark ? AppColors.darkBorder : const Color(0xFFE2E8F0);
+        iconCol =
+            isDark ? AppColors.darkTextSecondary : const Color(0xFF64748B);
+        iconData = Icons.insights_rounded;
+        break;
+    }
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: cardBg,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: borderCol),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: iconCol.withValues(alpha: 0.15),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Icon(iconData, color: iconCol, size: 20),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  projection.message,
+                  style: TextStyle(
+                    fontSize: 14.5,
+                    fontWeight: FontWeight.bold,
+                    letterSpacing: -0.2,
+                    color: isDark
+                        ? AppColors.darkTextPrimary
+                        : const Color(0xFF1E293B),
+                  ),
+                ),
+                const SizedBox(height: 3),
+                Text(
+                  projection.detailMessage,
+                  style: TextStyle(
+                    fontSize: 12.5,
+                    height: 1.35,
+                    color: isDark
+                        ? AppColors.darkTextSecondary
+                        : const Color(0xFF64748B),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTrendChart(
+    BuildContext context,
+    List<Pesagem> pesagens,
+    double? metaPesoKg,
+    bool isDark,
+  ) {
+    final points = WeightTrendCalculator.computeEma(pesagens, alpha: 0.1);
+    if (points.length < 2) return const SizedBox.shrink();
+
+    // Limita aos últimos 30 pontos para o gráfico ficar legível e rápido
+    final displayPoints =
+        points.length > 30 ? points.sublist(points.length - 30) : points;
+
+    final rawSpots = <FlSpot>[];
+    final emaSpots = <FlSpot>[];
+    final allValues = <double>[];
+
+    for (int i = 0; i < displayPoints.length; i++) {
+      final p = displayPoints[i];
+      rawSpots.add(FlSpot(i.toDouble(), p.rawWeight));
+      emaSpots.add(FlSpot(i.toDouble(), p.emaWeight));
+      allValues.add(p.rawWeight);
+      allValues.add(p.emaWeight);
+    }
+
+    if (metaPesoKg != null && metaPesoKg > 0) {
+      allValues.add(metaPesoKg);
+    }
+
+    final double minY = (allValues.reduce(math.min) - 1.0).floorToDouble();
+    final double maxY = (allValues.reduce(math.max) + 1.0).ceilToDouble();
+
+    final dateFmt = DateFormat('dd/MM');
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: isDark ? AppColors.darkBackground : const Color(0xFFF8FAFC),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: isDark ? AppColors.darkBorder : const Color(0xFFE2E8F0),
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'Tendência do Peso (EMA α=0,1)',
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.bold,
+                  color: isDark
+                      ? AppColors.darkTextPrimary
+                      : const Color(0xFF1E293B),
+                ),
+              ),
+              Row(
+                children: [
+                  Container(
+                    width: 10,
+                    height: 3,
+                    decoration: BoxDecoration(
+                      color: AppColors.indigoPrimary,
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                  const SizedBox(width: 4),
+                  const Text(
+                    'Tendência',
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.indigoPrimary,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Container(
+                    width: 6,
+                    height: 6,
+                    decoration: BoxDecoration(
+                      color:
+                          isDark ? Colors.white38 : const Color(0xFF94A3B8),
+                      shape: BoxShape.circle,
+                    ),
+                  ),
+                  const SizedBox(width: 4),
+                  Text(
+                    'Pesagem',
+                    style: TextStyle(
+                      fontSize: 11,
+                      color: isDark
+                          ? AppColors.darkTextSecondary
+                          : const Color(0xFF64748B),
+                    ),
+                  ),
+                  if (metaPesoKg != null && metaPesoKg > 0) ...[
+                    const SizedBox(width: 8),
+                    Container(
+                      width: 10,
+                      height: 2,
+                      color: const Color(0xFF10B981),
+                    ),
+                    const SizedBox(width: 4),
+                    const Text(
+                      'Meta',
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
+                        color: Color(0xFF10B981),
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          SizedBox(
+            height: 180,
+            child: LineChart(
+              LineChartData(
+                minY: minY,
+                maxY: maxY,
+                minX: 0,
+                maxX: (displayPoints.length - 1).toDouble(),
+                gridData: FlGridData(
+                  show: true,
+                  drawVerticalLine: false,
+                  horizontalInterval: 1.0,
+                  getDrawingHorizontalLine: (val) => FlLine(
+                    color: isDark
+                        ? AppColors.darkBorder.withValues(alpha: 0.5)
+                        : const Color(0xFFE2E8F0),
+                    strokeWidth: 1,
+                  ),
+                ),
+                titlesData: FlTitlesData(
+                  rightTitles: const AxisTitles(
+                    sideTitles: SideTitles(showTitles: false),
+                  ),
+                  topTitles: const AxisTitles(
+                    sideTitles: SideTitles(showTitles: false),
+                  ),
+                  leftTitles: AxisTitles(
+                    sideTitles: SideTitles(
+                      showTitles: true,
+                      reservedSize: 34,
+                      interval: math.max(
+                          1.0, ((maxY - minY) / 4).roundToDouble()),
+                      getTitlesWidget: (val, meta) => Text(
+                        '${val.toInt()}k',
+                        style: TextStyle(
+                          fontSize: 10.5,
+                          fontWeight: FontWeight.w500,
+                          color: isDark
+                              ? AppColors.darkTextSecondary
+                              : const Color(0xFF94A3B8),
+                        ),
+                      ),
+                    ),
+                  ),
+                  bottomTitles: AxisTitles(
+                    sideTitles: SideTitles(
+                      showTitles: true,
+                      reservedSize: 22,
+                      interval: math.max(
+                          1, (displayPoints.length / 4).floorToDouble()),
+                      getTitlesWidget: (val, meta) {
+                        final idx = val.toInt();
+                        if (idx < 0 || idx >= displayPoints.length) {
+                          return const SizedBox.shrink();
+                        }
+                        return Text(
+                          dateFmt.format(displayPoints[idx].date),
+                          style: TextStyle(
+                            fontSize: 10,
+                            color: isDark
+                                ? AppColors.darkTextSecondary
+                                : const Color(0xFF94A3B8),
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                ),
+                borderData: FlBorderData(show: false),
+                lineTouchData: LineTouchData(
+                  touchTooltipData: LineTouchTooltipData(
+                    getTooltipItems: (touchedSpots) {
+                      return touchedSpots.map((spot) {
+                        final idx = spot.x.toInt();
+                        final pt = idx < displayPoints.length
+                            ? displayPoints[idx]
+                            : null;
+                        if (spot.barIndex == 0) {
+                          return LineTooltipItem(
+                            'Real: ${spot.y.toStringAsFixed(1)} kg\n${pt != null ? dateFmt.format(pt.date) : ''}',
+                            const TextStyle(
+                              color: Colors.white,
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          );
+                        } else if (spot.barIndex == 1) {
+                          return LineTooltipItem(
+                            'EMA: ${spot.y.toStringAsFixed(1)} kg',
+                            const TextStyle(
+                              color: Color(0xFF818CF8),
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          );
+                        }
+                        return null;
+                      }).whereType<LineTooltipItem>().toList();
+                    },
+                  ),
+                ),
+                lineBarsData: [
+                  // Linha de pesagens brutas
+                  LineChartBarData(
+                    spots: rawSpots,
+                    isCurved: false,
+                    color: isDark ? Colors.white30 : const Color(0xFF94A3B8),
+                    barWidth: 1.5,
+                    dotData: FlDotData(
+                      show: true,
+                      getDotPainter: (spot, percent, barData, index) =>
+                          FlDotCirclePainter(
+                        radius: 2.5,
+                        color: isDark
+                            ? Colors.white70
+                            : const Color(0xFF64748B),
+                        strokeWidth: 0,
+                      ),
+                    ),
+                  ),
+                  // Linha de tendência EMA (suave)
+                  LineChartBarData(
+                    spots: emaSpots,
+                    isCurved: true,
+                    curveSmoothness: 0.35,
+                    color: AppColors.indigoPrimary,
+                    barWidth: 3.0,
+                    dotData: const FlDotData(show: false),
+                    belowBarData: BarAreaData(
+                      show: true,
+                      gradient: LinearGradient(
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                        colors: [
+                          AppColors.indigoPrimary.withValues(
+                              alpha: isDark ? 0.25 : 0.10),
+                          AppColors.indigoPrimary.withValues(alpha: 0.0),
+                        ],
+                      ),
+                    ),
+                  ),
+                  // Linha da Meta
+                  if (metaPesoKg != null && metaPesoKg > 0)
+                    LineChartBarData(
+                      spots: [
+                        FlSpot(0, metaPesoKg),
+                        FlSpot((displayPoints.length - 1).toDouble(),
+                            metaPesoKg),
+                      ],
+                      isCurved: false,
+                      dashArray: [6, 4],
+                      color: const Color(0xFF10B981),
+                      barWidth: 2.0,
+                      dotData: const FlDotData(show: false),
+                    ),
+                ],
+              ),
+            ),
+          ),
         ],
       ),
     );

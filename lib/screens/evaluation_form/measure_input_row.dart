@@ -11,6 +11,7 @@ class MeasureInputRow extends StatelessWidget {
   final String hintText;
   final TextInputAction textInputAction;
   final ValueChanged<String> onChanged;
+  final VoidCallback? onHelpTap;
 
   const MeasureInputRow({
     super.key,
@@ -23,6 +24,7 @@ class MeasureInputRow extends StatelessWidget {
     this.hintText = '0.0',
     this.textInputAction = TextInputAction.next,
     required this.onChanged,
+    this.onHelpTap,
   });
 
   @override
@@ -66,6 +68,26 @@ class MeasureInputRow extends StatelessWidget {
                               color: AppColors.rose,
                               fontSize: 16.5,
                               fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ],
+                        if (onHelpTap != null) ...[
+                          const SizedBox(width: 4),
+                          InkWell(
+                            onTap: onHelpTap,
+                            borderRadius: BorderRadius.circular(12),
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 4,
+                                vertical: 2,
+                              ),
+                              child: Icon(
+                                Icons.help_outline_rounded,
+                                size: 16,
+                                color: isDark
+                                    ? AppColors.indigoLight
+                                    : AppColors.indigoPrimary,
+                              ),
                             ),
                           ),
                         ],

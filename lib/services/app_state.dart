@@ -7,6 +7,7 @@ import 'package:uuid/uuid.dart';
 import '../models/models.dart';
 import '../utils/calculator.dart';
 import 'database_service.dart';
+import 'notification_service.dart';
 import 'photo_storage_service.dart';
 import 'security_service.dart';
 
@@ -40,6 +41,13 @@ class AppState extends ChangeNotifier {
   static const String _keyAppPin = 'biostats_app_pin';
   static const String _keyDiscreetPhotos = 'biostats_discreet_photos';
   static const String _keyStorageMigrated = 'storage_migrated_v2';
+  static const String _keyDailyWeightReminderEnabled = 'biostats_daily_weight_reminder_enabled';
+  static const String _keyDailyWeightReminderHour = 'biostats_daily_weight_reminder_hour';
+  static const String _keyDailyWeightReminderMinute = 'biostats_daily_weight_reminder_minute';
+  static const String _keyWeeklyEvalReminderEnabled = 'biostats_weekly_eval_reminder_enabled';
+  static const String _keyWeeklyEvalReminderWeekday = 'biostats_weekly_eval_reminder_weekday';
+  static const String _keyWeeklyEvalReminderHour = 'biostats_weekly_eval_reminder_hour';
+  static const String _keyWeeklyEvalReminderMinute = 'biostats_weekly_eval_reminder_minute';
 
   SharedPreferences? _prefs;
   bool _initialized = false;
@@ -55,6 +63,14 @@ class AppState extends ChangeNotifier {
   bool _blockScreenshots = true;
   int _failedPinAttempts = 0;
   DateTime? _lockoutUntil;
+
+  bool _dailyWeightReminderEnabled = false;
+  int _dailyWeightReminderHour = 7;
+  int _dailyWeightReminderMinute = 0;
+  bool _weeklyEvalReminderEnabled = false;
+  int _weeklyEvalReminderWeekday = 7; // Domingo
+  int _weeklyEvalReminderHour = 9;
+  int _weeklyEvalReminderMinute = 0;
 
   List<Avaliacao> _avaliacoes = [];
   List<Resultados> _resultados = [];
@@ -86,6 +102,14 @@ class AppState extends ChangeNotifier {
       _lockoutUntil != null && _lockoutUntil!.isAfter(DateTime.now());
   int get remainingLockoutSeconds =>
       SecurityService.getRemainingLockoutSeconds(_lockoutUntil);
+
+  bool get dailyWeightReminderEnabled => _dailyWeightReminderEnabled;
+  int get dailyWeightReminderHour => _dailyWeightReminderHour;
+  int get dailyWeightReminderMinute => _dailyWeightReminderMinute;
+  bool get weeklyEvalReminderEnabled => _weeklyEvalReminderEnabled;
+  int get weeklyEvalReminderWeekday => _weeklyEvalReminderWeekday;
+  int get weeklyEvalReminderHour => _weeklyEvalReminderHour;
+  int get weeklyEvalReminderMinute => _weeklyEvalReminderMinute;
 
   List<Avaliacao> get avaliacoes => List.unmodifiable(_avaliacoes);
   List<Resultados> get resultados => List.unmodifiable(_resultados);
@@ -307,7 +331,99 @@ class AppState extends ChangeNotifier {
       }
     }
 
+    // 6. Lembretes e notificações locais
+    await NotificationService.instance.init();
+    _dailyWeightReminderEnabled =
+        _prefs?.getBool(_keyDailyWeightReminderEnabled) ?? false;
+    _dailyWeightReminderHour =
+        _prefs?.getInt(_keyDailyWeightReminderHour) ?? 7;
+    _dailyWeightReminderMinute =
+        _prefs?.getInt(_keyDailyWeightReminderMinute) ?? 0;
+
+    _weeklyEvalReminderEnabled =
+        _prefs?.getBool(_keyWeeklyEvalReminderEnabled) ?? false;
+    _weeklyEvalReminderWeekday =
+        _prefs?.getInt(_keyWeeklyEvalReminderWeekday) ?? 7;
+    _weeklyEvalReminderHour = _prefs?.getInt(_keyWeeklyEvalReminderHour) ?? 9;
+    _weeklyEvalReminderMinute =
+        _prefs?.getInt(_keyWeeklyEvalReminderMinute) ?? 0;
+
+    if (_dailyWeightReminderEnabled) {
+      await NotificationService.instance.scheduleDailyWeightReminder(
+        enabled: true,
+        hour: _dailyWeightReminderHour,
+        minute: _dailyWeightReminderMinute,
+      );
+    }
+    if (_weeklyEvalReminderEnabled) {
+      await NotificationService.instance.scheduleWeeklyEvaluationReminder(
+        enabled: true,
+        weekday: _weeklyEvalReminderWeekday,
+        hour: _weeklyEvalReminderHour,
+        minute: _weeklyEvalReminderMinute,
+      );
+    }
+
     _initialized = true;
+    notifyListeners();
+  }
+
+  Future<void> updateDailyWeightReminder({
+    required bool enabled,
+    int? hour,
+    int? minute,
+  }) async {
+    _dailyWeightReminderEnabled = enabled;
+    if (hour != null) _dailyWeightReminderHour = hour;
+    if (minute != null) _dailyWeightReminderMinute = minute;
+
+    await _prefs?.setBool(
+        _keyDailyWeightReminderEnabled, _dailyWeightReminderEnabled);
+    await _prefs?.setInt(
+        _keyDailyWeightReminderHour, _dailyWeightReminderHour);
+    await _prefs?.setInt(
+        _keyDailyWeightReminderMinute, _dailyWeightReminderMinute);
+
+    if (enabled) {
+      await NotificationService.instance.requestPermissions();
+    }
+    await NotificationService.instance.scheduleDailyWeightReminder(
+      enabled: _dailyWeightReminderEnabled,
+      hour: _dailyWeightReminderHour,
+      minute: _dailyWeightReminderMinute,
+    );
+    notifyListeners();
+  }
+
+  Future<void> updateWeeklyEvalReminder({
+    required bool enabled,
+    int? weekday,
+    int? hour,
+    int? minute,
+  }) async {
+    _weeklyEvalReminderEnabled = enabled;
+    if (weekday != null) _weeklyEvalReminderWeekday = weekday;
+    if (hour != null) _weeklyEvalReminderHour = hour;
+    if (minute != null) _weeklyEvalReminderMinute = minute;
+
+    await _prefs?.setBool(
+        _keyWeeklyEvalReminderEnabled, _weeklyEvalReminderEnabled);
+    await _prefs?.setInt(
+        _keyWeeklyEvalReminderWeekday, _weeklyEvalReminderWeekday);
+    await _prefs?.setInt(
+        _keyWeeklyEvalReminderHour, _weeklyEvalReminderHour);
+    await _prefs?.setInt(
+        _keyWeeklyEvalReminderMinute, _weeklyEvalReminderMinute);
+
+    if (enabled) {
+      await NotificationService.instance.requestPermissions();
+    }
+    await NotificationService.instance.scheduleWeeklyEvaluationReminder(
+      enabled: _weeklyEvalReminderEnabled,
+      weekday: _weeklyEvalReminderWeekday,
+      hour: _weeklyEvalReminderHour,
+      minute: _weeklyEvalReminderMinute,
+    );
     notifyListeners();
   }
 
