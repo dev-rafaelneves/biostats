@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 import '../models/models.dart';
 import '../services/app_state.dart';
 import '../theme/app_theme.dart';
+import '../widgets/ai_insight_card.dart';
 import 'evaluation_comparator/comparison_section_card.dart';
 import 'evaluation_comparator/evaluation_selector_chip.dart';
 import 'evaluation_comparator/fractional_horizontal_clipper.dart';
@@ -853,6 +854,19 @@ class _EvaluationComparatorScreenState
 
                 // 4. Conteúdo da Aba Selecionada
                 if (_tabIndex == 0) ...[
+                  if (evalA.resultado != null &&
+                      evalB.resultado != null) ...[
+                    AiInsightCard.comparison(
+                      appState: widget.appState,
+                      profile: profile,
+                      anterior: evalA.avaliacao,
+                      resultadoAnt: evalA.resultado,
+                      atual: evalB.avaliacao,
+                      resultadoAtual: evalB.resultado,
+                    ),
+                    const SizedBox(height: 16),
+                  ],
+
                   // Seção A: Composição Corporal
                   ComparisonSectionCard(
                     title: 'COMPOSIÇÃO CORPORAL',

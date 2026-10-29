@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:flutter/foundation.dart';
 import 'package:path/path.dart' as p;
 import 'package:sqflite/sqflite.dart';
 import '../models/models.dart';
@@ -9,6 +10,10 @@ class DatabaseService {
   static bool get isAvailable => _database != null && _database!.isOpen;
 
   static Database? get db => _database;
+
+  // Fallback em memória para testes unitários ou ambientes sem driver SQLite
+  @visibleForTesting
+  static final Map<String, String> inMemoryAiInsights = {};
 
   /// Inicializa o banco de dados. Permite injetar customDb (útil em testes unitários).
   static Future<void> init({Database? customDb}) async {
@@ -28,6 +33,18 @@ class DatabaseService {
         version: 1,
         onCreate: _onCreate,
       );
+
+      // Garante criação da tabela de IA mesmo em bancos existentes da v1
+      await _database?.execute('''
+        CREATE TABLE IF NOT EXISTS ai_insights (
+          id TEXT PRIMARY KEY,
+          tipo TEXT NOT NULL,
+          referencia_id TEXT NOT NULL,
+          conteudo_md TEXT NOT NULL,
+          modelo TEXT NOT NULL,
+          criado_em TEXT NOT NULL
+        )
+      ''');
     } catch (e) {
       // Quando executado em host sem sqflite nativo (ex. testes no Windows)
       _database = null;
@@ -92,6 +109,17 @@ class DatabaseService {
       CREATE TABLE app_settings (
         key TEXT PRIMARY KEY,
         value TEXT NOT NULL
+      )
+    ''');
+
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS ai_insights (
+        id TEXT PRIMARY KEY,
+        tipo TEXT NOT NULL,
+        referencia_id TEXT NOT NULL,
+        conteudo_md TEXT NOT NULL,
+        modelo TEXT NOT NULL,
+        criado_em TEXT NOT NULL
       )
     ''');
   }
@@ -323,9 +351,72 @@ class DatabaseService {
     await _database!.delete('app_settings', where: 'key = ?', whereArgs: [key]);
   }
 
+  // --- AI Insights (Gemini) ---
+
+  static Future<String?> getAiInsight(String tipo, String referenciaId) async {
+    final key = '$tipo:$referenciaId';
+    if (!isAvailable) {
+      return inMemoryAiInsights[key];
+    }
+    try {
+      final rows = await _database!.query(
+        'ai_insights',
+        where: 'tipo = ? AND referencia_id = ?',
+        whereArgs: [tipo, referenciaId],
+        orderBy: 'criado_em DESC',
+        limit: 1,
+      );
+      if (rows.isEmpty) return inMemoryAiInsights[key];
+      return rows.first['conteudo_md'] as String?;
+    } catch (_) {
+      return inMemoryAiInsights[key];
+    }
+  }
+
+  static Future<void> saveAiInsight({
+    required String tipo,
+    required String referenciaId,
+    required String conteudoMd,
+    required String modelo,
+  }) async {
+    final key = '$tipo:$referenciaId';
+    inMemoryAiInsights[key] = conteudoMd;
+    if (!isAvailable) return;
+    try {
+      final id =
+          '${tipo}_${referenciaId}_${DateTime.now().millisecondsSinceEpoch}';
+      await _database!.insert(
+        'ai_insights',
+        {
+          'id': id,
+          'tipo': tipo,
+          'referencia_id': referenciaId,
+          'conteudo_md': conteudoMd,
+          'modelo': modelo,
+          'criado_em': DateTime.now().toIso8601String(),
+        },
+        conflictAlgorithm: ConflictAlgorithm.replace,
+      );
+    } catch (_) {}
+  }
+
+  static Future<void> deleteAiInsight(String tipo, String referenciaId) async {
+    final key = '$tipo:$referenciaId';
+    inMemoryAiInsights.remove(key);
+    if (!isAvailable) return;
+    try {
+      await _database!.delete(
+        'ai_insights',
+        where: 'tipo = ? AND referencia_id = ?',
+        whereArgs: [tipo, referenciaId],
+      );
+    } catch (_) {}
+  }
+
   // --- Bulk & Reset ---
 
   static Future<void> clearAll() async {
+    inMemoryAiInsights.clear();
     if (!isAvailable) return;
     await _database!.transaction((txn) async {
       await txn.delete('user_profile');
@@ -334,6 +425,9 @@ class DatabaseService {
       await txn.delete('fotos');
       await txn.delete('pesagens');
       await txn.delete('app_settings');
+      try {
+        await txn.delete('ai_insights');
+      } catch (_) {}
     });
   }
 }

@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 import '../../models/models.dart';
 import '../../services/app_state.dart';
 import '../../theme/app_theme.dart';
+import '../../widgets/ai_insight_card.dart';
 import '../../widgets/evaluation_details_widget.dart';
 import '../../widgets/evolution_charts.dart';
 import '../../widgets/export_data_card.dart';
@@ -578,6 +579,15 @@ class _PersonalProgressTabState extends State<PersonalProgressTab> {
                 previousAvaliacao: previousAvaliacao,
               ),
               const SizedBox(height: 20),
+              if (selectedJoined.resultado != null) ...[
+                AiInsightCard.evaluation(
+                  appState: widget.appState,
+                  profile: profile,
+                  avaliacao: selectedJoined.avaliacao,
+                  resultado: selectedJoined.resultado,
+                ),
+                const SizedBox(height: 20),
+              ],
             ],
 
             ExportDataCard(

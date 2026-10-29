@@ -9,6 +9,7 @@ import '../utils/calculator.dart';
 import '../utils/weight_trend_calculator.dart';
 import 'backup_service.dart';
 import 'database_service.dart';
+import 'gemini_service.dart';
 import 'health_connect_service.dart';
 import 'notification_service.dart';
 import 'photo_storage_service.dart';
@@ -65,6 +66,7 @@ class AppState extends ChangeNotifier {
   bool _discreetPhotos = false;
   bool _useBiometrics = true;
   bool _blockScreenshots = true;
+  bool _hasGeminiApiKey = false;
   int _failedPinAttempts = 0;
   DateTime? _lockoutUntil;
 
@@ -101,6 +103,7 @@ class AppState extends ChangeNotifier {
   bool get discreetPhotos => _discreetPhotos;
   bool get useBiometrics => _useBiometrics;
   bool get blockScreenshots => _blockScreenshots;
+  bool get hasGeminiApiKey => _hasGeminiApiKey;
   int get failedPinAttempts => _failedPinAttempts;
   DateTime? get lockoutUntil => _lockoutUntil;
   bool get isLockedOut =>
@@ -395,6 +398,9 @@ class AppState extends ChangeNotifier {
     );
     await BackupService.instance.checkAndRunWeeklyAutoBackup(this);
 
+    // 8. Inteligência Artificial (Google Gemini)
+    _hasGeminiApiKey = await GeminiService.hasApiKey();
+
     _initialized = true;
     notifyListeners();
   }
@@ -651,6 +657,18 @@ class AppState extends ChangeNotifier {
   Future<void> toggleBlockScreenshots() async {
     _blockScreenshots = !_blockScreenshots;
     await SecurityService.setBlockScreenshotsEnabled(_prefs, _blockScreenshots);
+    notifyListeners();
+  }
+
+  Future<void> saveGeminiApiKey(String key) async {
+    await GeminiService.saveApiKey(key);
+    _hasGeminiApiKey = await GeminiService.hasApiKey();
+    notifyListeners();
+  }
+
+  Future<void> removeGeminiApiKey() async {
+    await GeminiService.removeApiKey();
+    _hasGeminiApiKey = false;
     notifyListeners();
   }
 

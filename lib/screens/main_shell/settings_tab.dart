@@ -4,6 +4,7 @@ import '../../services/app_state.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/app_lock_gate.dart';
 import '../../widgets/data_backup_manager.dart';
+import '../../widgets/gemini_config_card.dart';
 import '../../widgets/ios_action_sheet.dart';
 import '../onboarding_screen.dart';
 import '../profile_setup_screen.dart';
@@ -358,6 +359,11 @@ class SettingsTab extends StatelessWidget {
                         ],
                       ),
                     ),
+
+                    const SizedBox(height: 20),
+
+                    // Card de Configuração do Google Gemini IA
+                    GeminiConfigCard(appState: appState),
 
                     const SizedBox(height: 20),
 
