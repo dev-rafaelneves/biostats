@@ -474,10 +474,6 @@ class _EvaluationFormScreenState extends State<EvaluationFormScreen> {
     }
   }
 
-  void _showMeasurementGuide(BuildContext context) {
-    MeasurementGuideModal.show(context, MeasurementGuideType.cintura);
-  }
-
   Future<void> _promptPhotoSource(FotoTipo tipo) async {
     final choice = await showCupertinoModalPopup<String>(
       context: context,
@@ -807,16 +803,6 @@ class _EvaluationFormScreenState extends State<EvaluationFormScreen> {
                     ? '${profile.primeiroNome} - Nova Avaliação'
                     : 'Nova Avaliação'),
           ),
-          actions: [
-            IconButton(
-              onPressed: () => _showMeasurementGuide(context),
-              tooltip: 'Como medir com a fita?',
-              icon: const Icon(
-                Icons.help_outline_rounded,
-                color: AppColors.indigoPrimary,
-              ),
-            ),
-          ],
         ),
         body: SafeArea(
         child: Center(
@@ -863,47 +849,22 @@ class _EvaluationFormScreenState extends State<EvaluationFormScreen> {
                           ),
                         ],
                       ),
-                      Wrap(
-                        spacing: 4,
-                        children: [
-                          if (prev != null && !_isEditing)
-                            TextButton.icon(
-                              onPressed: _prefillFromLastEvaluation,
-                              style: TextButton.styleFrom(
-                                visualDensity: VisualDensity.compact,
-                                foregroundColor: AppColors.indigoPrimary,
-                              ),
-                              icon: const Icon(Icons.history_rounded, size: 15),
-                              label: const Text(
-                                'Repetir últimas',
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                            ),
-                          TextButton.icon(
-                            onPressed: () => _showMeasurementGuide(context),
-                            style: TextButton.styleFrom(
-                              visualDensity: VisualDensity.compact,
-                              foregroundColor: isDark
-                                  ? AppColors.darkTextSecondary
-                                  : const Color(0xFF64748B),
-                            ),
-                            icon: const Icon(
-                              Icons.straighten_rounded,
-                              size: 15,
-                            ),
-                            label: const Text(
-                              'Como medir?',
-                              style: TextStyle(
-                                fontSize: 12,
-                                fontWeight: FontWeight.w600,
-                              ),
+                      if (prev != null && !_isEditing)
+                        TextButton.icon(
+                          onPressed: _prefillFromLastEvaluation,
+                          style: TextButton.styleFrom(
+                            visualDensity: VisualDensity.compact,
+                            foregroundColor: AppColors.indigoPrimary,
+                          ),
+                          icon: const Icon(Icons.history_rounded, size: 15),
+                          label: const Text(
+                            'Repetir últimas',
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
                             ),
                           ),
-                        ],
-                      ),
+                        ),
                     ],
                   ),
                   const SizedBox(height: 6),

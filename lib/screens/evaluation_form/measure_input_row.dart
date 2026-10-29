@@ -72,21 +72,38 @@ class MeasureInputRow extends StatelessWidget {
                           ),
                         ],
                         if (onHelpTap != null) ...[
-                          const SizedBox(width: 4),
+                          const SizedBox(width: 6),
                           InkWell(
                             onTap: onHelpTap,
                             borderRadius: BorderRadius.circular(12),
-                            child: Padding(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 4,
-                                vertical: 2,
+                            child: Container(
+                              width: 19,
+                              height: 19,
+                              decoration: BoxDecoration(
+                                color: (isDark
+                                        ? AppColors.indigoLight
+                                        : AppColors.indigoPrimary)
+                                    .withValues(alpha: 0.12),
+                                shape: BoxShape.circle,
+                                border: Border.all(
+                                  color: (isDark
+                                          ? AppColors.indigoLight
+                                          : AppColors.indigoPrimary)
+                                      .withValues(alpha: 0.25),
+                                  width: 0.8,
+                                ),
                               ),
-                              child: Icon(
-                                Icons.help_outline_rounded,
-                                size: 16,
-                                color: isDark
-                                    ? AppColors.indigoLight
-                                    : AppColors.indigoPrimary,
+                              alignment: Alignment.center,
+                              child: Text(
+                                '?',
+                                style: TextStyle(
+                                  fontSize: 11.5,
+                                  fontWeight: FontWeight.w800,
+                                  height: 1.0,
+                                  color: isDark
+                                      ? AppColors.indigoLight
+                                      : AppColors.indigoPrimary,
+                                ),
                               ),
                             ),
                           ),
