@@ -274,20 +274,27 @@ DADOS DO USUÁRIO:
 - Idade: $idade anos
 - Altura: ${profile.alturaCm.toStringAsFixed(0)} cm
 - Peso na Avaliação: ${avaliacao.pesoKg.toStringAsFixed(1)} kg
+- IMC: ${calc.imc.toStringAsFixed(1)} kg/m²
 - Nível de Atividade: ${avaliacao.nivelAtividade}
 - Objetivo Declarado: ${avaliacao.objetivo.label}
 
 RESULTADOS CIENTÍFICOS:
-- % Gordura: ${calc.bfPrincipal.toStringAsFixed(1)}% (Método: ${calc.metodoPrincipalLabel})
-- Massa Magra (LBM): ${calc.lbmFinal.toStringAsFixed(1)} kg
-- Massa Gorda: ${massaGordaKg.toStringAsFixed(1)} kg
+- % Gordura Principal: ${calc.bfPrincipal.toStringAsFixed(1)}% (Método: ${calc.metodoPrincipalLabel})
+- % Gordura Deurenberg (IMC + Idade): ${calc.bfDeurenberg.toStringAsFixed(1)}%
+- % Gordura RFM (Relative Fat Mass): ${calc.bfRfm > 0 ? '${calc.bfRfm.toStringAsFixed(1)}%' : 'N/D'}
+- % Gordura US Navy: ${calc.bfNavy > 0 ? '${calc.bfNavy.toStringAsFixed(1)}%' : 'N/D'}
+- Massa Magra Real Calculada (LBM): ${calc.lbmFinal.toStringAsFixed(1)} kg
+- Massa Magra de Referência Hospitalar (Boer): ${calc.lbmBoer.toStringAsFixed(1)} kg (Equivalente a ${(avaliacao.pesoKg - calc.lbmBoer).toStringAsFixed(1)} kg de gordura / ${((avaliacao.pesoKg - calc.lbmBoer) / (avaliacao.pesoKg > 0 ? avaliacao.pesoKg : 1.0) * 100).toStringAsFixed(1)}%)
+- Massa Gorda Atual: ${massaGordaKg.toStringAsFixed(1)} kg
 - Taxa Metabólica Basal (BMR): ${calc.bmrKatch.toStringAsFixed(0)} kcal
 - Gasto Energético Total (TDEE): ${calc.tdee.toStringAsFixed(0)} kcal
 - Meta Calórica Sugerida: ${calc.macros.targetCalories.toStringAsFixed(0)} kcal
 - Proteína Recomendada: ${calc.macros.grams.protein}g (${calc.lbmFinal > 0 ? (calc.macros.grams.protein / calc.lbmFinal).toStringAsFixed(1) : '2.0'}g/kg LBM)
 
 MEDIDAS & CIRCUNFERÊNCIAS:
+- Pescoço: ${medidas.pescoco?.toStringAsFixed(1) ?? 'N/D'} cm
 - Cintura: ${medidas.cintura?.toStringAsFixed(1) ?? 'N/D'} cm
+- Abdômen (Umbilical): ${medidas.abdomen?.toStringAsFixed(1) ?? 'N/D'} cm
 - Quadril: ${medidas.quadril?.toStringAsFixed(1) ?? 'N/D'} cm
 - Relação Cintura-Quadril: $rcqStr
 - Braço: ${medidas.braco?.toStringAsFixed(1) ?? 'N/D'} cm
@@ -295,10 +302,13 @@ MEDIDAS & CIRCUNFERÊNCIAS:
 $dobrasStr
 
 DIRETRIZES DA RESPOSTA:
-1. Comece com um **Diagnóstico de Composição Corporal**: interpretação do % de gordura em relação ao sexo e idade e proporção de massa magra.
-2. Analise a **Distribuição Corporal e Adiposidade**: relação cintura/quadril, medidas chave e o que indicam sobre simetria e saúde metabólica.
-3. Dê **Diretrizes Práticas de Foco**: estratégia nutricional (relação com a meta calórica e proteínas) e foco de treino para o objetivo dele.
-4. Mantenha o texto em Markdown elegante, com tópicos claros, emojis discretos e no máximo 300 a 400 palavras.
+1. **Diagnóstico Crítico e Consistência Biométrica**:
+   - Avalie a plausibilidade biológica dos dados: Se o IMC estiver elevado (ex: >= 28-30, indicando sobrepeso ou obesidade), mas o % de gordura por circunferência do US Navy resultar em um valor excessivamente atlético (ex: < 18%), AVALIE E APONTE essa discrepância!
+   - Explique que o método US Navy masculino exige a circunferência abdominal na altura do UMBIGO. Se a cintura informada for a cintura alta/mais estreita, o US Navy subestima drasticamente a gordura e superestima a massa magra.
+   - Apresente o contraste com as fórmulas de Deurenberg (${calc.bfDeurenberg.toStringAsFixed(1)}%) e Boer (${((avaliacao.pesoKg - calc.lbmBoer) / (avaliacao.pesoKg > 0 ? avaliacao.pesoKg : 1.0) * 100).toStringAsFixed(1)}%), que oferecem uma estimativa mais próxima da realidade caso o usuário não seja um fisiculturista de competição.
+2. **Distribuição Corporal e Adiposidade**: Analise a relação cintura/quadril, medidas musculares de braço/coxa e riscos cardiovasculares reais.
+3. **Diretrizes Práticas de Foco**: Ajuste as recomendações calóricas e de proteínas considerando o objetivo de emagrecimento saudável e sustentável.
+4. Mantenha o texto em Markdown elegante, com tópicos claros, emojis discretos e no máximo 350 a 450 palavras.
 5. Conclua com um breve aviso ético lembrando que esta análise complementa, mas não substitui, o acompanhamento de um nutricionista ou profissional de saúde.
 ''';
 

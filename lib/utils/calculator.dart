@@ -656,12 +656,21 @@ class BioCalculator {
 
     final pescoco = avaliacao.medidas.pescoco ?? 0;
     final cintura = avaliacao.medidas.cintura ?? 0;
+    final abdomen = avaliacao.medidas.abdomen ?? 0;
     final quadril = avaliacao.medidas.quadril ?? 0;
 
+    // No protocolo oficial US Navy masculino (DoD 1308.3), a circunferência do tronco
+    // deve ser medida no nível da cicatriz umbilical (abdômen). Se o abdômen foi informado
+    // e for maior que a cintura alta (costelas), utilizamos a maior circunferência para
+    // refletir a real adiposidade abdominal e evitar subestimar o BF%.
+    final cinturaEfetiva = (sexo == Sexo.M && abdomen > 0)
+        ? math.max(cintura, abdomen)
+        : cintura;
+
     final bfNavyRaw =
-        calculateUSNavyBF(sexo, altura, pescoco, cintura, quadril);
+        calculateUSNavyBF(sexo, altura, pescoco, cinturaEfetiva, quadril);
     final bfNavy = bfNavyRaw > 0 ? bfNavyRaw : 0.0;
-    final bfRfm = calculateRFM(sexo, altura, cintura);
+    final bfRfm = calculateRFM(sexo, altura, cinturaEfetiva);
     final bfDeurenberg = calculateDeurenbergBF(sexo, peso, altura, idade);
 
     final bfJp7 = calculateJacksonPollock7(
