@@ -26,7 +26,7 @@ class BackupService {
 
   static bool get isTestEnvironment {
     try {
-      return Platform.environment.containsKey('FLUTTER_TEST');
+      return !kIsWeb && Platform.environment.containsKey('FLUTTER_TEST');
     } catch (_) {
       return false;
     }

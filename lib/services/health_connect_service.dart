@@ -13,7 +13,7 @@ class HealthConnectService {
   /// Retorna true se estiver rodando em ambiente de testes automatizados
   static bool get isTestEnvironment {
     try {
-      return Platform.environment.containsKey('FLUTTER_TEST');
+      return !kIsWeb && Platform.environment.containsKey('FLUTTER_TEST');
     } catch (_) {
       return false;
     }
@@ -29,7 +29,7 @@ class HealthConnectService {
 
   /// Verifica se Health Connect / Apple Health está disponível na plataforma atual
   Future<bool> isAvailable() async {
-    if (isTestEnvironment) return false;
+    if (kIsWeb || isTestEnvironment) return false;
     try {
       if (!Platform.isAndroid && !Platform.isIOS) return false;
       await _ensureConfigured();

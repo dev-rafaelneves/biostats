@@ -30,8 +30,13 @@ class SecurityService {
   static final Map<String, String> inMemorySecureStore = {};
 
   /// Indica se está rodando em ambiente de testes automatizados do Flutter
-  static bool get isTestEnvironment =>
-      Platform.environment.containsKey('FLUTTER_TEST');
+  static bool get isTestEnvironment {
+    try {
+      return !kIsWeb && Platform.environment.containsKey('FLUTTER_TEST');
+    } catch (_) {
+      return false;
+    }
+  }
 
   /// Gera um salt criptograficamente seguro em formato hexadecimal
   static String generateSalt([int length = 16]) {

@@ -13,14 +13,14 @@ class WidgetService {
 
   static bool get isTestEnvironment {
     try {
-      return Platform.environment.containsKey('FLUTTER_TEST');
+      return !kIsWeb && Platform.environment.containsKey('FLUTTER_TEST');
     } catch (_) {
       return false;
     }
   }
 
   Future<void> init() async {
-    if (isTestEnvironment || (!Platform.isAndroid && !Platform.isIOS)) return;
+    if (kIsWeb || isTestEnvironment || (!Platform.isAndroid && !Platform.isIOS)) return;
     try {
       await HomeWidget.setAppGroupId(appGroupId);
     } catch (e) {
@@ -34,7 +34,7 @@ class WidgetService {
     List<Avaliacao> avaliacoes = const [],
     UserProfile? profile,
   }) async {
-    if (isTestEnvironment || (!Platform.isAndroid && !Platform.isIOS)) return;
+    if (kIsWeb || isTestEnvironment || (!Platform.isAndroid && !Platform.isIOS)) return;
 
     try {
       final weightContext = WeightTrendCalculator.resolveWeightContext(

@@ -1,7 +1,7 @@
 import 'dart:convert';
-import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:http/http.dart' as http;
 import '../models/models.dart';
 import 'database_service.dart';
 import 'security_service.dart';
@@ -20,13 +20,13 @@ class GeminiTestResult {
 /// por servidores intermediários.
 class GeminiService {
   static const String _keyGeminiApiKey = 'biostats_gemini_api_key';
-  static const String _defaultModel = 'gemini-3.8-flash';
+  static const String _defaultModel = 'gemini-2.5-flash';
   static String _activeModel = _defaultModel;
   static const List<String> candidateModels = [
-    'gemini-3.8-flash',
     'gemini-2.5-flash',
     'gemini-2.0-flash',
     'gemini-1.5-flash',
+    'gemini-3.8-flash',
   ];
   static const String _apiBaseUrl =
       'https://generativelanguage.googleapis.com/v1beta/models';
@@ -142,26 +142,24 @@ class GeminiService {
       },
     };
 
-    HttpClient? client;
-    try {
-      client = HttpClient();
-      client.connectionTimeout = const Duration(seconds: 10);
+    final bodyJson = jsonEncode(payload);
+    String lastError = '';
 
-      String lastError = '';
+    for (final model in modelsToTry) {
+      final endpoint = Uri.parse(
+        '$_apiBaseUrl/$model:generateContent?key=$keyToTest',
+      );
 
-      for (final model in modelsToTry) {
-        final endpoint = Uri.parse(
-          '$_apiBaseUrl/$model:generateContent?key=$keyToTest',
-        );
-
-        final request = await client.postUrl(endpoint);
-        request.headers.set('Content-Type', 'application/json; charset=utf-8');
-        request.write(jsonEncode(payload));
-
-        final response = await request.close().timeout(
-          const Duration(seconds: 15),
-        );
-        final responseBody = await response.transform(utf8.decoder).join();
+      try {
+        final response = await http
+            .post(
+              endpoint,
+              headers: {
+                'Content-Type': 'application/json; charset=utf-8',
+              },
+              body: bodyJson,
+            )
+            .timeout(const Duration(seconds: 10));
 
         if (response.statusCode == 200) {
           _activeModel = model;
@@ -173,7 +171,7 @@ class GeminiService {
 
         String errorMsg = 'Código ${response.statusCode}';
         try {
-          final decoded = jsonDecode(responseBody) as Map<String, dynamic>;
+          final decoded = jsonDecode(response.body) as Map<String, dynamic>;
           final errorObj = decoded['error'] as Map<String, dynamic>?;
           if (errorObj != null && errorObj['message'] != null) {
             errorMsg = errorObj['message'].toString();
@@ -184,27 +182,21 @@ class GeminiService {
         if (response.statusCode != 404) {
           break;
         }
+      } catch (e) {
+        if (kIsWeb) {
+          lastError =
+              'Bloqueio de CORS do navegador. O Google Gemini bloqueia chamadas diretas originadas de browsers. No Chrome, execute com: flutter run -d chrome --web-browser-flag "--disable-web-security", ou teste diretamente no aplicativo Android.';
+        } else {
+          lastError = e.toString();
+        }
+        break;
       }
-
-      return GeminiTestResult(
-        success: false,
-        message: 'Erro na API do Gemini: $lastError',
-      );
-    } on SocketException catch (e) {
-      final detail = e.osError?.message ?? e.message;
-      return GeminiTestResult(
-        success: false,
-        message:
-            'Falha de rede ($detail). Verifique sua conexão e tente novamente.',
-      );
-    } catch (e) {
-      return GeminiTestResult(
-        success: false,
-        message: 'Falha ao testar conexão: $e',
-      );
-    } finally {
-      client?.close();
     }
+
+    return GeminiTestResult(
+      success: false,
+      message: 'Falha ao testar conexão: $lastError',
+    );
   }
 
   /// Gera ou recupera do cache local o parecer clínico da avaliação
@@ -438,30 +430,28 @@ DIRETRIZES DA ANÁLISE COMPARATIVA:
       },
     };
 
-    HttpClient? client;
-    try {
-      client = HttpClient();
-      client.connectionTimeout = const Duration(seconds: 15);
+    final bodyJson = jsonEncode(payload);
+    String lastError = '';
 
-      String lastError = '';
+    for (final model in modelsToTry) {
+      final endpoint = Uri.parse(
+        '$_apiBaseUrl/$model:generateContent?key=$key',
+      );
 
-      for (final model in modelsToTry) {
-        final endpoint = Uri.parse(
-          '$_apiBaseUrl/$model:generateContent?key=$key',
-        );
-
-        final request = await client.postUrl(endpoint);
-        request.headers.set('Content-Type', 'application/json; charset=utf-8');
-        request.write(jsonEncode(payload));
-
-        final response = await request.close().timeout(
-          const Duration(seconds: 25),
-        );
-        final responseBody = await response.transform(utf8.decoder).join();
+      try {
+        final response = await http
+            .post(
+              endpoint,
+              headers: {
+                'Content-Type': 'application/json; charset=utf-8',
+              },
+              body: bodyJson,
+            )
+            .timeout(const Duration(seconds: 25));
 
         if (response.statusCode == 200) {
           _activeModel = model;
-          final decoded = jsonDecode(responseBody) as Map<String, dynamic>;
+          final decoded = jsonDecode(response.body) as Map<String, dynamic>;
           final candidates = decoded['candidates'] as List<dynamic>?;
           if (candidates == null || candidates.isEmpty) {
             throw StateError('O modelo não gerou resposta para a solicitação.');
@@ -479,7 +469,7 @@ DIRETRIZES DA ANÁLISE COMPARATIVA:
 
         String msg = 'Código ${response.statusCode}';
         try {
-          final decoded = jsonDecode(responseBody) as Map<String, dynamic>;
+          final decoded = jsonDecode(response.body) as Map<String, dynamic>;
           final errorObj = decoded['error'] as Map<String, dynamic>?;
           if (errorObj != null && errorObj['message'] != null) {
             msg = errorObj['message'].toString();
@@ -490,16 +480,17 @@ DIRETRIZES DA ANÁLISE COMPARATIVA:
         if (response.statusCode != 404) {
           break;
         }
+      } catch (e) {
+        if (kIsWeb) {
+          throw StateError(
+            'Bloqueio de CORS do navegador. O Google Gemini bloqueia chamadas diretas de browsers. Teste no Android ou inicie o Chrome com --disable-web-security.',
+          );
+        }
+        lastError = e.toString();
+        break;
       }
-
-      throw StateError('Erro retornado pela API do Gemini: $lastError');
-    } on SocketException catch (e) {
-      final detail = e.osError?.message ?? e.message;
-      throw StateError(
-        'Falha de rede ($detail). Verifique sua conexão e tente novamente.',
-      );
-    } finally {
-      client?.close();
     }
+
+    throw StateError('Erro retornado pela API do Gemini: $lastError');
   }
 }
