@@ -168,7 +168,22 @@ class _WeeklyWeightTrackerState extends State<WeeklyWeightTracker> {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final pesagens = widget.appState.pesagens;
+    final pesagens = () {
+      final list = List<Pesagem>.from(widget.appState.pesagens);
+      for (final av in widget.appState.avaliacoes) {
+        final d = DateTime(av.dataAvaliacao.year, av.dataAvaliacao.month, av.dataAvaliacao.day);
+        if (!list.any((p) => p.data.year == d.year && p.data.month == d.month && p.data.day == d.day)) {
+          list.add(Pesagem(
+            id: 'av_${av.id}',
+            userId: av.userId,
+            data: d,
+            pesoKg: av.pesoKg,
+          ));
+        }
+      }
+      list.sort((a, b) => a.data.compareTo(b.data));
+      return list;
+    }();
     final weeklyData = _computeWeeklyData(pesagens);
     final profile = widget.appState.userProfile;
     final projection = WeightTrendCalculator.computeProjection(

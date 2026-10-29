@@ -6,6 +6,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:uuid/uuid.dart';
 import '../models/models.dart';
 import '../utils/calculator.dart';
+import '../utils/weight_trend_calculator.dart';
 import 'backup_service.dart';
 import 'database_service.dart';
 import 'health_connect_service.dart';
@@ -136,6 +137,24 @@ class AppState extends ChangeNotifier {
         resultado: _resultadosByAvaliacaoId[av.id],
       );
     }).toList();
+  }
+
+  /// Contexto unificado de peso (consolida pesagens diárias, avaliações e tendência EMA)
+  WeightContext get currentWeightContext =>
+      WeightTrendCalculator.resolveWeightContext(
+        pesagens: _pesagens,
+        avaliacoes: _avaliacoes,
+      );
+
+  /// Metabolismo dinâmico e macros em tempo real para o peso atual
+  LiveMetabolism? get liveMetabolism {
+    final profile = _userProfile;
+    if (profile == null) return null;
+    return WeightTrendCalculator.computeLiveMetabolism(
+      profile: profile,
+      weightContext: currentWeightContext,
+      latestEvaluation: joinedEvaluations.firstOrNull,
+    );
   }
 
   Resultados? getResultadoForAvaliacao(String avaliacaoId) {
@@ -702,6 +721,7 @@ class AppState extends ChangeNotifier {
 
     WidgetService.instance.updateWidgetData(
       pesagens: _pesagens,
+      avaliacoes: _avaliacoes,
       profile: _userProfile,
     );
 
@@ -840,6 +860,7 @@ class AppState extends ChangeNotifier {
 
     WidgetService.instance.updateWidgetData(
       pesagens: _pesagens,
+      avaliacoes: _avaliacoes,
       profile: _userProfile,
     );
 
@@ -919,6 +940,7 @@ class AppState extends ChangeNotifier {
 
     WidgetService.instance.updateWidgetData(
       pesagens: _pesagens,
+      avaliacoes: _avaliacoes,
       profile: _userProfile,
     );
 
@@ -952,6 +974,7 @@ class AppState extends ChangeNotifier {
 
     WidgetService.instance.updateWidgetData(
       pesagens: _pesagens,
+      avaliacoes: _avaliacoes,
       profile: _userProfile,
     );
 
@@ -996,6 +1019,7 @@ class AppState extends ChangeNotifier {
 
     WidgetService.instance.updateWidgetData(
       pesagens: _pesagens,
+      avaliacoes: _avaliacoes,
       profile: _userProfile,
     );
 
@@ -1011,6 +1035,7 @@ class AppState extends ChangeNotifier {
 
     WidgetService.instance.updateWidgetData(
       pesagens: _pesagens,
+      avaliacoes: _avaliacoes,
       profile: _userProfile,
     );
 

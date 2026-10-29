@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 import '../../models/models.dart';
 import '../../services/app_state.dart';
 import '../../theme/app_theme.dart';
+import '../../utils/calculator.dart';
 
 class ProgressOverviewSection extends StatelessWidget {
   final AppState appState;
@@ -56,32 +57,45 @@ class ProgressOverviewSection extends StatelessWidget {
     final previous = evaluations.length >= 2 ? evaluations[1] : null;
 
     final snapshot = latest?.resultado?.snapshot;
-    final currentWeight = latest?.avaliacao.pesoKg ?? 0.0;
-    final currentBf = snapshot?.bfPrincipal ?? 0.0;
-    final currentLbm = snapshot?.lbmFinal ?? 0.0;
-    final targetKcal = snapshot?.macros.targetCalories ?? 0.0;
+    final weightContext = appState.currentWeightContext;
+    final liveMeta = appState.liveMetabolism;
+
+    final currentWeight = weightContext.hasData
+        ? weightContext.currentWeight
+        : (latest?.avaliacao.pesoKg ?? 0.0);
+    final currentBf = liveMeta?.bfPctUsed ?? (snapshot?.bfPrincipal ?? 0.0);
+    final currentLbm = liveMeta?.lbmKg ?? (snapshot?.lbmFinal ?? 0.0);
+    final currentFatKg = liveMeta?.fatKg ??
+        (currentWeight > 0 && currentBf > 0
+            ? BioCalculator.round2(currentWeight * (currentBf / 100.0))
+            : 0.0);
+    final targetKcal = liveMeta?.targetCalories ??
+        (snapshot?.macros.targetCalories ?? 0.0);
+    final macros = liveMeta?.macros ?? snapshot?.macros;
 
     // Streak & Pesagens
     final pesagens = appState.pesagens;
     final streak = _computeStreak(pesagens);
 
-    // Variação em relação à avaliação anterior
-    double? deltaPeso;
+    // Variação unificada do peso
+    final deltaPeso = weightContext.deltaFromPrevious ??
+        (previous != null && latest != null
+            ? currentWeight - previous.avaliacao.pesoKg
+            : null);
+
     double? deltaBf;
     double? deltaLbm;
     double? deltaFat;
 
-    if (previous != null && latest != null) {
+    if (previous != null) {
       final prevSnap = previous.resultado?.snapshot;
       final prevWeight = previous.avaliacao.pesoKg;
       final prevBf = prevSnap?.bfPrincipal ?? 0.0;
       final prevLbm = prevSnap?.lbmFinal ?? 0.0;
+      final prevFatKg = prevWeight * (prevBf / 100.0);
 
-      deltaPeso = currentWeight - prevWeight;
       if (currentBf > 0 && prevBf > 0) {
         deltaBf = currentBf - prevBf;
-        final currentFatKg = currentWeight * (currentBf / 100.0);
-        final prevFatKg = prevWeight * (prevBf / 100.0);
         deltaFat = currentFatKg - prevFatKg;
       }
       if (currentLbm > 0 && prevLbm > 0) {
@@ -158,10 +172,12 @@ class ProgressOverviewSection extends StatelessWidget {
                           borderRadius: BorderRadius.circular(8),
                         ),
                         child: Text(
-                          latest != null
-                              ? DateFormat('dd MMM yyyy', 'pt_BR')
-                                  .format(latest.avaliacao.dataAvaliacao)
-                              : 'Sem avaliações',
+                          weightContext.hasData
+                              ? weightContext.sourceLabel
+                              : (latest != null
+                                  ? DateFormat('dd MMM yyyy', 'pt_BR')
+                                      .format(latest.avaliacao.dataAvaliacao)
+                                  : 'Sem avaliações'),
                           style: const TextStyle(
                             fontSize: 11.5,
                             fontWeight: FontWeight.w700,
@@ -169,7 +185,32 @@ class ProgressOverviewSection extends StatelessWidget {
                           ),
                         ),
                       ),
-                      if (snapshot != null && snapshot.metodoPrincipal != 'none') ...[
+                      if (weightContext.emaWeight != null &&
+                          (currentWeight - weightContext.emaWeight!).abs() >= 0.1) ...[
+                        const SizedBox(width: 6),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 7,
+                            vertical: 4,
+                          ),
+                          decoration: BoxDecoration(
+                            color: isDark
+                                ? const Color(0xFF1E293B)
+                                : const Color(0xFFF1F5F9),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Text(
+                            'EMA: ${weightContext.emaWeight!.toStringAsFixed(1)} kg',
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w600,
+                              color: isDark
+                                  ? AppColors.darkTextSecondary
+                                  : const Color(0xFF64748B),
+                            ),
+                          ),
+                        ),
+                      ] else if (snapshot != null && snapshot.metodoPrincipal != 'none') ...[
                         const SizedBox(width: 6),
                         Container(
                           padding: const EdgeInsets.symmetric(
@@ -308,6 +349,9 @@ class ProgressOverviewSection extends StatelessWidget {
                       value: currentBf > 0
                           ? '${currentBf.toStringAsFixed(1)}%'
                           : '--',
+                      sublabel: liveMeta != null && liveMeta.bfMethod != 'none'
+                          ? 'Âncora: ${liveMeta.bfMethod.toUpperCase()}'
+                          : null,
                       delta: deltaBf != null
                           ? '${deltaBf >= 0 ? '+' : ''}${deltaBf.toStringAsFixed(1)}%'
                           : null,
@@ -324,6 +368,9 @@ class ProgressOverviewSection extends StatelessWidget {
                       value: currentLbm > 0
                           ? '${currentLbm.toStringAsFixed(1)} kg'
                           : '--',
+                      sublabel: currentFatKg > 0
+                          ? 'Gordura: ${currentFatKg.toStringAsFixed(1)} kg'
+                          : null,
                       delta: deltaLbm != null
                           ? '${deltaLbm >= 0 ? '+' : ''}${deltaLbm.toStringAsFixed(1)} kg'
                           : null,
@@ -357,8 +404,8 @@ class ProgressOverviewSection extends StatelessWidget {
                       value: targetKcal > 0
                           ? '${targetKcal.toStringAsFixed(0)} kcal'
                           : '--',
-                      sublabel: snapshot?.macros.macros != null
-                          ? 'P:${snapshot!.macros.grams.protein}g C:${snapshot.macros.grams.carbs}g G:${snapshot.macros.grams.fat}g'
+                      sublabel: macros?.grams != null
+                          ? 'P:${macros!.grams.protein}g C:${macros.grams.carbs}g G:${macros.grams.fat}g'
                           : null,
                       isDark: isDark,
                     ),

@@ -423,7 +423,10 @@ class _PersonalProgressTabState extends State<PersonalProgressTab> {
               ),
               const SizedBox(height: 6),
             ],
-            EvolutionCharts(evaluations: evaluations),
+            EvolutionCharts(
+              evaluations: evaluations,
+              pesagens: widget.appState.pesagens,
+            ),
             const SizedBox(height: 20),
             PhotoComparison(
               appState: widget.appState,

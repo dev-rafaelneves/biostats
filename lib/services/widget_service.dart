@@ -31,26 +31,25 @@ class WidgetService {
   /// Sincroniza dados com o widget da tela inicial
   Future<void> updateWidgetData({
     required List<Pesagem> pesagens,
+    List<Avaliacao> avaliacoes = const [],
     UserProfile? profile,
   }) async {
     if (isTestEnvironment || (!Platform.isAndroid && !Platform.isIOS)) return;
 
     try {
-      if (pesagens.isEmpty) {
+      final weightContext = WeightTrendCalculator.resolveWeightContext(
+        pesagens: pesagens,
+        avaliacoes: avaliacoes,
+      );
+
+      if (!weightContext.hasData) {
         await HomeWidget.saveWidgetData<String>('weight_value', '--');
         await HomeWidget.saveWidgetData<String>('weight_unit', 'kg');
         await HomeWidget.saveWidgetData<String>('trend_label', 'Sem registros');
         await HomeWidget.saveWidgetData<String>('streak_label', '0 dias');
       } else {
-        // Ordena por data decrescente
-        final sorted = List<Pesagem>.from(pesagens)
-          ..sort((a, b) => b.data.compareTo(a.data));
-        final latest = sorted.first;
-
-        // Tendência EMA
-        final emaSeries = WeightTrendCalculator.computeEma(pesagens, alpha: 0.1);
-        final latestEma =
-            emaSeries.isNotEmpty ? emaSeries.last.emaWeight : null;
+        final currentWeight = weightContext.currentWeight;
+        final latestEma = weightContext.emaWeight;
 
         // Projeção
         final projection = WeightTrendCalculator.computeProjection(
@@ -58,9 +57,9 @@ class WidgetService {
           metaPesoKg: profile?.metaPesoKg,
         );
 
-        String trendText = 'Tendência estável';
+        String trendText = weightContext.sourceLabel;
         if (latestEma != null) {
-          final diff = latest.pesoKg - latestEma;
+          final diff = currentWeight - latestEma;
           final diffStr = (diff >= 0 ? '+' : '') + diff.toStringAsFixed(1);
           trendText = 'EMA: ${latestEma.toStringAsFixed(1)}kg ($diffStr)';
         }
@@ -77,7 +76,7 @@ class WidgetService {
 
         await HomeWidget.saveWidgetData<String>(
           'weight_value',
-          latest.pesoKg.toStringAsFixed(1),
+          currentWeight.toStringAsFixed(1),
         );
         await HomeWidget.saveWidgetData<String>('weight_unit', 'kg');
         await HomeWidget.saveWidgetData<String>('trend_label', trendText);

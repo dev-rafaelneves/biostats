@@ -5,15 +5,18 @@ import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 import '../models/models.dart';
 import '../theme/app_theme.dart';
+import '../utils/weight_trend_calculator.dart';
 
 enum _ChartRange { last10, sixMonths, all }
 
 class EvolutionCharts extends StatefulWidget {
   final List<JoinedEvaluation> evaluations;
+  final List<Pesagem> pesagens;
 
   const EvolutionCharts({
     super.key,
     required this.evaluations,
+    this.pesagens = const [],
   });
 
   @override
@@ -181,6 +184,13 @@ class _EvolutionChartsState extends State<EvolutionCharts> {
       );
     }
 
+    final latestPesagem = widget.pesagens.isNotEmpty ? widget.pesagens.last : null;
+    final emaSeries = WeightTrendCalculator.computeEma(widget.pesagens);
+    final latestEma = emaSeries.isNotEmpty ? emaSeries.last.emaWeight : null;
+    final weightSubtitle = latestPesagem != null
+        ? 'Pesagem diária: ${latestPesagem.pesoKg.toStringAsFixed(1)} kg${latestEma != null ? ' • EMA: ${latestEma.toStringAsFixed(1)} kg' : ''}'
+        : null;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -219,6 +229,7 @@ class _EvolutionChartsState extends State<EvolutionCharts> {
         // Gráfico 1: Evolução de Peso e Massa Magra (kg)
         _ChartCard(
           title: 'Evolução de Peso e Massa Magra (kg)',
+          subtitle: weightSubtitle,
           points: chartData,
           series: [
             _LineSeriesConfig(
@@ -281,11 +292,13 @@ class _EvolutionChartsState extends State<EvolutionCharts> {
 
 class _ChartCard extends StatelessWidget {
   final String title;
+  final String? subtitle;
   final List<_ChartPoint> points;
   final List<_LineSeriesConfig> series;
 
   const _ChartCard({
     required this.title,
+    this.subtitle,
     required this.points,
     required this.series,
   });
@@ -332,15 +345,33 @@ class _ChartCard extends StatelessWidget {
         children: [
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 6),
-            child: Text(
-              title,
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.w600,
-                color: isDark
-                    ? AppColors.darkTextPrimary
-                    : const Color(0xFF1E293B),
-              ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                    color: isDark
+                        ? AppColors.darkTextPrimary
+                        : const Color(0xFF1E293B),
+                  ),
+                ),
+                if (subtitle != null) ...[
+                  const SizedBox(height: 3),
+                  Text(
+                    subtitle!,
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w500,
+                      color: isDark
+                          ? AppColors.darkTextSecondary
+                          : const Color(0xFF64748B),
+                    ),
+                  ),
+                ],
+              ],
             ),
           ),
           const SizedBox(height: 22),
