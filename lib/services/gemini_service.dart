@@ -21,8 +21,17 @@ class GeminiTestResult {
 class GeminiService {
   static const String _keyGeminiApiKey = 'biostats_gemini_api_key';
   static const String _defaultModel = 'gemini-3.8-flash';
+  static String _activeModel = _defaultModel;
+  static const List<String> candidateModels = [
+    'gemini-3.8-flash',
+    'gemini-2.5-flash',
+    'gemini-2.0-flash',
+    'gemini-1.5-flash',
+  ];
   static const String _apiBaseUrl =
       'https://generativelanguage.googleapis.com/v1beta/models';
+
+  static String get activeModel => _activeModel;
 
   static final FlutterSecureStorage _secureStorage = const FlutterSecureStorage(
     aOptions: AndroidOptions(encryptedSharedPreferences: true),
@@ -114,9 +123,10 @@ class GeminiService {
       );
     }
 
-    final endpoint = Uri.parse(
-      '$_apiBaseUrl/$_defaultModel:generateContent?key=$keyToTest',
-    );
+    final modelsToTry = [
+      _activeModel,
+      ...candidateModels.where((m) => m != _activeModel),
+    ];
 
     final payload = {
       'contents': [
@@ -137,21 +147,30 @@ class GeminiService {
       client = HttpClient();
       client.connectionTimeout = const Duration(seconds: 10);
 
-      final request = await client.postUrl(endpoint);
-      request.headers.set('Content-Type', 'application/json; charset=utf-8');
-      request.write(jsonEncode(payload));
+      String lastError = '';
 
-      final response = await request.close().timeout(
-        const Duration(seconds: 15),
-      );
-      final responseBody = await response.transform(utf8.decoder).join();
-
-      if (response.statusCode == 200) {
-        return const GeminiTestResult(
-          success: true,
-          message: 'Conexão com Gemini validada com sucesso!',
+      for (final model in modelsToTry) {
+        final endpoint = Uri.parse(
+          '$_apiBaseUrl/$model:generateContent?key=$keyToTest',
         );
-      } else {
+
+        final request = await client.postUrl(endpoint);
+        request.headers.set('Content-Type', 'application/json; charset=utf-8');
+        request.write(jsonEncode(payload));
+
+        final response = await request.close().timeout(
+          const Duration(seconds: 15),
+        );
+        final responseBody = await response.transform(utf8.decoder).join();
+
+        if (response.statusCode == 200) {
+          _activeModel = model;
+          return GeminiTestResult(
+            success: true,
+            message: 'Conexão com Gemini validada com sucesso ($model)!',
+          );
+        }
+
         String errorMsg = 'Código ${response.statusCode}';
         try {
           final decoded = jsonDecode(responseBody) as Map<String, dynamic>;
@@ -160,15 +179,23 @@ class GeminiService {
             errorMsg = errorObj['message'].toString();
           }
         } catch (_) {}
-        return GeminiTestResult(
-          success: false,
-          message: 'Erro na API do Gemini: $errorMsg',
-        );
+        lastError = errorMsg;
+
+        if (response.statusCode != 404) {
+          break;
+        }
       }
-    } on SocketException {
-      return const GeminiTestResult(
+
+      return GeminiTestResult(
         success: false,
-        message: 'Sem conexão com a internet. Verifique sua rede e tente novamente.',
+        message: 'Erro na API do Gemini: $lastError',
+      );
+    } on SocketException catch (e) {
+      final detail = e.osError?.message ?? e.message;
+      return GeminiTestResult(
+        success: false,
+        message:
+            'Falha de rede ($detail). Verifique sua conexão e tente novamente.',
       );
     } catch (e) {
       return GeminiTestResult(
@@ -392,9 +419,10 @@ DIRETRIZES DA ANÁLISE COMPARATIVA:
     required String key,
     required String prompt,
   }) async {
-    final endpoint = Uri.parse(
-      '$_apiBaseUrl/$_defaultModel:generateContent?key=$key',
-    );
+    final modelsToTry = [
+      _activeModel,
+      ...candidateModels.where((m) => m != _activeModel),
+    ];
 
     final payload = {
       'contents': [
@@ -415,16 +443,40 @@ DIRETRIZES DA ANÁLISE COMPARATIVA:
       client = HttpClient();
       client.connectionTimeout = const Duration(seconds: 15);
 
-      final request = await client.postUrl(endpoint);
-      request.headers.set('Content-Type', 'application/json; charset=utf-8');
-      request.write(jsonEncode(payload));
+      String lastError = '';
 
-      final response = await request.close().timeout(
-        const Duration(seconds: 25),
-      );
-      final responseBody = await response.transform(utf8.decoder).join();
+      for (final model in modelsToTry) {
+        final endpoint = Uri.parse(
+          '$_apiBaseUrl/$model:generateContent?key=$key',
+        );
 
-      if (response.statusCode != 200) {
+        final request = await client.postUrl(endpoint);
+        request.headers.set('Content-Type', 'application/json; charset=utf-8');
+        request.write(jsonEncode(payload));
+
+        final response = await request.close().timeout(
+          const Duration(seconds: 25),
+        );
+        final responseBody = await response.transform(utf8.decoder).join();
+
+        if (response.statusCode == 200) {
+          _activeModel = model;
+          final decoded = jsonDecode(responseBody) as Map<String, dynamic>;
+          final candidates = decoded['candidates'] as List<dynamic>?;
+          if (candidates == null || candidates.isEmpty) {
+            throw StateError('O modelo não gerou resposta para a solicitação.');
+          }
+
+          final content = candidates.first['content'] as Map<String, dynamic>?;
+          final parts = content?['parts'] as List<dynamic>?;
+          if (parts == null || parts.isEmpty) {
+            throw StateError('Conteúdo de resposta vazio do Gemini.');
+          }
+
+          final text = parts.first['text'] as String?;
+          return text?.trim() ?? 'Sem resposta.';
+        }
+
         String msg = 'Código ${response.statusCode}';
         try {
           final decoded = jsonDecode(responseBody) as Map<String, dynamic>;
@@ -433,26 +485,18 @@ DIRETRIZES DA ANÁLISE COMPARATIVA:
             msg = errorObj['message'].toString();
           }
         } catch (_) {}
-        throw StateError('Erro retornado pela API do Gemini: $msg');
+        lastError = msg;
+
+        if (response.statusCode != 404) {
+          break;
+        }
       }
 
-      final decoded = jsonDecode(responseBody) as Map<String, dynamic>;
-      final candidates = decoded['candidates'] as List<dynamic>?;
-      if (candidates == null || candidates.isEmpty) {
-        throw StateError('O modelo não gerou resposta para a solicitação.');
-      }
-
-      final content = candidates.first['content'] as Map<String, dynamic>?;
-      final parts = content?['parts'] as List<dynamic>?;
-      if (parts == null || parts.isEmpty) {
-        throw StateError('Conteúdo de resposta vazio do Gemini.');
-      }
-
-      final text = parts.first['text'] as String?;
-      return text?.trim() ?? 'Sem resposta.';
-    } on SocketException {
+      throw StateError('Erro retornado pela API do Gemini: $lastError');
+    } on SocketException catch (e) {
+      final detail = e.osError?.message ?? e.message;
       throw StateError(
-        'Sem conexão com a internet para consultar o Gemini. Conecte-se e tente novamente.',
+        'Falha de rede ($detail). Verifique sua conexão e tente novamente.',
       );
     } finally {
       client?.close();
