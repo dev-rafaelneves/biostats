@@ -20,13 +20,15 @@ class GeminiTestResult {
 /// por servidores intermediários.
 class GeminiService {
   static const String _keyGeminiApiKey = 'biostats_gemini_api_key';
-  static const String _defaultModel = 'gemini-1.5-flash';
+  static const String _defaultModel = 'gemini-3.8-flash';
   static String _activeModel = _defaultModel;
   static const List<String> candidateModels = [
-    'gemini-1.5-flash',
-    'gemini-2.0-flash',
+    'gemini-3.8-flash',
+    'gemini-3.6-flash',
+    'gemini-3.5-flash-lite',
     'gemini-2.5-flash',
-    'gemini-1.5-pro',
+    'gemini-2.5-flash-lite',
+    'gemini-2.5-pro',
   ];
   static const String _apiBaseUrl =
       'https://generativelanguage.googleapis.com/v1beta/models';
