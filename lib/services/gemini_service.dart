@@ -20,13 +20,13 @@ class GeminiTestResult {
 /// por servidores intermediários.
 class GeminiService {
   static const String _keyGeminiApiKey = 'biostats_gemini_api_key';
-  static const String _defaultModel = 'gemini-2.5-flash';
+  static const String _defaultModel = 'gemini-1.5-flash';
   static String _activeModel = _defaultModel;
   static const List<String> candidateModels = [
-    'gemini-2.5-flash',
-    'gemini-2.0-flash',
     'gemini-1.5-flash',
-    'gemini-3.8-flash',
+    'gemini-2.0-flash',
+    'gemini-2.5-flash',
+    'gemini-1.5-pro',
   ];
   static const String _apiBaseUrl =
       'https://generativelanguage.googleapis.com/v1beta/models';
@@ -179,17 +179,28 @@ class GeminiService {
         } catch (_) {}
         lastError = errorMsg;
 
-        if (response.statusCode != 404) {
+        // Se a chave for comprovadamente inválida (400 ou 403), interrompe
+        final lower = errorMsg.toLowerCase();
+        if (response.statusCode == 400 &&
+            (lower.contains('api key') || lower.contains('invalid'))) {
           break;
         }
+        if (response.statusCode == 403) {
+          break;
+        }
+
+        // Para códigos como 503 (alta demanda), 429 (rate limit) ou 404 (modelo não existe),
+        // continua tentando o próximo modelo candidato da lista
+        continue;
       } catch (e) {
         if (kIsWeb) {
           lastError =
               'Bloqueio de CORS do navegador. O Google Gemini bloqueia chamadas diretas originadas de browsers. No Chrome, execute com: flutter run -d chrome --web-browser-flag "--disable-web-security", ou teste diretamente no aplicativo Android.';
-        } else {
-          lastError = e.toString();
+          break;
         }
-        break;
+        lastError = e.toString();
+        // Em caso de falha de conexão ou timeout num modelo específico, tenta o próximo
+        continue;
       }
     }
 
@@ -477,9 +488,16 @@ DIRETRIZES DA ANÁLISE COMPARATIVA:
         } catch (_) {}
         lastError = msg;
 
-        if (response.statusCode != 404) {
+        final lower = msg.toLowerCase();
+        if (response.statusCode == 400 &&
+            (lower.contains('api key') || lower.contains('invalid'))) {
           break;
         }
+        if (response.statusCode == 403) {
+          break;
+        }
+
+        continue;
       } catch (e) {
         if (kIsWeb) {
           throw StateError(
@@ -487,7 +505,7 @@ DIRETRIZES DA ANÁLISE COMPARATIVA:
           );
         }
         lastError = e.toString();
-        break;
+        continue;
       }
     }
 
