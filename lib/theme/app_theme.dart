@@ -24,6 +24,105 @@ class AppColors {
   static const Color orange = Color(0xFFF97316); // orange-500
   static const Color rose = Color(0xFFF43F5E); // rose-500
   static const Color blue = Color(0xFF3B82F6); // blue-500
+
+  // Sub-superfícies e textos com contraste WCAG AA (>= 4.5:1)
+  static const Color lightSurfaceSubtle = Color(0xFFF1F5F9); // slate-100
+  static const Color darkSurfaceSubtle = Color(0xFF1E293B); // slate-800
+  static const Color lightTextAccessibleMuted = Color(0xFF475569); // slate-600 (contraste 7.0:1 em branco)
+  static const Color darkTextAccessibleMuted = Color(0xFF94A3B8); // slate-400 (contraste 6.4:1 em slate-900)
+}
+
+@immutable
+class BioThemeColors extends ThemeExtension<BioThemeColors> {
+  final Color background;
+  final Color surface;
+  final Color surfaceSubtle;
+  final Color border;
+  final Color textPrimary;
+  final Color textSecondary;
+  final Color textMuted;
+  final Color accent;
+
+  const BioThemeColors({
+    required this.background,
+    required this.surface,
+    required this.surfaceSubtle,
+    required this.border,
+    required this.textPrimary,
+    required this.textSecondary,
+    required this.textMuted,
+    required this.accent,
+  });
+
+  static const BioThemeColors light = BioThemeColors(
+    background: AppColors.lightBackground,
+    surface: AppColors.lightSurface,
+    surfaceSubtle: AppColors.lightSurfaceSubtle,
+    border: AppColors.lightBorder,
+    textPrimary: AppColors.lightTextPrimary,
+    textSecondary: AppColors.lightTextAccessibleMuted,
+    textMuted: AppColors.lightTextSecondary,
+    accent: AppColors.indigoPrimary,
+  );
+
+  static const BioThemeColors dark = BioThemeColors(
+    background: AppColors.darkBackground,
+    surface: AppColors.darkSurface,
+    surfaceSubtle: AppColors.darkSurfaceSubtle,
+    border: AppColors.darkBorder,
+    textPrimary: AppColors.darkTextPrimary,
+    textSecondary: AppColors.darkTextSecondary,
+    textMuted: AppColors.darkTextAccessibleMuted,
+    accent: AppColors.indigoLight,
+  );
+
+  @override
+  BioThemeColors copyWith({
+    Color? background,
+    Color? surface,
+    Color? surfaceSubtle,
+    Color? border,
+    Color? textPrimary,
+    Color? textSecondary,
+    Color? textMuted,
+    Color? accent,
+  }) {
+    return BioThemeColors(
+      background: background ?? this.background,
+      surface: surface ?? this.surface,
+      surfaceSubtle: surfaceSubtle ?? this.surfaceSubtle,
+      border: border ?? this.border,
+      textPrimary: textPrimary ?? this.textPrimary,
+      textSecondary: textSecondary ?? this.textSecondary,
+      textMuted: textMuted ?? this.textMuted,
+      accent: accent ?? this.accent,
+    );
+  }
+
+  @override
+  BioThemeColors lerp(ThemeExtension<BioThemeColors>? other, double t) {
+    if (other is! BioThemeColors) return this;
+    return BioThemeColors(
+      background: Color.lerp(background, other.background, t)!,
+      surface: Color.lerp(surface, other.surface, t)!,
+      surfaceSubtle: Color.lerp(surfaceSubtle, other.surfaceSubtle, t)!,
+      border: Color.lerp(border, other.border, t)!,
+      textPrimary: Color.lerp(textPrimary, other.textPrimary, t)!,
+      textSecondary: Color.lerp(textSecondary, other.textSecondary, t)!,
+      textMuted: Color.lerp(textMuted, other.textMuted, t)!,
+      accent: Color.lerp(accent, other.accent, t)!,
+    );
+  }
+}
+
+extension BioThemeContext on BuildContext {
+  BioThemeColors get bioColors =>
+      Theme.of(this).extension<BioThemeColors>() ??
+      (Theme.of(this).brightness == Brightness.dark
+          ? BioThemeColors.dark
+          : BioThemeColors.light);
+
+  bool get isDarkMode => Theme.of(this).brightness == Brightness.dark;
 }
 
 class AppTheme {
@@ -71,6 +170,7 @@ class AppTheme {
         primaryColor: AppColors.indigoPrimary,
         brightness: Brightness.light,
       ),
+      extensions: const [BioThemeColors.light],
     );
   }
 
@@ -118,6 +218,7 @@ class AppTheme {
         primaryColor: AppColors.indigoLight,
         brightness: Brightness.dark,
       ),
+      extensions: const [BioThemeColors.dark],
     );
   }
 }

@@ -14,6 +14,7 @@ import 'evaluation_form/live_preview_card.dart';
 import 'evaluation_form/measure_input_row.dart';
 import 'evaluation_form/photo_uploader_slot.dart';
 import 'evaluation_form/section_header.dart';
+import 'evaluation_form/skinfolds_section_card.dart';
 import 'ghost_camera_screen.dart';
 
 class EvaluationFormScreen extends StatefulWidget {
@@ -733,14 +734,16 @@ class _EvaluationFormScreenState extends State<EvaluationFormScreen> {
     final dateFmt = DateFormat('dd/MM/yyyy');
 
     int filledMembersCount = 0;
-    if (_parseField(_abdomenCtrl) != null) filledMembersCount++;
+    if (profile?.sexo == Sexo.F && _parseField(_abdomenCtrl) != null) {
+      filledMembersCount++;
+    }
     if (profile?.sexo == Sexo.M && _parseField(_quadrilCtrl) != null) {
       filledMembersCount++;
     }
     if (_parseField(_bracoCtrl) != null) filledMembersCount++;
     if (_parseField(_coxaCtrl) != null) filledMembersCount++;
     if (_parseField(_panturrilhaCtrl) != null) filledMembersCount++;
-    final totalMembersCount = profile?.sexo == Sexo.M ? 5 : 4;
+    final totalMembersCount = 4;
 
     int filledDobrasCount = 0;
     if (_parseField(_dobraPeitoralCtrl) != null) filledDobrasCount++;
@@ -982,6 +985,7 @@ class _EvaluationFormScreenState extends State<EvaluationFormScreen> {
                         const Divider(indent: 16, height: 1),
                         MeasureInputRow(
                           label: 'Cintura',
+                          subtitle: 'Ponto mais estreito do tronco',
                           controller: _cinturaCtrl,
                           unit: 'cm',
                           requiredField: true,
@@ -996,6 +1000,25 @@ class _EvaluationFormScreenState extends State<EvaluationFormScreen> {
                           ),
                           onChanged: (_) => setState(() {}),
                         ),
+                        if (profile?.sexo != Sexo.F) ...[
+                          const Divider(indent: 16, height: 1),
+                          MeasureInputRow(
+                            label: 'Abdômen',
+                            subtitle: 'Linha do umbigo (essencial no US Navy masculino)',
+                            controller: _abdomenCtrl,
+                            unit: 'cm',
+                            hintText: _hintFromPrev(prev?.medidas.abdomen),
+                            warningText: _validateAnatomicalRange(
+                              'Abdômen',
+                              _parseField(_abdomenCtrl),
+                            ),
+                            onHelpTap: () => MeasurementGuideModal.show(
+                              context,
+                              MeasurementGuideType.abdomen,
+                            ),
+                            onChanged: (_) => setState(() {}),
+                          ),
+                        ],
                         if (profile?.sexo == Sexo.F) ...[
                           const Divider(indent: 16, height: 1),
                           MeasureInputRow(
@@ -1073,24 +1096,26 @@ class _EvaluationFormScreenState extends State<EvaluationFormScreen> {
                     clipBehavior: Clip.antiAlias,
                     child: Column(
                       children: [
-                        MeasureInputRow(
-                          label: 'Abdômen',
-                          subtitle: 'Linha da cicatriz umbilical',
-                          controller: _abdomenCtrl,
-                          unit: 'cm',
-                          hintText: _hintFromPrev(prev?.medidas.abdomen),
-                          warningText: _validateAnatomicalRange(
-                            'Abdômen',
-                            _parseField(_abdomenCtrl),
+                        if (profile?.sexo == Sexo.F) ...[
+                          MeasureInputRow(
+                            label: 'Abdômen',
+                            subtitle: 'Linha da cicatriz umbilical',
+                            controller: _abdomenCtrl,
+                            unit: 'cm',
+                            hintText: _hintFromPrev(prev?.medidas.abdomen),
+                            warningText: _validateAnatomicalRange(
+                              'Abdômen',
+                              _parseField(_abdomenCtrl),
+                            ),
+                            onHelpTap: () => MeasurementGuideModal.show(
+                              context,
+                              MeasurementGuideType.abdomen,
+                            ),
+                            onChanged: (_) => setState(() {}),
                           ),
-                          onHelpTap: () => MeasurementGuideModal.show(
-                            context,
-                            MeasurementGuideType.abdomen,
-                          ),
-                          onChanged: (_) => setState(() {}),
-                        ),
-                        if (profile?.sexo == Sexo.M) ...[
                           const Divider(indent: 16, height: 1),
+                        ],
+                        if (profile?.sexo == Sexo.M) ...[
                           MeasureInputRow(
                             label: 'Quadril',
                             subtitle: 'Usado no RCQ e BAI',
@@ -1107,8 +1132,8 @@ class _EvaluationFormScreenState extends State<EvaluationFormScreen> {
                             ),
                             onChanged: (_) => setState(() {}),
                           ),
+                          const Divider(indent: 16, height: 1),
                         ],
-                        const Divider(indent: 16, height: 1),
                         MeasureInputRow(
                           label: 'Braço',
                           subtitle: 'Ponto médio do bíceps',
@@ -1167,261 +1192,26 @@ class _EvaluationFormScreenState extends State<EvaluationFormScreen> {
                   const SizedBox(height: 18),
 
                   // Seção: Dobras Cutâneas (Adipômetro)
-                  Wrap(
-                    alignment: WrapAlignment.spaceBetween,
-                    crossAxisAlignment: WrapCrossAlignment.center,
-                    spacing: 8,
-                    runSpacing: 4,
-                    children: [
-                      const SectionHeader(
-                        title: 'DOBRAS CUTÂNEAS (ADIPÔMETRO)',
-                        bottomPadding: 0,
-                      ),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 8,
-                          vertical: 3,
-                        ),
-                        decoration: BoxDecoration(
-                          color: (isJp7Ready || isJp3Ready)
-                              ? AppColors.emerald.withValues(alpha: 0.12)
-                              : (isDark
-                                  ? const Color(0xFF1E293B)
-                                  : const Color(0xFFF1F5F9)),
-                          borderRadius: BorderRadius.circular(100),
-                        ),
-                        child: Text(
-                          isJp7Ready
-                              ? '✨ JP 7 Ativo'
-                              : (isJp3Ready
-                                  ? '✨ JP 3 Ativo'
-                                  : '$filledDobrasCount de 7 preenchidas'),
-                          style: TextStyle(
-                            fontSize: 10.5,
-                            fontWeight: FontWeight.w700,
-                            color: (isJp7Ready || isJp3Ready)
-                                ? AppColors.emerald
-                                : (isDark
-                                    ? AppColors.darkTextSecondary
-                                    : const Color(0xFF64748B)),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 6),
-
-                  Material(
-                    color: isDark ? AppColors.darkSurface : Colors.white,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      side: BorderSide(
-                        color: isDark
-                            ? AppColors.darkBorder
-                            : AppColors.lightBorder,
-                      ),
-                    ),
-                    clipBehavior: Clip.antiAlias,
-                    child: Column(
-                      children: [
-                        InkWell(
-                          onTap: () {
-                            HapticFeedback.selectionClick();
-                            setState(() => _showDobras = !_showDobras);
-                          },
-                          child: Padding(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 16,
-                              vertical: 12,
-                            ),
-                            child: Row(
-                              children: [
-                                const Icon(
-                                  Icons.straighten_rounded,
-                                  size: 18,
-                                  color: AppColors.indigoPrimary,
-                                ),
-                                const SizedBox(width: 10),
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        'Protocolos Jackson-Pollock',
-                                        style: TextStyle(
-                                          fontSize: 15.5,
-                                          fontWeight: FontWeight.w600,
-                                          color: isDark
-                                              ? AppColors.darkTextPrimary
-                                              : AppColors.lightTextPrimary,
-                                        ),
-                                      ),
-                                      const SizedBox(height: 2),
-                                      Text(
-                                        profile?.sexo == Sexo.F
-                                            ? 'JP3: Tríceps, Suprailíaca, Coxa • JP7: Todas'
-                                            : 'JP3: Peitoral, Abdômen, Coxa • JP7: Todas',
-                                        style: TextStyle(
-                                          fontSize: 11.5,
-                                          color: isDark
-                                              ? AppColors.darkTextSecondary
-                                              : const Color(0xFF64748B),
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                                Icon(
-                                  _showDobras
-                                      ? Icons.keyboard_arrow_up_rounded
-                                      : Icons.keyboard_arrow_down_rounded,
-                                  color: isDark
-                                      ? AppColors.darkTextSecondary
-                                      : const Color(0xFF94A3B8),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                        if (_showDobras) ...[
-                          const Divider(height: 1),
-                          MeasureInputRow(
-                            label: 'Peitoral',
-                            subtitle: profile?.sexo == Sexo.M
-                                ? 'Essencial no JP3 masculino'
-                                : null,
-                            controller: _dobraPeitoralCtrl,
-                            unit: 'mm',
-                            hintText:
-                                _hintFromPrev(prev?.medidas.dobraPeitoral),
-                            warningText: _validateAnatomicalRange(
-                              'Dobra',
-                              _parseField(_dobraPeitoralCtrl),
-                            ),
-                            onHelpTap: () => MeasurementGuideModal.show(
-                              context,
-                              MeasurementGuideType.dobraCutanea,
-                            ),
-                            onChanged: (_) => setState(() {}),
-                          ),
-                          const Divider(indent: 16, height: 1),
-                          MeasureInputRow(
-                            label: 'Axilar Média',
-                            subtitle: 'Necessária para o JP7',
-                            controller: _dobraAxilarMediaCtrl,
-                            unit: 'mm',
-                            hintText:
-                                _hintFromPrev(prev?.medidas.dobraAxilarMedia),
-                            warningText: _validateAnatomicalRange(
-                              'Dobra',
-                              _parseField(_dobraAxilarMediaCtrl),
-                            ),
-                            onHelpTap: () => MeasurementGuideModal.show(
-                              context,
-                              MeasurementGuideType.dobraCutanea,
-                            ),
-                            onChanged: (_) => setState(() {}),
-                          ),
-                          const Divider(indent: 16, height: 1),
-                          MeasureInputRow(
-                            label: 'Tríceps',
-                            subtitle: profile?.sexo == Sexo.F
-                                ? 'Essencial no JP3 feminino'
-                                : 'Necessária para o JP7',
-                            controller: _dobraTricepsCtrl,
-                            unit: 'mm',
-                            hintText:
-                                _hintFromPrev(prev?.medidas.dobraTriceps),
-                            warningText: _validateAnatomicalRange(
-                              'Dobra',
-                              _parseField(_dobraTricepsCtrl),
-                            ),
-                            onHelpTap: () => MeasurementGuideModal.show(
-                              context,
-                              MeasurementGuideType.dobraCutanea,
-                            ),
-                            onChanged: (_) => setState(() {}),
-                          ),
-                          const Divider(indent: 16, height: 1),
-                          MeasureInputRow(
-                            label: 'Subescapular',
-                            subtitle: 'Necessária para o JP7',
-                            controller: _dobraSubescapularCtrl,
-                            unit: 'mm',
-                            hintText:
-                                _hintFromPrev(prev?.medidas.dobraSubescapular),
-                            warningText: _validateAnatomicalRange(
-                              'Dobra',
-                              _parseField(_dobraSubescapularCtrl),
-                            ),
-                            onHelpTap: () => MeasurementGuideModal.show(
-                              context,
-                              MeasurementGuideType.dobraCutanea,
-                            ),
-                            onChanged: (_) => setState(() {}),
-                          ),
-                          const Divider(indent: 16, height: 1),
-                          MeasureInputRow(
-                            label: 'Abdômen',
-                            subtitle: profile?.sexo == Sexo.M
-                                ? 'Essencial no JP3 masculino'
-                                : 'Necessária para o JP7',
-                            controller: _dobraAbdomenCtrl,
-                            unit: 'mm',
-                            hintText:
-                                _hintFromPrev(prev?.medidas.dobraAbdomen),
-                            warningText: _validateAnatomicalRange(
-                              'Dobra',
-                              _parseField(_dobraAbdomenCtrl),
-                            ),
-                            onHelpTap: () => MeasurementGuideModal.show(
-                              context,
-                              MeasurementGuideType.dobraCutanea,
-                            ),
-                            onChanged: (_) => setState(() {}),
-                          ),
-                          const Divider(indent: 16, height: 1),
-                          MeasureInputRow(
-                            label: 'Suprailíaca',
-                            subtitle: profile?.sexo == Sexo.F
-                                ? 'Essencial no JP3 feminino'
-                                : 'Necessária para o JP7',
-                            controller: _dobraSuprailiacaCtrl,
-                            unit: 'mm',
-                            hintText:
-                                _hintFromPrev(prev?.medidas.dobraSuprailiaca),
-                            warningText: _validateAnatomicalRange(
-                              'Dobra',
-                              _parseField(_dobraSuprailiacaCtrl),
-                            ),
-                            onHelpTap: () => MeasurementGuideModal.show(
-                              context,
-                              MeasurementGuideType.dobraCutanea,
-                            ),
-                            onChanged: (_) => setState(() {}),
-                          ),
-                          const Divider(indent: 16, height: 1),
-                          MeasureInputRow(
-                            label: 'Coxa',
-                            subtitle: 'Essencial no JP3 e JP7',
-                            controller: _dobraCoxaCtrl,
-                            unit: 'mm',
-                            hintText:
-                                _hintFromPrev(prev?.medidas.dobraCoxa),
-                            warningText: _validateAnatomicalRange(
-                              'Dobra',
-                              _parseField(_dobraCoxaCtrl),
-                            ),
-                            onHelpTap: () => MeasurementGuideModal.show(
-                              context,
-                              MeasurementGuideType.dobraCutanea,
-                            ),
-                            onChanged: (_) => setState(() {}),
-                          ),
-                        ],
-                      ],
-                    ),
+                  SkinfoldsSectionCard(
+                    sexo: profile?.sexo,
+                    prev: prev,
+                    showDobras: _showDobras,
+                    filledDobrasCount: filledDobrasCount,
+                    isJp7Ready: isJp7Ready,
+                    isJp3Ready: isJp3Ready,
+                    onToggleShowDobras: () =>
+                        setState(() => _showDobras = !_showDobras),
+                    onFieldChanged: (_) => setState(() {}),
+                    hintFromPrev: _hintFromPrev,
+                    validateRange: _validateAnatomicalRange,
+                    parseField: _parseField,
+                    dobraPeitoralCtrl: _dobraPeitoralCtrl,
+                    dobraAxilarMediaCtrl: _dobraAxilarMediaCtrl,
+                    dobraTricepsCtrl: _dobraTricepsCtrl,
+                    dobraSubescapularCtrl: _dobraSubescapularCtrl,
+                    dobraAbdomenCtrl: _dobraAbdomenCtrl,
+                    dobraSuprailiacaCtrl: _dobraSuprailiacaCtrl,
+                    dobraCoxaCtrl: _dobraCoxaCtrl,
                   ),
 
                   // Card de Prévia em Tempo Real

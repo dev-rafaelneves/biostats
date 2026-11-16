@@ -86,9 +86,9 @@ class MeasurementGuideInfo {
       case MeasurementGuideType.abdomen:
         return const MeasurementGuideInfo(
           title: 'Circunferência do Abdômen',
-          targetFormula: 'Acompanhamento de gordura visceral e inchaço',
+          targetFormula: 'Padrão US Navy Masculino e Gordura Visceral',
           explanation:
-              'Enquanto a cintura pega o ponto mais estreito, o abdômen registra a linha exata da cicatriz umbilical, sendo excelente para acompanhar perda de gordura frontal.',
+              'No protocolo oficial US Navy para homens, a medida deve ser feita na linha exata da cicatriz umbilical. Enquanto a cintura pega o ponto mais estreito, o abdômen registra a real circunferência abdominal.',
           steps: [
             'Fique em pé, ereto, pés ligeiramente afastados na largura dos ombros.',
             'Passe a fita exatamente sobre o ponto central do umbigo.',
@@ -310,37 +310,42 @@ class MeasurementGuideModal extends StatelessWidget {
                   children: [
                     // Ilustração Anatômica de Nível Profissional
                     Center(
-                      child: Container(
-                        height: 240,
-                        width: 210,
-                        padding: const EdgeInsets.all(10),
-                        decoration: BoxDecoration(
-                          color: isDark
-                              ? const Color(0xFF0F172A)
-                              : const Color(0xFFF8FAFC),
-                          borderRadius: BorderRadius.circular(20),
-                          border: Border.all(
+                      child: Semantics(
+                        image: true,
+                        label:
+                            'Silhueta anatômica destacando o ponto de medição: ${info.landmark}',
+                        child: Container(
+                          height: 240,
+                          width: 210,
+                          padding: const EdgeInsets.all(10),
+                          decoration: BoxDecoration(
                             color: isDark
-                                ? AppColors.darkBorder
-                                : const Color(0xFFE2E8F0),
-                            width: 1.2,
-                          ),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withValues(
-                                  alpha: isDark ? 0.3 : 0.04),
-                              blurRadius: 10,
-                              offset: const Offset(0, 4),
+                                ? const Color(0xFF0F172A)
+                                : const Color(0xFFF8FAFC),
+                            borderRadius: BorderRadius.circular(20),
+                            border: Border.all(
+                              color: isDark
+                                  ? AppColors.darkBorder
+                                  : const Color(0xFFE2E8F0),
+                              width: 1.2,
                             ),
-                          ],
-                        ),
-                        child: CustomPaint(
-                          painter: AnatomicalSilhouettePainter(
-                            highlightY: info.highlightY,
-                            isLateral: info.isLateral,
-                            isDark: isDark,
-                            sexo: sexo,
-                            landmarkText: info.landmark,
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withValues(
+                                    alpha: isDark ? 0.3 : 0.04),
+                                blurRadius: 10,
+                                offset: const Offset(0, 4),
+                              ),
+                            ],
+                          ),
+                          child: CustomPaint(
+                            painter: AnatomicalSilhouettePainter(
+                              highlightY: info.highlightY,
+                              isLateral: info.isLateral,
+                              isDark: isDark,
+                              sexo: sexo,
+                              landmarkText: info.landmark,
+                            ),
                           ),
                         ),
                       ),

@@ -189,10 +189,15 @@ class PhotoPreviewCard extends StatelessWidget {
           AspectRatio(
             aspectRatio: 3 / 4,
             child: bytes != null
-                ? Image.memory(
-                    bytes!,
-                    fit: BoxFit.cover,
-                    gaplessPlayback: true,
+                ? Semantics(
+                    image: true,
+                    label: 'Foto de avaliação: $tag, $subTag',
+                    child: Image.memory(
+                      bytes!,
+                      fit: BoxFit.cover,
+                      cacheWidth: 640,
+                      gaplessPlayback: true,
+                    ),
                   )
                 : Container(
                     color: isDark

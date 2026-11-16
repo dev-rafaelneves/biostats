@@ -4,12 +4,14 @@ import 'package:intl/intl.dart';
 import 'package:share_plus/share_plus.dart';
 import '../models/models.dart';
 import '../theme/app_theme.dart';
+import 'evaluation_details/detail_cards_components.dart';
 
 class EvaluationDetailsWidget extends StatelessWidget {
   final UserProfile profile;
   final Avaliacao avaliacao;
   final Resultados? resultado;
   final Avaliacao? previousAvaliacao;
+  final void Function(String method)? onSelectBfMethod;
 
   const EvaluationDetailsWidget({
     super.key,
@@ -17,6 +19,7 @@ class EvaluationDetailsWidget extends StatelessWidget {
     required this.avaliacao,
     required this.resultado,
     this.previousAvaliacao,
+    this.onSelectBfMethod,
   });
 
   double _numVal(dynamic val) => (val as num?)?.toDouble() ?? 0.0;
@@ -275,10 +278,13 @@ class EvaluationDetailsWidget extends StatelessWidget {
 
     final bmrKatch = snap?.bmrKatch ?? _numVal(calc['bmrKatch']);
     final tdee = snap?.tdee ?? _numVal(calc['tdee']);
+    final bfJp7 = snap?.bfJp7 ?? _numVal(calc['bfJp7']);
+    final bfJp3 = snap?.bfJp3 ?? _numVal(calc['bfJp3']);
     final bfNavy = snap?.bfNavy ?? _numVal(calc['bfNavy']);
     final bfRfm = snap?.bfRfm ?? _numVal(calc['bfRfm']);
     final bfDeurenberg = snap?.bfDeurenberg ?? _numVal(calc['bfDeurenberg']);
     final metodoPrincipal = snap?.metodoPrincipal ?? (bfNavy > 0 ? 'navy' : 'rfm');
+    final hasDiscrepancy = snap?.hasBiometricDiscrepancy ?? false;
     final imc = snap?.imc ?? _numVal(calc['imc']);
     final rcq = snap?.rcq ?? _numVal(calc['rcq']);
     final rcEst = snap?.rcEst ?? _numVal(calc['rcEst']);
@@ -335,7 +341,7 @@ class EvaluationDetailsWidget extends StatelessWidget {
 
         // 1. Metabolismo e Metas
         if (bmrKatch > 0 && tdee > 0) ...[
-          _DetailSectionCard(
+          DetailSectionCard(
             icon: Icons.local_fire_department_rounded,
             iconColor: AppColors.orange,
             headerBg: isDark
@@ -347,7 +353,7 @@ class EvaluationDetailsWidget extends StatelessWidget {
                 Row(
                   children: [
                     Expanded(
-                      child: _RiskMiniCard(
+                      child: RiskMiniCard(
                         title: 'Metabolismo Basal',
                         value: bmrKatch.toStringAsFixed(0),
                         label: 'kcal / dia',
@@ -355,7 +361,7 @@ class EvaluationDetailsWidget extends StatelessWidget {
                     ),
                     const SizedBox(width: 12),
                     Expanded(
-                      child: _RiskMiniCard(
+                      child: RiskMiniCard(
                         title: 'Gasto Diário (TDEE)',
                         value: tdee.toStringAsFixed(0),
                         label: 'kcal / dia',
@@ -437,7 +443,7 @@ class EvaluationDetailsWidget extends StatelessWidget {
                           ],
                         ),
                         const SizedBox(height: 14),
-                        _MacroBar(
+                        MacroBar(
                           label: 'Proteínas',
                           grams: ((macrosMap['grams'] as Map?)?['protein']
                                       as num?)
@@ -450,7 +456,7 @@ class EvaluationDetailsWidget extends StatelessWidget {
                           color: AppColors.blue,
                         ),
                         const SizedBox(height: 10),
-                        _MacroBar(
+                        MacroBar(
                           label: 'Carboidratos',
                           grams:
                               ((macrosMap['grams'] as Map?)?['carbs'] as num?)
@@ -462,7 +468,7 @@ class EvaluationDetailsWidget extends StatelessWidget {
                           color: const Color(0xFFF59E0B), // amber-500
                         ),
                         const SizedBox(height: 10),
-                        _MacroBar(
+                        MacroBar(
                           label: 'Gorduras',
                           grams: ((macrosMap['grams'] as Map?)?['fat'] as num?)
                                   ?.toInt() ??
@@ -484,7 +490,7 @@ class EvaluationDetailsWidget extends StatelessWidget {
 
         // 2. Peso Ideal (IBW)
         if (ibwMap != null) ...[
-          _DetailSectionCard(
+          DetailSectionCard(
             icon: Icons.monitor_weight_outlined,
             iconColor: AppColors.emerald,
             headerBg: isDark
@@ -493,7 +499,7 @@ class EvaluationDetailsWidget extends StatelessWidget {
             title: 'Peso Ideal (IBW)',
             child: Column(
               children: [
-                _MethodologyRow(
+                MethodologyRow(
                   name: 'Fórmula de Devine',
                   desc: 'Padrão clínico mais utilizado (1974)',
                   value: '${_numVal(ibwMap['devine']).toStringAsFixed(1)} kg',
@@ -503,7 +509,7 @@ class EvaluationDetailsWidget extends StatelessWidget {
                   padding: EdgeInsets.symmetric(vertical: 10),
                   child: Divider(height: 1),
                 ),
-                _MethodologyRow(
+                MethodologyRow(
                   name: 'Fórmula de Robinson',
                   desc: 'Revisão (1983)',
                   value: '${_numVal(ibwMap['robinson']).toStringAsFixed(1)} kg',
@@ -512,7 +518,7 @@ class EvaluationDetailsWidget extends StatelessWidget {
                   padding: EdgeInsets.symmetric(vertical: 10),
                   child: Divider(height: 1),
                 ),
-                _MethodologyRow(
+                MethodologyRow(
                   name: 'Fórmula de Miller',
                   desc: 'Revisão (1983)',
                   value: '${_numVal(ibwMap['miller']).toStringAsFixed(1)} kg',
@@ -521,7 +527,7 @@ class EvaluationDetailsWidget extends StatelessWidget {
                   padding: EdgeInsets.symmetric(vertical: 10),
                   child: Divider(height: 1),
                 ),
-                _MethodologyRow(
+                MethodologyRow(
                   name: 'Fórmula de Hamwi',
                   desc: 'Base clássica (1964)',
                   value: '${_numVal(ibwMap['hamwi']).toStringAsFixed(1)} kg',
@@ -533,38 +539,122 @@ class EvaluationDetailsWidget extends StatelessWidget {
         ],
 
         // 3. Composição Corporal (Gordura)
-        _DetailSectionCard(
+        DetailSectionCard(
           icon: Icons.track_changes_rounded,
           iconColor: AppColors.indigoPrimary,
           headerBg: isDark ? const Color(0xFF1E293B) : const Color(0xFFF8FAFC),
           title: 'Composição Corporal (Gordura)',
+          trailing: onSelectBfMethod != null
+              ? Text(
+                  'Toque p/ escolher',
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
+                    color: context.bioColors.accent,
+                  ),
+                )
+              : null,
           child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              _MethodologyRow(
+              if (hasDiscrepancy) ...[
+                Container(
+                  margin: const EdgeInsets.only(bottom: 14),
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: AppColors.orange.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(
+                      color: AppColors.orange.withValues(alpha: 0.35),
+                    ),
+                  ),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Icon(
+                        Icons.warning_amber_rounded,
+                        color: AppColors.orange,
+                        size: 20,
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Text(
+                          'Discrepância detectada: Seu IMC (${imc.toStringAsFixed(1)}) indica sobrepeso, mas o US Navy calculou ${bfNavy.toStringAsFixed(1)}%. Verifique se o Abdômen foi medido na linha do umbigo ou toque em Deurenberg / RFM abaixo para usar como referência.',
+                          style: TextStyle(
+                            fontSize: 12,
+                            height: 1.35,
+                            color: context.bioColors.textPrimary,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+              if (bfJp7 > 0) ...[
+                MethodologyRow(
+                  name: 'Jackson-Pollock 7 Dobras',
+                  desc: 'Protocolo clínico de 7 dobras cutâneas',
+                  value: '${bfJp7.toStringAsFixed(1)}%',
+                  highlight: metodoPrincipal == 'jp7',
+                  onTap: onSelectBfMethod != null
+                      ? () => onSelectBfMethod!('jp7')
+                      : null,
+                ),
+                const Padding(
+                  padding: EdgeInsets.symmetric(vertical: 8),
+                  child: Divider(height: 1),
+                ),
+              ],
+              if (bfJp3 > 0) ...[
+                MethodologyRow(
+                  name: 'Jackson-Pollock 3 Dobras',
+                  desc: 'Protocolo clínico de 3 dobras cutâneas',
+                  value: '${bfJp3.toStringAsFixed(1)}%',
+                  highlight: metodoPrincipal == 'jp3',
+                  onTap: onSelectBfMethod != null
+                      ? () => onSelectBfMethod!('jp3')
+                      : null,
+                ),
+                const Padding(
+                  padding: EdgeInsets.symmetric(vertical: 8),
+                  child: Divider(height: 1),
+                ),
+              ],
+              MethodologyRow(
                 name: 'Método US Navy',
                 desc: 'Baseado em circunferências (Padrão ouro prático)',
                 value: bfNavy > 0 ? '${bfNavy.toStringAsFixed(1)}%' : '--',
                 highlight: metodoPrincipal == 'navy',
+                onTap: (onSelectBfMethod != null && bfNavy > 0)
+                    ? () => onSelectBfMethod!('navy')
+                    : null,
               ),
               const Padding(
-                padding: EdgeInsets.symmetric(vertical: 10),
+                padding: EdgeInsets.symmetric(vertical: 8),
                 child: Divider(height: 1),
               ),
-              _MethodologyRow(
+              MethodologyRow(
                 name: 'Relative Fat Mass (RFM)',
                 desc: 'Equação recente altura/cintura',
                 value: bfRfm > 0 ? '${bfRfm.toStringAsFixed(1)}%' : '--',
                 highlight: metodoPrincipal == 'rfm',
+                onTap: (onSelectBfMethod != null && bfRfm > 0)
+                    ? () => onSelectBfMethod!('rfm')
+                    : null,
               ),
               const Padding(
-                padding: EdgeInsets.symmetric(vertical: 10),
+                padding: EdgeInsets.symmetric(vertical: 8),
                 child: Divider(height: 1),
               ),
-              _MethodologyRow(
+              MethodologyRow(
                 name: 'Fórmula Deurenberg',
                 desc: 'Estimativa baseada no IMC e Idade',
                 value: '${bfDeurenberg.toStringAsFixed(1)}%',
                 highlight: metodoPrincipal == 'deurenberg',
+                onTap: (onSelectBfMethod != null && bfDeurenberg > 0)
+                    ? () => onSelectBfMethod!('deurenberg')
+                    : null,
               ),
             ],
           ),
@@ -572,7 +662,7 @@ class EvaluationDetailsWidget extends StatelessWidget {
         const SizedBox(height: 18),
 
         // 4. Índices de Risco à Saúde (com Semáforo Clínico e Guia ?)
-        _DetailSectionCard(
+        DetailSectionCard(
           icon: Icons.error_outline_rounded,
           iconColor: AppColors.orange,
           headerBg: isDark ? const Color(0xFF1E293B) : const Color(0xFFF8FAFC),
@@ -591,48 +681,48 @@ class EvaluationDetailsWidget extends StatelessWidget {
             spacing: 12,
             runSpacing: 12,
             children: [
-              _GridHalfItem(
-                child: _RiskMiniCard(
+              GridHalfItem(
+                child: RiskMiniCard(
                   title: 'IMC',
                   value: imc.toStringAsFixed(1),
                   label: imcEval.$1,
                   badgeColor: imcEval.$2,
                 ),
               ),
-              _GridHalfItem(
-                child: _RiskMiniCard(
+              GridHalfItem(
+                child: RiskMiniCard(
                   title: 'RCQ',
                   value: rcq > 0 ? rcq.toStringAsFixed(2) : '--',
                   label: rcqEval.$1,
                   badgeColor: rcq > 0 ? rcqEval.$2 : null,
                 ),
               ),
-              _GridHalfItem(
-                child: _RiskMiniCard(
+              GridHalfItem(
+                child: RiskMiniCard(
                   title: 'RCEst',
                   value: rcEst > 0 ? rcEst.toStringAsFixed(2) : '--',
                   label: rcEstEval.$1,
                   badgeColor: rcEst > 0 ? rcEstEval.$2 : null,
                 ),
               ),
-              _GridHalfItem(
-                child: _RiskMiniCard(
+              GridHalfItem(
+                child: RiskMiniCard(
                   title: 'Massa Magra',
                   value: '${lbmFinal.toStringAsFixed(1)} kg',
                   label: lbmLabel,
                 ),
               ),
               if (bai > 0)
-                _GridHalfItem(
-                  child: _RiskMiniCard(
+                GridHalfItem(
+                  child: RiskMiniCard(
                     title: 'BAI',
                     value: '${bai.toStringAsFixed(1)}%',
                     label: 'Adiposidade',
                   ),
                 ),
               if (bri > 0)
-                _GridHalfItem(
-                  child: _RiskMiniCard(
+                GridHalfItem(
+                  child: RiskMiniCard(
                     title: 'BRI',
                     value: bri.toStringAsFixed(1),
                     label: briEval.$1,
@@ -640,8 +730,8 @@ class EvaluationDetailsWidget extends StatelessWidget {
                   ),
                 ),
               if (ci > 0)
-                _GridHalfItem(
-                  child: _RiskMiniCard(
+                GridHalfItem(
+                  child: RiskMiniCard(
                     title: 'CI',
                     value: ci.toStringAsFixed(2),
                     label: ciEval.$1,
@@ -654,7 +744,7 @@ class EvaluationDetailsWidget extends StatelessWidget {
         const SizedBox(height: 18),
 
         // 5. Medidas Registradas (com Deltas em cm vs. Avaliação Anterior)
-        _DetailSectionCard(
+        DetailSectionCard(
           icon: Icons.assignment_outlined,
           iconColor: const Color(0xFF475569),
           headerBg: isDark ? const Color(0xFF1E293B) : const Color(0xFFF8FAFC),
@@ -663,8 +753,8 @@ class EvaluationDetailsWidget extends StatelessWidget {
             spacing: 16,
             runSpacing: 10,
             children: [
-              _GridHalfItem(
-                child: _MeasureRow(
+              GridHalfItem(
+                child: MeasureRow(
                   label: 'Peso',
                   value: '${avaliacao.pesoKg} kg',
                   currentVal: avaliacao.pesoKg,
@@ -674,8 +764,8 @@ class EvaluationDetailsWidget extends StatelessWidget {
                       avaliacao.objetivo == Objetivo.emagrecimento,
                 ),
               ),
-              _GridHalfItem(
-                child: _MeasureRow(
+              GridHalfItem(
+                child: MeasureRow(
                   label: 'Pescoço',
                   value: fmtMeasure(avaliacao.medidas.pescoco),
                   currentVal: avaliacao.medidas.pescoco,
@@ -683,8 +773,8 @@ class EvaluationDetailsWidget extends StatelessWidget {
                   lowerIsBetter: true,
                 ),
               ),
-              _GridHalfItem(
-                child: _MeasureRow(
+              GridHalfItem(
+                child: MeasureRow(
                   label: 'Cintura',
                   value: fmtMeasure(avaliacao.medidas.cintura),
                   currentVal: avaliacao.medidas.cintura,
@@ -692,8 +782,8 @@ class EvaluationDetailsWidget extends StatelessWidget {
                   lowerIsBetter: true,
                 ),
               ),
-              _GridHalfItem(
-                child: _MeasureRow(
+              GridHalfItem(
+                child: MeasureRow(
                   label: 'Quadril',
                   value: fmtMeasure(avaliacao.medidas.quadril),
                   currentVal: avaliacao.medidas.quadril,
@@ -702,8 +792,8 @@ class EvaluationDetailsWidget extends StatelessWidget {
                       avaliacao.objetivo == Objetivo.emagrecimento,
                 ),
               ),
-              _GridHalfItem(
-                child: _MeasureRow(
+              GridHalfItem(
+                child: MeasureRow(
                   label: 'Abdômen',
                   value: fmtMeasure(avaliacao.medidas.abdomen),
                   currentVal: avaliacao.medidas.abdomen,
@@ -711,8 +801,8 @@ class EvaluationDetailsWidget extends StatelessWidget {
                   lowerIsBetter: true,
                 ),
               ),
-              _GridHalfItem(
-                child: _MeasureRow(
+              GridHalfItem(
+                child: MeasureRow(
                   label: 'Braço',
                   value: fmtMeasure(avaliacao.medidas.braco),
                   currentVal: avaliacao.medidas.braco,
@@ -720,8 +810,8 @@ class EvaluationDetailsWidget extends StatelessWidget {
                   lowerIsBetter: false,
                 ),
               ),
-              _GridHalfItem(
-                child: _MeasureRow(
+              GridHalfItem(
+                child: MeasureRow(
                   label: 'Coxa',
                   value: fmtMeasure(avaliacao.medidas.coxa),
                   currentVal: avaliacao.medidas.coxa,
@@ -729,8 +819,8 @@ class EvaluationDetailsWidget extends StatelessWidget {
                   lowerIsBetter: false,
                 ),
               ),
-              _GridHalfItem(
-                child: _MeasureRow(
+              GridHalfItem(
+                child: MeasureRow(
                   label: 'Panturrilha',
                   value: fmtMeasure(avaliacao.medidas.panturrilha),
                   currentVal: avaliacao.medidas.panturrilha,
@@ -742,412 +832,6 @@ class EvaluationDetailsWidget extends StatelessWidget {
           ),
         ),
       ],
-    );
-  }
-}
-
-class _DetailSectionCard extends StatelessWidget {
-  final IconData icon;
-  final Color iconColor;
-  final Color headerBg;
-  final String title;
-  final Widget? trailing;
-  final Widget child;
-
-  const _DetailSectionCard({
-    required this.icon,
-    required this.iconColor,
-    required this.headerBg,
-    required this.title,
-    this.trailing,
-    required this.child,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-
-    return Container(
-      width: double.infinity,
-      decoration: BoxDecoration(
-        color: isDark ? AppColors.darkSurface : Colors.white,
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(
-          color: isDark ? AppColors.darkBorder : const Color(0xFFF1F5F9),
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.025),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      clipBehavior: Clip.antiAlias,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-            decoration: BoxDecoration(
-              color: headerBg,
-              border: Border(
-                bottom: BorderSide(
-                  color:
-                      isDark ? AppColors.darkBorder : const Color(0xFFF1F5F9),
-                ),
-              ),
-            ),
-            child: Row(
-              children: [
-                Icon(icon, size: 20, color: iconColor),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    title,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      fontSize: 15.5,
-                      fontWeight: FontWeight.w600,
-                      color: isDark
-                          ? AppColors.darkTextPrimary
-                          : const Color(0xFF1E293B),
-                    ),
-                  ),
-                ),
-                if (trailing != null) trailing!,
-              ],
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsets.all(16),
-            child: child,
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _MacroBar extends StatelessWidget {
-  final String label;
-  final int grams;
-  final int pct;
-  final Color color;
-
-  const _MacroBar({
-    required this.label,
-    required this.grams,
-    required this.pct,
-    required this.color,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-
-    return Column(
-      children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Text(
-              label,
-              style: TextStyle(
-                fontSize: 12.5,
-                fontWeight: FontWeight.w500,
-                color: isDark
-                    ? AppColors.darkTextSecondary
-                    : const Color(0xFF475569),
-              ),
-            ),
-            Text(
-              '${grams}g ($pct%)',
-              style: TextStyle(
-                fontSize: 12.5,
-                color: isDark
-                    ? AppColors.darkTextSecondary
-                    : const Color(0xFF64748B),
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 5),
-        ClipRRect(
-          borderRadius: BorderRadius.circular(100),
-          child: LinearProgressIndicator(
-            value: (pct.clamp(0, 100)) / 100.0,
-            minHeight: 8,
-            backgroundColor:
-                isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0),
-            valueColor: AlwaysStoppedAnimation<Color>(color),
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class _MethodologyRow extends StatelessWidget {
-  final String name;
-  final String desc;
-  final String value;
-  final bool highlight;
-
-  const _MethodologyRow({
-    required this.name,
-    required this.desc,
-    required this.value,
-    this.highlight = false,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                name,
-                style: TextStyle(
-                  fontSize: 14.5,
-                  fontWeight: FontWeight.w600,
-                  color: highlight
-                      ? (isDark
-                          ? AppColors.indigoLight
-                          : const Color(0xFF4338CA))
-                      : (isDark
-                          ? AppColors.darkTextPrimary
-                          : const Color(0xFF334155)),
-                ),
-              ),
-              const SizedBox(height: 2),
-              Text(
-                desc,
-                style: TextStyle(
-                  fontSize: 12,
-                  color: isDark
-                      ? AppColors.darkTextSecondary
-                      : const Color(0xFF94A3B8),
-                ),
-              ),
-            ],
-          ),
-        ),
-        const SizedBox(width: 12),
-        Text(
-          value,
-          style: TextStyle(
-            fontSize: 17,
-            fontWeight: FontWeight.bold,
-            color: highlight
-                ? (isDark ? AppColors.indigoLight : AppColors.indigoPrimary)
-                : (isDark
-                    ? AppColors.darkTextPrimary
-                    : const Color(0xFF1E293B)),
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class _RiskMiniCard extends StatelessWidget {
-  final String title;
-  final String value;
-  final String label;
-  final Color? badgeColor;
-
-  const _RiskMiniCard({
-    required this.title,
-    required this.value,
-    required this.label,
-    this.badgeColor,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: isDark ? AppColors.darkBackground : const Color(0xFFF8FAFC),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: isDark ? AppColors.darkBorder : const Color(0xFFF1F5F9),
-        ),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Expanded(
-                child: Text(
-                  title,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w500,
-                    color: isDark
-                        ? AppColors.darkTextSecondary
-                        : const Color(0xFF64748B),
-                  ),
-                ),
-              ),
-              if (badgeColor != null)
-                Container(
-                  width: 8,
-                  height: 8,
-                  decoration: BoxDecoration(
-                    color: badgeColor,
-                    shape: BoxShape.circle,
-                  ),
-                ),
-            ],
-          ),
-          const SizedBox(height: 4),
-          Text(
-            value,
-            style: TextStyle(
-              fontSize: 19,
-              fontWeight: FontWeight.bold,
-              color: isDark
-                  ? AppColors.darkTextPrimary
-                  : const Color(0xFF1E293B),
-            ),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            label,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: TextStyle(
-              fontSize: 11.5,
-              fontWeight:
-                  badgeColor != null ? FontWeight.w600 : FontWeight.normal,
-              color: badgeColor ??
-                  (isDark
-                      ? AppColors.darkTextSecondary
-                      : const Color(0xFF94A3B8)),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _MeasureRow extends StatelessWidget {
-  final String label;
-  final String value;
-  final double? currentVal;
-  final double? prevVal;
-  final String unit;
-  final bool lowerIsBetter;
-
-  const _MeasureRow({
-    required this.label,
-    required this.value,
-    this.currentVal,
-    this.prevVal,
-    this.unit = 'cm',
-    this.lowerIsBetter = true,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final hasDelta = currentVal != null &&
-        prevVal != null &&
-        currentVal! > 0 &&
-        prevVal! > 0 &&
-        (currentVal! - prevVal!).abs() >= 0.1;
-
-    final diff = hasDelta ? (currentVal! - prevVal!) : 0.0;
-    final sign = diff > 0 ? '+' : '';
-    final isGood = lowerIsBetter ? diff < 0 : diff > 0;
-    final deltaColor = isGood ? AppColors.emerald : AppColors.orange;
-
-    return Container(
-      padding: const EdgeInsets.symmetric(vertical: 4),
-      decoration: BoxDecoration(
-        border: Border(
-          bottom: BorderSide(
-            color: isDark ? AppColors.darkBorder : const Color(0xFFF8FAFC),
-          ),
-        ),
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Expanded(
-            child: Text(
-              label,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: TextStyle(
-                fontSize: 13.5,
-                color: isDark
-                    ? AppColors.darkTextSecondary
-                    : const Color(0xFF64748B),
-              ),
-            ),
-          ),
-          const SizedBox(width: 4),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              Text(
-                value,
-                style: TextStyle(
-                  fontSize: 13.5,
-                  fontWeight: FontWeight.w600,
-                  color: isDark
-                      ? AppColors.darkTextPrimary
-                      : const Color(0xFF334155),
-                ),
-              ),
-              if (hasDelta)
-                Text(
-                  '$sign${diff.toStringAsFixed(1)} $unit',
-                  style: TextStyle(
-                    fontSize: 10.5,
-                    fontWeight: FontWeight.bold,
-                    color: deltaColor,
-                  ),
-                ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _GridHalfItem extends StatelessWidget {
-  final Widget child;
-  const _GridHalfItem({required this.child});
-
-  @override
-  Widget build(BuildContext context) {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        return SizedBox(
-          width: (MediaQuery.sizeOf(context).width.clamp(300.0, 460.0) - 80) /
-              2,
-          child: child,
-        );
-      },
     );
   }
 }

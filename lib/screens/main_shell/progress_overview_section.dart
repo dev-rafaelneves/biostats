@@ -548,7 +548,126 @@ class ProgressOverviewSection extends StatelessWidget {
           ),
         ],
 
-        const SizedBox(height: 20),
+        const SizedBox(height: 16),
+
+        // Atalho de Destaque para o Bio-Coach Inteligente (Gemini)
+        if (latest != null && latest.resultado != null) ...[
+          Semantics(
+            button: true,
+            label:
+                'Bio-Coach Inteligente Gemini. Toque para ver o parecer clínico da sua avaliação.',
+            child: Material(
+              color: Colors.transparent,
+              child: InkWell(
+                key: const ValueKey('btn_biocoach_overview_shortcut'),
+                onTap: () {
+                  HapticFeedback.lightImpact();
+                  onNavigateToTab(3);
+                },
+                borderRadius: BorderRadius.circular(18),
+                child: Ink(
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: isDark
+                          ? [
+                              const Color(0xFF312E81).withValues(alpha: 0.55),
+                              const Color(0xFF4C1D95).withValues(alpha: 0.45),
+                            ]
+                          : [
+                              const Color(0xFFEEF2FF),
+                              const Color(0xFFF5F3FF),
+                            ],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
+                    borderRadius: BorderRadius.circular(18),
+                    border: Border.all(
+                      color: AppColors.indigoPrimary.withValues(alpha: 0.3),
+                    ),
+                  ),
+                  child: Row(
+                    children: [
+                      Container(
+                        width: 40,
+                        height: 40,
+                        decoration: BoxDecoration(
+                          gradient: const LinearGradient(
+                            colors: [Color(0xFF6366F1), Color(0xFF8B5CF6)],
+                          ),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: const Icon(
+                          Icons.auto_awesome_rounded,
+                          color: Colors.white,
+                          size: 20,
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                Flexible(
+                                  child: Text(
+                                    'Bio-Coach Inteligente',
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: TextStyle(
+                                      fontSize: 14.5,
+                                      fontWeight: FontWeight.w700,
+                                      color: context.bioColors.textPrimary,
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(width: 6),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 6,
+                                    vertical: 2,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: AppColors.indigoPrimary
+                                        .withValues(alpha: 0.14),
+                                    borderRadius: BorderRadius.circular(6),
+                                  ),
+                                  child: Text(
+                                    appState.hasGeminiApiKey ? 'IA Ativa' : 'Gemini',
+                                    style: TextStyle(
+                                      fontSize: 10,
+                                      fontWeight: FontWeight.w700,
+                                      color: context.bioColors.accent,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              'Toque para gerar ou ler o diagnóstico clínico da sua avaliação',
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: context.bioColors.textSecondary,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      Icon(
+                        Icons.arrow_forward_ios_rounded,
+                        size: 15,
+                        color: context.bioColors.accent,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(height: 20),
+        ],
 
         // 4. Lista Agrupada iOS (Inset Grouped Style) para Navegação
         Padding(

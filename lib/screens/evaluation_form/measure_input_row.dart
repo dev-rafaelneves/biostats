@@ -72,37 +72,38 @@ class MeasureInputRow extends StatelessWidget {
                           ),
                         ],
                         if (onHelpTap != null) ...[
-                          const SizedBox(width: 6),
-                          InkWell(
-                            onTap: onHelpTap,
-                            borderRadius: BorderRadius.circular(12),
-                            child: Container(
-                              width: 19,
-                              height: 19,
-                              decoration: BoxDecoration(
-                                color: (isDark
-                                        ? AppColors.indigoLight
-                                        : AppColors.indigoPrimary)
-                                    .withValues(alpha: 0.12),
-                                shape: BoxShape.circle,
-                                border: Border.all(
-                                  color: (isDark
-                                          ? AppColors.indigoLight
-                                          : AppColors.indigoPrimary)
-                                      .withValues(alpha: 0.25),
-                                  width: 0.8,
-                                ),
-                              ),
-                              alignment: Alignment.center,
-                              child: Text(
-                                '?',
-                                style: TextStyle(
-                                  fontSize: 11.5,
-                                  fontWeight: FontWeight.w800,
-                                  height: 1.0,
-                                  color: isDark
-                                      ? AppColors.indigoLight
-                                      : AppColors.indigoPrimary,
+                          const SizedBox(width: 2),
+                          Semantics(
+                            button: true,
+                            label: 'Guia de medição para $label',
+                            child: InkWell(
+                              onTap: onHelpTap,
+                              borderRadius: BorderRadius.circular(16),
+                              child: Padding(
+                                padding: const EdgeInsets.all(5),
+                                child: Container(
+                                  width: 20,
+                                  height: 20,
+                                  decoration: BoxDecoration(
+                                    color: context.bioColors.accent
+                                        .withValues(alpha: 0.12),
+                                    shape: BoxShape.circle,
+                                    border: Border.all(
+                                      color: context.bioColors.accent
+                                          .withValues(alpha: 0.25),
+                                      width: 0.8,
+                                    ),
+                                  ),
+                                  alignment: Alignment.center,
+                                  child: Text(
+                                    '?',
+                                    style: TextStyle(
+                                      fontSize: 11.5,
+                                      fontWeight: FontWeight.w800,
+                                      height: 1.0,
+                                      color: context.bioColors.accent,
+                                    ),
+                                  ),
                                 ),
                               ),
                             ),
@@ -113,11 +114,11 @@ class MeasureInputRow extends StatelessWidget {
                     if (subtitle != null)
                       Text(
                         subtitle!,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                         style: TextStyle(
                           fontSize: 11,
-                          color: isDark
-                              ? AppColors.darkTextSecondary
-                              : const Color(0xFF94A3B8),
+                          color: context.bioColors.textMuted,
                         ),
                       ),
                   ],

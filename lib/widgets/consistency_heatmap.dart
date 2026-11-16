@@ -94,9 +94,12 @@ class ConsistencyHeatmap extends StatelessWidget {
 
     final shortFmt = DateFormat("dd 'de' MMM", 'pt_BR');
 
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(16),
+    return Semantics(
+      label:
+          'Mapa de consistência de pesagens: $totalLoggedDays dias registrados nas últimas 12 semanas, sequência atual de $streak dias, adesão de ${adherencePct.toStringAsFixed(0)} por cento.',
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: isDark ? AppColors.darkBackground : const Color(0xFFF8FAFC),
         borderRadius: BorderRadius.circular(16),
@@ -358,9 +361,7 @@ class ConsistencyHeatmap extends StatelessWidget {
                     'Mais',
                     style: TextStyle(
                       fontSize: 10,
-                      color: isDark
-                          ? AppColors.darkTextSecondary
-                          : const Color(0xFF94A3B8),
+                      color: context.bioColors.textMuted,
                     ),
                   ),
                 ],
@@ -369,6 +370,7 @@ class ConsistencyHeatmap extends StatelessWidget {
           ),
         ],
       ),
+    ),
     );
   }
 

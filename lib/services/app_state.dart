@@ -1,6 +1,6 @@
 import 'dart:convert';
 import 'dart:io';
-import 'dart:typed_data';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:uuid/uuid.dart';
@@ -168,19 +168,32 @@ class AppState extends ChangeNotifier {
     return _fotos.where((f) => f.avaliacaoId == avaliacaoId).toList();
   }
 
-  /// Decodifica e faz cache em memória dos bytes da foto (60/120 FPS no slider)
+  static const int _maxCachedPhotos = 12;
+
+  void _putPhotoInLruCache(String fotoId, Uint8List bytes) {
+    _decodedFotoCache.remove(fotoId);
+    while (_decodedFotoCache.length >= _maxCachedPhotos) {
+      _decodedFotoCache.remove(_decodedFotoCache.keys.first);
+    }
+    _decodedFotoCache[fotoId] = bytes;
+  }
+
+  /// Decodifica e faz cache LRU em memória dos bytes da foto (60/120 FPS no slider)
   Uint8List? getDecodedPhotoBytes(FotoAvaliacao? foto) {
     if (foto == null) return null;
-    final cached = _decodedFotoCache[foto.id];
-    if (cached != null) return cached;
+    final cached = _decodedFotoCache.remove(foto.id);
+    if (cached != null) {
+      _decodedFotoCache[foto.id] = cached; // Atualiza ordem LRU
+      return cached;
+    }
 
     // 1. Tenta carregar do arquivo em disco (SQLite v2)
-    if (foto.filePath != null && foto.filePath!.isNotEmpty) {
+    if (!kIsWeb && foto.filePath != null && foto.filePath!.isNotEmpty) {
       try {
         final file = File(foto.filePath!);
         if (file.existsSync()) {
           final bytes = file.readAsBytesSync();
-          _decodedFotoCache[foto.id] = bytes;
+          _putPhotoInLruCache(foto.id, bytes);
           return bytes;
         }
       } catch (e) {
@@ -194,7 +207,7 @@ class AppState extends ChangeNotifier {
         final raw = foto.fotoBase64;
         final clean = raw.contains(',') ? raw.split(',').last : raw;
         final bytes = base64Decode(clean);
-        _decodedFotoCache[foto.id] = bytes;
+        _putPhotoInLruCache(foto.id, bytes);
         return bytes;
       } catch (_) {
         return null;
@@ -721,6 +734,7 @@ class AppState extends ChangeNotifier {
         final newCalc = BioCalculator.buildCalculosSnapshot(
           profile: profile,
           avaliacao: av,
+          preferredMethod: existing?.snapshot.metodoPrincipal,
         );
         final res = Resultados(
           id: existing?.id ?? uuid.v4(),
@@ -736,6 +750,54 @@ class AppState extends ChangeNotifier {
       _resultados = updatedResultados;
       _rebuildResultadosIndex();
     }
+
+    WidgetService.instance.updateWidgetData(
+      pesagens: _pesagens,
+      avaliacoes: _avaliacoes,
+      profile: _userProfile,
+    );
+
+    notifyListeners();
+  }
+
+  /// Altera o método de % Gordura preferido em uma avaliação específica e recalcula LBM/BMR/Macros
+  Future<void> setPreferredBfMethod(
+    String avaliacaoId,
+    String preferredMethod,
+  ) async {
+    final profile = _userProfile;
+    if (profile == null) return;
+    final avIdx = _avaliacoes.indexWhere((a) => a.id == avaliacaoId);
+    if (avIdx < 0) return;
+
+    final av = _avaliacoes[avIdx];
+    final existing = _resultadosByAvaliacaoId[avaliacaoId];
+    final newCalc = BioCalculator.buildCalculosSnapshot(
+      profile: profile,
+      avaliacao: av,
+      preferredMethod: preferredMethod,
+    );
+
+    final updatedRes = Resultados(
+      id: existing?.id ?? const Uuid().v4(),
+      avaliacaoId: avaliacaoId,
+      calculos: newCalc.toJson(),
+      calcVersion: 2,
+    );
+
+    final resIdx = _resultados.indexWhere((r) => r.avaliacaoId == avaliacaoId);
+    if (resIdx >= 0) {
+      _resultados[resIdx] = updatedRes;
+    } else {
+      _resultados.add(updatedRes);
+    }
+    _resultadosByAvaliacaoId[avaliacaoId] = updatedRes;
+
+    try {
+      await DatabaseService.upsertResultado(updatedRes);
+      await DatabaseService.deleteAiInsight('evaluation_summary', avaliacaoId);
+    } catch (_) {}
+    await _saveList(_keyResultados, _resultados, (r) => r.toJson());
 
     WidgetService.instance.updateWidgetData(
       pesagens: _pesagens,

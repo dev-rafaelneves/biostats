@@ -158,6 +158,14 @@ class CalculosSnapshot {
     }
   }
 
+  /// Detecta discrepância clínica severa quando o IMC indica sobrepeso/obesidade
+  /// (>= 28 kg/m²), mas o US Navy retorna um BF% atlético (< 19%) muito distante de Deurenberg.
+  bool get hasBiometricDiscrepancy =>
+      imc >= 28.0 &&
+      bfNavy > 0 &&
+      bfNavy < 19.0 &&
+      (bfDeurenberg - bfNavy) >= 5.0;
+
   Map<String, dynamic> toJson() => {
         'imc': imc,
         'rcq': rcq,
@@ -648,6 +656,7 @@ class BioCalculator {
   static CalculosSnapshot buildCalculosSnapshot({
     required UserProfile profile,
     required Avaliacao avaliacao,
+    String? preferredMethod,
   }) {
     final peso = avaliacao.pesoKg;
     final altura = profile.alturaCm;
@@ -696,11 +705,28 @@ class BioCalculator {
     );
 
     // Determina o BF principal e o método utilizado:
-    // 1º JP7 (padrão ouro em dobras) -> 2º JP3 -> 3º Navy -> 4º RFM -> 5º Deurenberg
+    // Respeita o método preferido pelo usuário caso seja válido (> 0),
+    // senão segue a cascata: 1º JP7 -> 2º JP3 -> 3º Navy -> 4º RFM -> 5º Deurenberg
     double bfPrincipal = 0.0;
     String metodoPrincipal = 'none';
 
-    if (bfJp7 > 0) {
+    final pref = preferredMethod?.toLowerCase().trim();
+    if (pref == 'jp7' && bfJp7 > 0) {
+      bfPrincipal = bfJp7;
+      metodoPrincipal = 'jp7';
+    } else if (pref == 'jp3' && bfJp3 > 0) {
+      bfPrincipal = bfJp3;
+      metodoPrincipal = 'jp3';
+    } else if (pref == 'navy' && bfNavy > 0) {
+      bfPrincipal = bfNavy;
+      metodoPrincipal = 'navy';
+    } else if (pref == 'rfm' && bfRfm > 0) {
+      bfPrincipal = bfRfm;
+      metodoPrincipal = 'rfm';
+    } else if (pref == 'deurenberg' && bfDeurenberg > 0) {
+      bfPrincipal = bfDeurenberg;
+      metodoPrincipal = 'deurenberg';
+    } else if (bfJp7 > 0) {
       bfPrincipal = bfJp7;
       metodoPrincipal = 'jp7';
     } else if (bfJp3 > 0) {

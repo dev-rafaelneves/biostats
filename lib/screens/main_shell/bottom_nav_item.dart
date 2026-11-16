@@ -19,32 +19,35 @@ class BottomNavItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final color = isSelected
-        ? (isDark ? AppColors.indigoLight : AppColors.indigoPrimary)
-        : (isDark ? const Color(0xFF64748B) : const Color(0xFF94A3B8));
+    final colors = context.bioColors;
+    final color = isSelected ? colors.accent : colors.textMuted;
 
     return Expanded(
-      child: InkWell(
-        onTap: onTap,
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              isSelected ? (activeIcon ?? icon) : icon,
-              size: 25,
-              color: color,
-            ),
-            const SizedBox(height: 3),
-            Text(
-              label,
-              style: TextStyle(
-                fontSize: 11,
-                fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
+      child: Semantics(
+        button: true,
+        selected: isSelected,
+        label: 'Aba $label',
+        child: InkWell(
+          onTap: onTap,
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                isSelected ? (activeIcon ?? icon) : icon,
+                size: 25,
                 color: color,
               ),
-            ),
-          ],
+              const SizedBox(height: 3),
+              Text(
+                label,
+                style: TextStyle(
+                  fontSize: 11,
+                  fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
+                  color: color,
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );

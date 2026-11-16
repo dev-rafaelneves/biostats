@@ -112,12 +112,44 @@ class LivePreviewCard extends StatelessWidget {
             Text(
               sexo == Sexo.F
                   ? '💡 Dica: Preencha Pescoço e Quadril para calcular também o % de Gordura US Navy.'
-                  : '💡 Dica: Preencha o Pescoço para calcular também o % de Gordura US Navy.',
+                  : '💡 Dica: Preencha o Pescoço e o Abdômen (umbigo) para calcular o % de Gordura US Navy com precisão.',
               style: TextStyle(
                 fontSize: 11.5,
-                color: isDark
-                    ? AppColors.darkTextSecondary
-                    : const Color(0xFF475569),
+                color: context.bioColors.textSecondary,
+              ),
+            ),
+          ],
+          if (calculos.hasBiometricDiscrepancy) ...[
+            const SizedBox(height: 10),
+            Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: AppColors.orange.withValues(alpha: 0.14),
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(
+                  color: AppColors.orange.withValues(alpha: 0.4),
+                ),
+              ),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Icon(
+                    Icons.warning_amber_rounded,
+                    size: 16,
+                    color: AppColors.orange,
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'Atenção: IMC (${imc.toStringAsFixed(1)}) diverge do US Navy (${bfNavy.toStringAsFixed(1)}%). Deurenberg estima ${calculos.bfDeurenberg.toStringAsFixed(1)}%. Preencha o campo Abdômen medindo na altura do umbigo.',
+                      style: TextStyle(
+                        fontSize: 11.5,
+                        height: 1.3,
+                        color: context.bioColors.textPrimary,
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ),
           ],

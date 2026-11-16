@@ -572,22 +572,31 @@ class _PersonalProgressTabState extends State<PersonalProgressTab> {
             const SizedBox(height: 16),
 
             if (selectedJoined != null) ...[
-              EvaluationDetailsWidget(
-                profile: profile,
-                avaliacao: selectedJoined.avaliacao,
-                resultado: selectedJoined.resultado,
-                previousAvaliacao: previousAvaliacao,
-              ),
-              const SizedBox(height: 20),
               if (selectedJoined.resultado != null) ...[
                 AiInsightCard.evaluation(
+                  key: ValueKey(
+                    'ai_eval_${selectedJoined.avaliacao.id}_${selectedJoined.resultado?.snapshot.metodoPrincipal}',
+                  ),
                   appState: widget.appState,
                   profile: profile,
                   avaliacao: selectedJoined.avaliacao,
                   resultado: selectedJoined.resultado,
                 ),
-                const SizedBox(height: 20),
+                const SizedBox(height: 18),
               ],
+              EvaluationDetailsWidget(
+                profile: profile,
+                avaliacao: selectedJoined.avaliacao,
+                resultado: selectedJoined.resultado,
+                previousAvaliacao: previousAvaliacao,
+                onSelectBfMethod: (method) {
+                  widget.appState.setPreferredBfMethod(
+                    selectedJoined.avaliacao.id,
+                    method,
+                  );
+                },
+              ),
+              const SizedBox(height: 20),
             ],
 
             ExportDataCard(
