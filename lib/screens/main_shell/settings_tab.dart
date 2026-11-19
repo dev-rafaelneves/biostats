@@ -26,42 +26,52 @@ class SettingsTab extends StatelessWidget {
           backgroundColor: isDark
               ? AppColors.darkBackground.withValues(alpha: 0.9)
               : AppColors.lightBackground.withValues(alpha: 0.9),
-          centerTitle: false,
-          title: Text(
-            'Ajustes',
-            style: TextStyle(
-              fontSize: 28,
-              fontWeight: FontWeight.bold,
-              letterSpacing: -0.6,
-              color: isDark
-                  ? AppColors.darkTextPrimary
-                  : AppColors.lightTextPrimary,
-            ),
-          ),
-          actions: [
-            Padding(
-              padding: const EdgeInsets.only(right: 16),
-              child: IconButton(
-                onPressed: () {
-                  HapticFeedback.selectionClick();
-                  appState.toggleTheme();
-                },
-                tooltip: isDark ? 'Ativar Modo Claro' : 'Ativar Modo Escuro',
-                style: IconButton.styleFrom(
-                  backgroundColor: isDark
-                      ? const Color(0xFF1E293B)
-                      : const Color(0xFFE2E8F0).withValues(alpha: 0.6),
-                ),
-                icon: Icon(
-                  isDark ? Icons.wb_sunny_rounded : Icons.dark_mode_rounded,
-                  size: 20,
-                  color: isDark
-                      ? const Color(0xFFFBBF24)
-                      : const Color(0xFF475569),
-                ),
+          centerTitle: true,
+          titleSpacing: 0,
+          title: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 460),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    'Ajustes',
+                    style: TextStyle(
+                      fontSize: 28,
+                      fontWeight: FontWeight.bold,
+                      letterSpacing: -0.6,
+                      color: isDark
+                          ? AppColors.darkTextPrimary
+                          : AppColors.lightTextPrimary,
+                    ),
+                  ),
+                  IconButton(
+                    onPressed: () {
+                      HapticFeedback.selectionClick();
+                      appState.toggleTheme();
+                    },
+                    tooltip:
+                        isDark ? 'Ativar Modo Claro' : 'Ativar Modo Escuro',
+                    style: IconButton.styleFrom(
+                      backgroundColor: isDark
+                          ? const Color(0xFF1E293B)
+                          : const Color(0xFFE2E8F0).withValues(alpha: 0.6),
+                    ),
+                    icon: Icon(
+                      isDark
+                          ? Icons.wb_sunny_rounded
+                          : Icons.dark_mode_rounded,
+                      size: 20,
+                      color: isDark
+                          ? const Color(0xFFFBBF24)
+                          : const Color(0xFF475569),
+                    ),
+                  ),
+                ],
               ),
             ),
-          ],
+          ),
         ),
         SliverPadding(
           padding: const EdgeInsets.fromLTRB(16, 12, 16, 120),
@@ -168,15 +178,15 @@ class SettingsTab extends StatelessWidget {
                                   ),
                                 );
                               },
-                              leading: const Icon(
+                              leading: Icon(
                                 Icons.edit_outlined,
-                                color: AppColors.indigoPrimary,
+                                color: context.bioColors.accent,
                                 size: 20,
                               ),
-                              title: const Text(
+                              title: Text(
                                 'Editar Meus Dados Pessoais',
                                 style: TextStyle(
-                                  color: AppColors.indigoPrimary,
+                                  color: context.bioColors.accent,
                                   fontWeight: FontWeight.w500,
                                   fontSize: 16,
                                 ),
@@ -197,15 +207,15 @@ class SettingsTab extends StatelessWidget {
                                   ),
                                 );
                               },
-                              leading: const Icon(
+                              leading: Icon(
                                 Icons.auto_awesome_outlined,
-                                color: AppColors.indigoPrimary,
+                                color: context.bioColors.accent,
                                 size: 20,
                               ),
-                              title: const Text(
+                              title: Text(
                                 'Rever Introdução do App',
                                 style: TextStyle(
-                                  color: AppColors.indigoPrimary,
+                                  color: context.bioColors.accent,
                                   fontWeight: FontWeight.w500,
                                   fontSize: 16,
                                 ),
@@ -254,9 +264,9 @@ class SettingsTab extends StatelessWidget {
                               context,
                               appState,
                             ),
-                            leading: const Icon(
+                            leading: Icon(
                               Icons.lock_outline_rounded,
-                              color: AppColors.indigoPrimary,
+                              color: context.bioColors.accent,
                               size: 20,
                             ),
                             title: const Text(
@@ -287,9 +297,9 @@ class SettingsTab extends StatelessWidget {
                                   }
                                 : null,
                             activeTrackColor: AppColors.indigoPrimary,
-                            secondary: const Icon(
+                            secondary: Icon(
                               Icons.fingerprint_rounded,
-                              color: AppColors.indigoPrimary,
+                              color: context.bioColors.accent,
                               size: 20,
                             ),
                             title: const Text(
@@ -314,9 +324,9 @@ class SettingsTab extends StatelessWidget {
                               appState.toggleBlockScreenshots();
                             },
                             activeTrackColor: AppColors.indigoPrimary,
-                            secondary: const Icon(
+                            secondary: Icon(
                               Icons.security_rounded,
-                              color: AppColors.indigoPrimary,
+                              color: context.bioColors.accent,
                               size: 20,
                             ),
                             title: const Text(
@@ -327,7 +337,7 @@ class SettingsTab extends StatelessWidget {
                               ),
                             ),
                             subtitle: const Text(
-                              'Proteção FLAG_SECURE: tela fica preta no multitarefas e bloqueia capturas de tela',
+                              'Oculta a tela no alternador de apps e impede capturas de tela para proteger sua privacidade',
                               style: TextStyle(fontSize: 12.5),
                             ),
                           ),
@@ -339,9 +349,9 @@ class SettingsTab extends StatelessWidget {
                               appState.toggleDiscreetPhotos();
                             },
                             activeTrackColor: AppColors.indigoPrimary,
-                            secondary: const Icon(
+                            secondary: Icon(
                               Icons.visibility_off_outlined,
-                              color: AppColors.indigoPrimary,
+                              color: context.bioColors.accent,
                               size: 20,
                             ),
                             title: const Text(
@@ -404,9 +414,9 @@ class SettingsTab extends StatelessWidget {
                               );
                             },
                             activeTrackColor: AppColors.indigoPrimary,
-                            secondary: const Icon(
+                            secondary: Icon(
                               Icons.alarm_rounded,
-                              color: AppColors.indigoPrimary,
+                              color: context.bioColors.accent,
                               size: 20,
                             ),
                             title: const Text(
@@ -429,11 +439,11 @@ class SettingsTab extends StatelessWidget {
                               contentPadding:
                                   const EdgeInsets.symmetric(horizontal: 16),
                               leading: const SizedBox(width: 20),
-                              title: const Text(
+                              title: Text(
                                 'Alterar horário da pesagem',
                                 style: TextStyle(
                                   fontSize: 13.5,
-                                  color: AppColors.indigoPrimary,
+                                  color: context.bioColors.accent,
                                   fontWeight: FontWeight.w600,
                                 ),
                               ),
@@ -459,9 +469,9 @@ class SettingsTab extends StatelessWidget {
                               );
                             },
                             activeTrackColor: AppColors.indigoPrimary,
-                            secondary: const Icon(
+                            secondary: Icon(
                               Icons.calendar_month_rounded,
-                              color: AppColors.indigoPrimary,
+                              color: context.bioColors.accent,
                               size: 20,
                             ),
                             title: const Text(
@@ -484,11 +494,11 @@ class SettingsTab extends StatelessWidget {
                               contentPadding:
                                   const EdgeInsets.symmetric(horizontal: 16),
                               leading: const SizedBox(width: 20),
-                              title: const Text(
+                              title: Text(
                                 'Alterar dia e horário da avaliação',
                                 style: TextStyle(
                                   fontSize: 13.5,
-                                  color: AppColors.indigoPrimary,
+                                  color: context.bioColors.accent,
                                   fontWeight: FontWeight.w600,
                                 ),
                               ),
@@ -548,7 +558,7 @@ class SettingsTab extends StatelessWidget {
                                 ),
                                 const SizedBox(height: 4),
                                 Text(
-                                  'Ao apenas sair, suas avaliações e pesagens permanecem salvas no aparelho. Se desejar zerar o aplicativo por completo, use a opção Apagar Todos os Dados.',
+                                  'Ao sair do perfil, suas avaliações e pesagens permanecem salvas neste aparelho. Se desejar zerar o aplicativo por completo, use a opção Apagar Todos os Dados Permanentemente.',
                                   style: TextStyle(
                                     fontSize: 13.5,
                                     height: 1.4,
@@ -565,30 +575,30 @@ class SettingsTab extends StatelessWidget {
                             onTap: () {
                               IosActionSheet.show(
                                 context: context,
-                                title: 'Sair do Aplicativo',
+                                title: 'Sair do Perfil',
                                 description:
                                     'Deseja realmente sair do seu perfil atual? Suas avaliações continuarão salvas.',
-                                confirmText: 'Sair do Aplicativo',
+                                confirmText: 'Sair do Perfil',
                                 onConfirm: () => appState.logout(),
                               );
                             },
-                            child: const Padding(
-                              padding: EdgeInsets.symmetric(vertical: 14),
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(vertical: 14),
                               child: Row(
                                 mainAxisAlignment: MainAxisAlignment.center,
                                 children: [
                                   Icon(
                                     Icons.logout_rounded,
                                     size: 20,
-                                    color: AppColors.rose,
+                                    color: context.bioColors.textSecondary,
                                   ),
-                                  SizedBox(width: 8),
+                                  const SizedBox(width: 8),
                                   Text(
-                                    'Sair do Aplicativo',
+                                    'Sair do Perfil',
                                     style: TextStyle(
                                       fontSize: 16,
                                       fontWeight: FontWeight.w600,
-                                      color: AppColors.rose,
+                                      color: context.bioColors.textPrimary,
                                     ),
                                   ),
                                 ],
@@ -610,8 +620,8 @@ class SettingsTab extends StatelessWidget {
                             borderRadius: const BorderRadius.vertical(
                               bottom: Radius.circular(14),
                             ),
-                            child: const Padding(
-                              padding: EdgeInsets.symmetric(
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(
                                 horizontal: 12,
                                 vertical: 14,
                               ),
@@ -621,17 +631,17 @@ class SettingsTab extends StatelessWidget {
                                   Icon(
                                     Icons.delete_forever_rounded,
                                     size: 20,
-                                    color: AppColors.rose,
+                                    color: context.bioColors.dangerText,
                                   ),
-                                  SizedBox(width: 8),
+                                  const SizedBox(width: 8),
                                   Flexible(
                                     child: Text(
-                                      'Apagar Todos os Dados (Reset)',
+                                      'Apagar Todos os Dados Permanentemente',
                                       overflow: TextOverflow.ellipsis,
                                       style: TextStyle(
                                         fontSize: 15.5,
                                         fontWeight: FontWeight.w600,
-                                        color: AppColors.rose,
+                                        color: context.bioColors.dangerText,
                                       ),
                                     ),
                                   ),

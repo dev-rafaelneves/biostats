@@ -14,6 +14,7 @@ class ProgressOverviewSection extends StatelessWidget {
   final VoidCallback onNewEvaluation;
   final VoidCallback onOpenComparator;
   final void Function(int tabIndex) onNavigateToTab;
+  final VoidCallback? onEditGoal;
 
   const ProgressOverviewSection({
     super.key,
@@ -24,7 +25,18 @@ class ProgressOverviewSection extends StatelessWidget {
     required this.onNewEvaluation,
     required this.onOpenComparator,
     required this.onNavigateToTab,
+    this.onEditGoal,
   });
+
+  /// Indica se a variação de peso é favorável segundo o objetivo declarado.
+  /// Retorna `null` para variação nula, manutenção ou objetivo ausente.
+  @visibleForTesting
+  static bool? isWeightDeltaFavorable(double delta, Objetivo? objetivo) {
+    if (delta == 0 || objetivo == null || objetivo == Objetivo.manutencao) {
+      return null;
+    }
+    return objetivo == Objetivo.hipertrofia ? delta > 0 : delta < 0;
+  }
 
   int _computeStreak(List<Pesagem> pesagens) {
     if (pesagens.isEmpty) return 0;
@@ -52,7 +64,8 @@ class ProgressOverviewSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final isDark = context.isDarkMode;
+    final colors = context.bioColors;
     final latest = evaluations.firstOrNull;
     final previous = evaluations.length >= 2 ? evaluations[1] : null;
 
@@ -83,6 +96,18 @@ class ProgressOverviewSection extends StatelessWidget {
             ? currentWeight - previous.avaliacao.pesoKg
             : null);
 
+    final deltaFavorable = deltaPeso != null
+        ? isWeightDeltaFavorable(deltaPeso, latest?.avaliacao.objetivo)
+        : null;
+    final deltaPesoColor = deltaFavorable == null
+        ? colors.textSecondary
+        : (deltaFavorable ? colors.successText : colors.dangerText);
+    final deltaPesoBg = deltaFavorable == null
+        ? colors.surfaceSubtle
+        : (deltaFavorable
+            ? AppColors.emerald.withValues(alpha: 0.14)
+            : AppColors.rose.withValues(alpha: 0.14));
+
     double? deltaBf;
     double? deltaLbm;
     double? deltaFat;
@@ -103,6 +128,12 @@ class ProgressOverviewSection extends StatelessWidget {
       }
     }
 
+    final bfMethodLabel = (snapshot != null && snapshot.metodoPrincipal != 'none')
+        ? snapshot.metodoPrincipalLabel
+        : (liveMeta != null && liveMeta.bfMethod != 'none'
+            ? liveMeta.bfMethod.toUpperCase()
+            : null);
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -117,14 +148,14 @@ class ProgressOverviewSection extends StatelessWidget {
                   onOpenComparator();
                 },
                 style: TextButton.styleFrom(
-                  foregroundColor: AppColors.indigoPrimary,
-                  visualDensity: VisualDensity.compact,
+                  foregroundColor: colors.accent,
+                  minimumSize: const Size(0, 44),
                 ),
-                icon: const Icon(Icons.compare_arrows_rounded, size: 16),
+                icon: const Icon(Icons.compare_arrows_rounded, size: 17),
                 label: const Text(
-                  'Comparar 2 Marcos',
+                  'Comparar Avaliações',
                   style: TextStyle(
-                    fontSize: 13,
+                    fontSize: 13.5,
                     fontWeight: FontWeight.w700,
                   ),
                 ),
@@ -139,10 +170,10 @@ class ProgressOverviewSection extends StatelessWidget {
           width: double.infinity,
           padding: const EdgeInsets.all(20),
           decoration: BoxDecoration(
-            color: isDark ? AppColors.darkSurface : Colors.white,
+            color: colors.surface,
             borderRadius: BorderRadius.circular(20),
             border: Border.all(
-              color: isDark ? AppColors.darkBorder : AppColors.lightBorder,
+              color: colors.border,
               width: 1.2,
             ),
             boxShadow: [
@@ -156,102 +187,105 @@ class ProgressOverviewSection extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Top row: Label + Data da avaliação + Streak Pill
+              // Top row responsiva: Origem + Tendência/Método + Streak Pill
               Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Row(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 8,
-                          vertical: 4,
-                        ),
-                        decoration: BoxDecoration(
-                          color: AppColors.indigoPrimary.withValues(alpha: 0.12),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: Text(
-                          weightContext.hasData
-                              ? weightContext.sourceLabel
-                              : (latest != null
-                                  ? DateFormat('dd MMM yyyy', 'pt_BR')
-                                      .format(latest.avaliacao.dataAvaliacao)
-                                  : 'Sem avaliações'),
-                          style: const TextStyle(
-                            fontSize: 11.5,
-                            fontWeight: FontWeight.w700,
-                            color: AppColors.indigoPrimary,
-                          ),
-                        ),
-                      ),
-                      if (weightContext.emaWeight != null &&
-                          (currentWeight - weightContext.emaWeight!).abs() >= 0.1) ...[
-                        const SizedBox(width: 6),
+                  Expanded(
+                    child: Wrap(
+                      spacing: 6,
+                      runSpacing: 6,
+                      children: [
                         Container(
                           padding: const EdgeInsets.symmetric(
-                            horizontal: 7,
+                            horizontal: 8,
                             vertical: 4,
                           ),
                           decoration: BoxDecoration(
-                            color: isDark
-                                ? const Color(0xFF1E293B)
-                                : const Color(0xFFF1F5F9),
+                            color: colors.accent.withValues(alpha: 0.14),
                             borderRadius: BorderRadius.circular(8),
                           ),
                           child: Text(
-                            'EMA: ${weightContext.emaWeight!.toStringAsFixed(1)} kg',
+                            weightContext.hasData
+                                ? weightContext.sourceLabel
+                                : (latest != null
+                                    ? DateFormat('dd MMM yyyy', 'pt_BR')
+                                        .format(latest.avaliacao.dataAvaliacao)
+                                    : 'Sem avaliações'),
                             style: TextStyle(
-                              fontSize: 11,
-                              fontWeight: FontWeight.w600,
-                              color: isDark
-                                  ? AppColors.darkTextSecondary
-                                  : const Color(0xFF64748B),
+                              fontSize: 11.5,
+                              fontWeight: FontWeight.w700,
+                              color: colors.accent,
                             ),
                           ),
                         ),
-                      ] else if (snapshot != null && snapshot.metodoPrincipal != 'none') ...[
-                        const SizedBox(width: 6),
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 7,
-                            vertical: 4,
-                          ),
-                          decoration: BoxDecoration(
-                            color: isDark
-                                ? const Color(0xFF1E293B)
-                                : const Color(0xFFF1F5F9),
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: Text(
-                            snapshot.metodoPrincipalLabel,
-                            style: TextStyle(
-                              fontSize: 11,
-                              fontWeight: FontWeight.w600,
-                              color: isDark
-                                  ? AppColors.darkTextSecondary
-                                  : const Color(0xFF64748B),
+                        if (weightContext.emaWeight != null &&
+                            (currentWeight - weightContext.emaWeight!).abs() >=
+                                0.1)
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 4,
+                            ),
+                            decoration: BoxDecoration(
+                              color: colors.surfaceSubtle,
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Text(
+                              'Tendência: ${weightContext.emaWeight!.toStringAsFixed(1)} kg',
+                              style: TextStyle(
+                                fontSize: 11.5,
+                                fontWeight: FontWeight.w600,
+                                color: colors.textSecondary,
+                              ),
+                            ),
+                          )
+                        else if (snapshot != null &&
+                            snapshot.metodoPrincipal != 'none')
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 4,
+                            ),
+                            decoration: BoxDecoration(
+                              color: colors.surfaceSubtle,
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Text(
+                              snapshot.metodoPrincipalLabel,
+                              style: TextStyle(
+                                fontSize: 11.5,
+                                fontWeight: FontWeight.w600,
+                                color: colors.textSecondary,
+                              ),
                             ),
                           ),
-                        ),
                       ],
-                    ],
+                    ),
                   ),
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 9,
-                      vertical: 4,
-                    ),
-                    decoration: BoxDecoration(
-                      color: AppColors.orange.withValues(alpha: 0.12),
-                      borderRadius: BorderRadius.circular(100),
-                    ),
-                    child: Text(
-                      streak > 0 ? '🔥 $streak dia${streak > 1 ? 's' : ''}' : '0 dias',
-                      style: const TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w700,
-                        color: AppColors.orange,
+                  const SizedBox(width: 8),
+                  Semantics(
+                    label: streak > 0
+                        ? 'Sequência atual de $streak dias com pesagem'
+                        : 'Sem sequência ativa de pesagens',
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 9,
+                        vertical: 4,
+                      ),
+                      decoration: BoxDecoration(
+                        color: AppColors.orange.withValues(alpha: 0.14),
+                        borderRadius: BorderRadius.circular(100),
+                      ),
+                      child: Text(
+                        streak > 0
+                            ? '🔥 $streak dia${streak > 1 ? 's' : ''}'
+                            : '0 dias',
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w700,
+                          color: colors.warningText,
+                        ),
                       ),
                     ),
                   ),
@@ -270,9 +304,7 @@ class ProgressOverviewSection extends StatelessWidget {
                       fontSize: 44,
                       fontWeight: FontWeight.w800,
                       letterSpacing: -1.2,
-                      color: isDark
-                          ? AppColors.darkTextPrimary
-                          : AppColors.lightTextPrimary,
+                      color: colors.textPrimary,
                     ),
                   ),
                   const SizedBox(width: 6),
@@ -281,56 +313,46 @@ class ProgressOverviewSection extends StatelessWidget {
                     style: TextStyle(
                       fontSize: 20,
                       fontWeight: FontWeight.w600,
-                      color: isDark
-                          ? AppColors.darkTextSecondary
-                          : const Color(0xFF94A3B8),
+                      color: colors.textMuted,
                     ),
                   ),
                   const Spacer(),
                   if (deltaPeso != null)
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 8,
-                        vertical: 4,
-                      ),
-                      decoration: BoxDecoration(
-                        color: (deltaPeso == 0)
-                            ? Colors.grey.withValues(alpha: 0.12)
-                            : (deltaPeso < 0
-                                ? AppColors.emerald.withValues(alpha: 0.12)
-                                : AppColors.rose.withValues(alpha: 0.12)),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(
-                            deltaPeso < 0
-                                ? Icons.arrow_downward_rounded
-                                : (deltaPeso > 0
-                                    ? Icons.arrow_upward_rounded
-                                    : Icons.remove_rounded),
-                            size: 13,
-                            color: deltaPeso < 0
-                                ? AppColors.emerald
-                                : (deltaPeso > 0
-                                    ? AppColors.rose
-                                    : Colors.grey),
-                          ),
-                          const SizedBox(width: 4),
-                          Text(
-                            '${deltaPeso.abs().toStringAsFixed(1)} kg',
-                            style: TextStyle(
-                              fontSize: 12,
-                              fontWeight: FontWeight.w700,
-                              color: deltaPeso < 0
-                                  ? AppColors.emerald
+                    Semantics(
+                      label:
+                          'Variação de peso: ${deltaPeso > 0 ? '+' : ''}${deltaPeso.toStringAsFixed(1)} quilos',
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 4,
+                        ),
+                        decoration: BoxDecoration(
+                          color: deltaPesoBg,
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              deltaPeso < 0
+                                  ? Icons.arrow_downward_rounded
                                   : (deltaPeso > 0
-                                      ? AppColors.rose
-                                      : Colors.grey),
+                                      ? Icons.arrow_upward_rounded
+                                      : Icons.remove_rounded),
+                              size: 13,
+                              color: deltaPesoColor,
                             ),
-                          ),
-                        ],
+                            const SizedBox(width: 4),
+                            Text(
+                              '${deltaPeso.abs().toStringAsFixed(1)} kg',
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w700,
+                                color: deltaPesoColor,
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
                     ),
                 ],
@@ -349,16 +371,16 @@ class ProgressOverviewSection extends StatelessWidget {
                       value: currentBf > 0
                           ? '${currentBf.toStringAsFixed(1)}%'
                           : '--',
-                      sublabel: liveMeta != null && liveMeta.bfMethod != 'none'
-                          ? 'Âncora: ${liveMeta.bfMethod.toUpperCase()}'
-                          : null,
+                      sublabel:
+                          bfMethodLabel != null ? 'Método: $bfMethodLabel' : null,
                       delta: deltaBf != null
                           ? '${deltaBf >= 0 ? '+' : ''}${deltaBf.toStringAsFixed(1)}%'
                           : null,
                       deltaColor: deltaBf != null
-                          ? (deltaBf <= 0 ? AppColors.emerald : AppColors.rose)
+                          ? (deltaBf <= 0
+                              ? colors.successText
+                              : colors.dangerText)
                           : null,
-                      isDark: isDark,
                     ),
                   ),
                   const SizedBox(width: 12),
@@ -375,9 +397,10 @@ class ProgressOverviewSection extends StatelessWidget {
                           ? '${deltaLbm >= 0 ? '+' : ''}${deltaLbm.toStringAsFixed(1)} kg'
                           : null,
                       deltaColor: deltaLbm != null
-                          ? (deltaLbm >= 0 ? AppColors.emerald : AppColors.rose)
+                          ? (deltaLbm >= 0
+                              ? colors.successText
+                              : colors.dangerText)
                           : null,
-                      isDark: isDark,
                     ),
                   ),
                 ],
@@ -387,14 +410,15 @@ class ProgressOverviewSection extends StatelessWidget {
                 children: [
                   Expanded(
                     child: _MetricTile(
+                      key: const ValueKey('tile_meta_peso'),
                       label: 'META DE PESO',
                       value: profile.metaPesoKg != null
                           ? '${profile.metaPesoKg!.toStringAsFixed(1)} kg'
-                          : 'Sem meta',
+                          : 'Definir meta',
                       sublabel: profile.metaPesoKg != null && currentWeight > 0
                           ? '${(currentWeight - profile.metaPesoKg!).abs().toStringAsFixed(1)} kg restante'
-                          : null,
-                      isDark: isDark,
+                          : (onEditGoal != null ? 'Toque para configurar' : null),
+                      onTap: onEditGoal,
                     ),
                   ),
                   const SizedBox(width: 12),
@@ -405,9 +429,8 @@ class ProgressOverviewSection extends StatelessWidget {
                           ? '${targetKcal.toStringAsFixed(0)} kcal'
                           : '--',
                       sublabel: macros?.grams != null
-                          ? 'P:${macros!.grams.protein}g C:${macros.grams.carbs}g G:${macros.grams.fat}g'
+                          ? 'Prot ${macros!.grams.protein}g • Carb ${macros.grams.carbs}g • Gord ${macros.grams.fat}g'
                           : null,
-                      isDark: isDark,
                     ),
                   ),
                 ],
@@ -456,9 +479,9 @@ class ProgressOverviewSection extends StatelessWidget {
                   onNewEvaluation();
                 },
                 style: OutlinedButton.styleFrom(
-                  foregroundColor: AppColors.indigoPrimary,
-                  side: const BorderSide(
-                    color: AppColors.indigoPrimary,
+                  foregroundColor: colors.accent,
+                  side: BorderSide(
+                    color: colors.accent,
                     width: 1.4,
                   ),
                   minimumSize: const Size(0, 48),
@@ -486,11 +509,9 @@ class ProgressOverviewSection extends StatelessWidget {
             width: double.infinity,
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             decoration: BoxDecoration(
-              color: isDark ? AppColors.darkSurface : Colors.white,
+              color: colors.surface,
               borderRadius: BorderRadius.circular(16),
-              border: Border.all(
-                color: isDark ? AppColors.darkBorder : AppColors.lightBorder,
-              ),
+              border: Border.all(color: colors.border),
             ),
             child: Row(
               children: [
@@ -499,8 +520,8 @@ class ProgressOverviewSection extends StatelessWidget {
                   height: 38,
                   decoration: BoxDecoration(
                     color: (deltaFat < 0 && deltaLbm > 0)
-                        ? AppColors.emerald.withValues(alpha: 0.12)
-                        : AppColors.indigoPrimary.withValues(alpha: 0.12),
+                        ? AppColors.emerald.withValues(alpha: 0.14)
+                        : colors.accent.withValues(alpha: 0.14),
                     shape: BoxShape.circle,
                   ),
                   child: Icon(
@@ -508,8 +529,8 @@ class ProgressOverviewSection extends StatelessWidget {
                         ? Icons.auto_awesome_rounded
                         : Icons.insights_rounded,
                     color: (deltaFat < 0 && deltaLbm > 0)
-                        ? AppColors.emerald
-                        : AppColors.indigoPrimary,
+                        ? colors.successText
+                        : colors.accent,
                     size: 20,
                   ),
                 ),
@@ -523,11 +544,9 @@ class ProgressOverviewSection extends StatelessWidget {
                             ? 'Recomposição Corporal Perfeita!'
                             : 'Evolução da Composição',
                         style: TextStyle(
-                          fontSize: 13.5,
+                          fontSize: 14,
                           fontWeight: FontWeight.w700,
-                          color: isDark
-                              ? AppColors.darkTextPrimary
-                              : AppColors.lightTextPrimary,
+                          color: colors.textPrimary,
                         ),
                       ),
                       const SizedBox(height: 2),
@@ -535,9 +554,7 @@ class ProgressOverviewSection extends StatelessWidget {
                         'Gordura: ${deltaFat >= 0 ? "+" : ""}${deltaFat.toStringAsFixed(1)}kg  •  Músculo: ${deltaLbm >= 0 ? "+" : ""}${deltaLbm.toStringAsFixed(1)}kg',
                         style: TextStyle(
                           fontSize: 12,
-                          color: isDark
-                              ? AppColors.darkTextSecondary
-                              : const Color(0xFF64748B),
+                          color: colors.textSecondary,
                         ),
                       ),
                     ],
@@ -583,7 +600,7 @@ class ProgressOverviewSection extends StatelessWidget {
                     ),
                     borderRadius: BorderRadius.circular(18),
                     border: Border.all(
-                      color: AppColors.indigoPrimary.withValues(alpha: 0.3),
+                      color: colors.accent.withValues(alpha: 0.3),
                     ),
                   ),
                   child: Row(
@@ -618,7 +635,7 @@ class ProgressOverviewSection extends StatelessWidget {
                                     style: TextStyle(
                                       fontSize: 14.5,
                                       fontWeight: FontWeight.w700,
-                                      color: context.bioColors.textPrimary,
+                                      color: colors.textPrimary,
                                     ),
                                   ),
                                 ),
@@ -629,16 +646,17 @@ class ProgressOverviewSection extends StatelessWidget {
                                     vertical: 2,
                                   ),
                                   decoration: BoxDecoration(
-                                    color: AppColors.indigoPrimary
-                                        .withValues(alpha: 0.14),
+                                    color: colors.accent.withValues(alpha: 0.14),
                                     borderRadius: BorderRadius.circular(6),
                                   ),
                                   child: Text(
-                                    appState.hasGeminiApiKey ? 'IA Ativa' : 'Gemini',
+                                    appState.hasGeminiApiKey
+                                        ? 'IA Ativa'
+                                        : 'Gemini',
                                     style: TextStyle(
-                                      fontSize: 10,
+                                      fontSize: 10.5,
                                       fontWeight: FontWeight.w700,
-                                      color: context.bioColors.accent,
+                                      color: colors.accent,
                                     ),
                                   ),
                                 ),
@@ -649,7 +667,7 @@ class ProgressOverviewSection extends StatelessWidget {
                               'Toque para gerar ou ler o diagnóstico clínico da sua avaliação',
                               style: TextStyle(
                                 fontSize: 12,
-                                color: context.bioColors.textSecondary,
+                                color: colors.textSecondary,
                               ),
                             ),
                           ],
@@ -658,7 +676,7 @@ class ProgressOverviewSection extends StatelessWidget {
                       Icon(
                         Icons.arrow_forward_ios_rounded,
                         size: 15,
-                        color: context.bioColors.accent,
+                        color: colors.accent,
                       ),
                     ],
                   ),
@@ -666,76 +684,7 @@ class ProgressOverviewSection extends StatelessWidget {
               ),
             ),
           ),
-          const SizedBox(height: 20),
         ],
-
-        // 4. Lista Agrupada iOS (Inset Grouped Style) para Navegação
-        Padding(
-          padding: const EdgeInsets.only(left: 4, bottom: 8),
-          child: Text(
-            'SEÇÕES DO SEU PROGRESSO',
-            style: TextStyle(
-              fontSize: 11,
-              fontWeight: FontWeight.w700,
-              letterSpacing: 0.8,
-              color: isDark
-                  ? AppColors.darkTextSecondary
-                  : const Color(0xFF64748B),
-            ),
-          ),
-        ),
-
-        Material(
-          color: isDark ? AppColors.darkSurface : Colors.white,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
-            side: BorderSide(
-              color: isDark ? AppColors.darkBorder : AppColors.lightBorder,
-            ),
-          ),
-          clipBehavior: Clip.antiAlias,
-          child: Column(
-            children: [
-              _NavListTile(
-                icon: Icons.monitor_weight_outlined,
-                iconColor: AppColors.indigoPrimary,
-                title: 'Pesagens Diárias & Tendência',
-                subtitle: 'Gráfico suavizado EMA, meta e heatmap',
-                onTap: () => onNavigateToTab(1),
-                isDark: isDark,
-              ),
-              const Divider(indent: 56, height: 1),
-              _NavListTile(
-                icon: Icons.show_chart_rounded,
-                iconColor: const Color(0xFF3B82F6),
-                title: 'Gráficos & Fotos Lado a Lado',
-                subtitle: 'Evolução longitudinal e slider antes/depois',
-                onTap: () => onNavigateToTab(2),
-                isDark: isDark,
-              ),
-              const Divider(indent: 56, height: 1),
-              _NavListTile(
-                icon: Icons.assignment_outlined,
-                iconColor: AppColors.emerald,
-                title: 'Ficha Completa de Medidas',
-                subtitle: 'Circunferências, dobras cutâneas e macros',
-                onTap: () => onNavigateToTab(3),
-                isDark: isDark,
-              ),
-              if (evaluations.length >= 2) ...[
-                const Divider(indent: 56, height: 1),
-                _NavListTile(
-                  icon: Icons.compare_arrows_rounded,
-                  iconColor: const Color(0xFFF59E0B),
-                  title: 'Comparador de Avaliações',
-                  subtitle: 'Compare quaisquer 2 marcos lado a lado',
-                  onTap: onOpenComparator,
-                  isDark: isDark,
-                ),
-              ],
-            ],
-          ),
-        ),
       ],
     );
   }
@@ -747,41 +696,62 @@ class _MetricTile extends StatelessWidget {
   final String? sublabel;
   final String? delta;
   final Color? deltaColor;
-  final bool isDark;
+  final VoidCallback? onTap;
 
   const _MetricTile({
+    super.key,
     required this.label,
     required this.value,
     this.sublabel,
     this.delta,
     this.deltaColor,
-    required this.isDark,
+    this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
-    return Container(
+    final colors = context.bioColors;
+
+    final container = Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       decoration: BoxDecoration(
-        color: isDark ? const Color(0xFF1E293B) : const Color(0xFFF8FAFC),
+        color: colors.surfaceSubtle,
         borderRadius: BorderRadius.circular(12),
+        border: onTap != null
+            ? Border.all(color: colors.accent.withValues(alpha: 0.28))
+            : null,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            label,
-            style: TextStyle(
-              fontSize: 10,
-              fontWeight: FontWeight.w700,
-              letterSpacing: 0.6,
-              color: isDark
-                  ? AppColors.darkTextSecondary
-                  : const Color(0xFF94A3B8),
-            ),
-          ),
-          const SizedBox(height: 3),
           Row(
+            children: [
+              Expanded(
+                child: Text(
+                  label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: 0.5,
+                    color: colors.textMuted,
+                  ),
+                ),
+              ),
+              if (onTap != null)
+                Icon(
+                  Icons.edit_outlined,
+                  size: 13,
+                  color: colors.accent,
+                ),
+            ],
+          ),
+          const SizedBox(height: 4),
+          Wrap(
+            spacing: 6,
+            runSpacing: 2,
+            crossAxisAlignment: WrapCrossAlignment.center,
             children: [
               Text(
                 value,
@@ -789,113 +759,55 @@ class _MetricTile extends StatelessWidget {
                   fontSize: 17,
                   fontWeight: FontWeight.bold,
                   letterSpacing: -0.3,
-                  color: isDark
-                      ? AppColors.darkTextPrimary
-                      : AppColors.lightTextPrimary,
+                  color: onTap != null && value == 'Definir meta'
+                      ? colors.accent
+                      : colors.textPrimary,
                 ),
               ),
-              if (delta != null) ...[
-                const SizedBox(width: 6),
+              if (delta != null)
                 Text(
                   delta!,
                   style: TextStyle(
-                    fontSize: 11,
+                    fontSize: 11.5,
                     fontWeight: FontWeight.w700,
-                    color: deltaColor ?? AppColors.emerald,
+                    color: deltaColor ?? colors.successText,
                   ),
                 ),
-              ],
             ],
           ),
           if (sublabel != null) ...[
-            const SizedBox(height: 2),
+            const SizedBox(height: 3),
             Text(
               sublabel!,
               style: TextStyle(
-                fontSize: 10.5,
-                color: isDark
-                    ? AppColors.darkTextSecondary
-                    : const Color(0xFF64748B),
+                fontSize: 11,
+                color: colors.textSecondary,
               ),
             ),
           ],
         ],
       ),
     );
-  }
-}
 
-class _NavListTile extends StatelessWidget {
-  final IconData icon;
-  final Color iconColor;
-  final String title;
-  final String subtitle;
-  final VoidCallback onTap;
-  final bool isDark;
+    if (onTap == null) {
+      return Semantics(
+        label: '$label: $value${sublabel != null ? ', $sublabel' : ''}',
+        child: container,
+      );
+    }
 
-  const _NavListTile({
-    required this.icon,
-    required this.iconColor,
-    required this.title,
-    required this.subtitle,
-    required this.onTap,
-    required this.isDark,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return InkWell(
-      onTap: () {
-        HapticFeedback.selectionClick();
-        onTap();
-      },
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 13),
-        child: Row(
-          children: [
-            Container(
-              width: 32,
-              height: 32,
-              decoration: BoxDecoration(
-                color: iconColor.withValues(alpha: 0.12),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Icon(icon, color: iconColor, size: 18),
-            ),
-            const SizedBox(width: 14),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    title,
-                    style: TextStyle(
-                      fontSize: 14.5,
-                      fontWeight: FontWeight.w600,
-                      color: isDark
-                          ? AppColors.darkTextPrimary
-                          : AppColors.lightTextPrimary,
-                    ),
-                  ),
-                  const SizedBox(height: 1),
-                  Text(
-                    subtitle,
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: isDark
-                          ? AppColors.darkTextSecondary
-                          : const Color(0xFF64748B),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const Icon(
-              Icons.chevron_right_rounded,
-              size: 20,
-              color: Color(0xFF94A3B8),
-            ),
-          ],
+    return Semantics(
+      button: true,
+      label: '$label: $value. Toque para configurar ou editar sua meta',
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: () {
+            HapticFeedback.selectionClick();
+            onTap!();
+          },
+          borderRadius: BorderRadius.circular(12),
+          child: container,
         ),
       ),
     );

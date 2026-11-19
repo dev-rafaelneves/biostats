@@ -192,10 +192,11 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
         ),
       );
     } catch (e) {
+      debugPrint('Erro ao processar arquivo de backup: $e');
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Falha ao processar arquivo de backup: $e'),
+        const SnackBar(
+          content: Text('Arquivo de backup inválido ou incompatível.'),
           backgroundColor: AppColors.rose,
         ),
       );

@@ -57,9 +57,14 @@ class _WeeklyWeightTrackerState extends State<WeeklyWeightTracker> {
         );
       }
     } catch (e) {
+      debugPrint('Erro ao sincronizar balança: $e');
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Falha ao sincronizar balança: $e')),
+        const SnackBar(
+          content: Text(
+            'Não foi possível sincronizar com a balança inteligente.',
+          ),
+        ),
       );
     } finally {
       if (mounted) setState(() => _isSyncing = false);
@@ -90,9 +95,11 @@ class _WeeklyWeightTrackerState extends State<WeeklyWeightTracker> {
     if (raw.isEmpty) return;
 
     final parsed = double.tryParse(raw);
-    if (parsed == null || parsed <= 0) {
+    if (parsed == null || parsed < 30 || parsed > 350) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Insira um peso válido.')),
+        const SnackBar(
+          content: Text('Informe um peso válido entre 30 kg e 350 kg.'),
+        ),
       );
       return;
     }
@@ -127,10 +134,23 @@ class _WeeklyWeightTrackerState extends State<WeeklyWeightTracker> {
   }
 
   Future<void> _handleDelete(String id) async {
+    final removed =
+        widget.appState.pesagens.where((p) => p.id == id).firstOrNull;
     await widget.appState.deletePesagem(id);
     if (!mounted) return;
+    ScaffoldMessenger.of(context).clearSnackBars();
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Pesagem removida.')),
+      SnackBar(
+        content: const Text('Pesagem removida.'),
+        action: removed != null
+            ? SnackBarAction(
+                label: 'Desfazer',
+                onPressed: () {
+                  widget.appState.addPesagem(removed);
+                },
+              )
+            : null,
+      ),
     );
   }
 
@@ -300,9 +320,7 @@ class _WeeklyWeightTrackerState extends State<WeeklyWeightTracker> {
                           fontSize: 10.5,
                           fontWeight: FontWeight.w700,
                           letterSpacing: 0.6,
-                          color: isDark
-                              ? AppColors.darkTextSecondary
-                              : const Color(0xFF94A3B8),
+                          color: context.bioColors.textMuted,
                         ),
                       ),
                     ),
@@ -371,9 +389,7 @@ class _WeeklyWeightTrackerState extends State<WeeklyWeightTracker> {
                           fontSize: 10.5,
                           fontWeight: FontWeight.w700,
                           letterSpacing: 0.6,
-                          color: isDark
-                              ? AppColors.darkTextSecondary
-                              : const Color(0xFF94A3B8),
+                          color: context.bioColors.textMuted,
                         ),
                       ),
                     ),
@@ -408,9 +424,7 @@ class _WeeklyWeightTrackerState extends State<WeeklyWeightTracker> {
                           hintText: 'Ex: 72,5',
                           hintStyle: TextStyle(
                             fontSize: 13.5,
-                            color: isDark
-                                ? const Color(0xFF475569)
-                                : const Color(0xFF94A3B8),
+                            color: context.bioColors.textMuted,
                           ),
                           border: InputBorder.none,
                           isDense: true,
@@ -505,8 +519,8 @@ class _WeeklyWeightTrackerState extends State<WeeklyWeightTracker> {
                           : const Color(0xFFF43F5E))
                       .withValues(alpha: 0.25);
                   badgeText = isGood
-                      ? const Color(0xFF059669)
-                      : const Color(0xFFE11D48);
+                      ? context.bioColors.successText
+                      : context.bioColors.dangerText;
                   badgeIcon = Icons.trending_up_rounded;
                 } else if (diff < -0.1) {
                   final isGood = !isHypertrophy;
@@ -519,8 +533,8 @@ class _WeeklyWeightTrackerState extends State<WeeklyWeightTracker> {
                           : const Color(0xFFF43F5E))
                       .withValues(alpha: 0.25);
                   badgeText = isGood
-                      ? const Color(0xFF059669)
-                      : const Color(0xFFE11D48);
+                      ? context.bioColors.successText
+                      : context.bioColors.dangerText;
                   badgeIcon = Icons.trending_down_rounded;
                 }
 
@@ -555,9 +569,7 @@ class _WeeklyWeightTrackerState extends State<WeeklyWeightTracker> {
                                   fontSize: 10.5,
                                   fontWeight: FontWeight.w700,
                                   letterSpacing: 0.6,
-                                  color: isDark
-                                      ? AppColors.darkTextSecondary
-                                      : const Color(0xFF94A3B8),
+                                  color: context.bioColors.textMuted,
                                 ),
                               ),
                               const SizedBox(height: 4),
@@ -742,14 +754,26 @@ class _WeeklyWeightTrackerState extends State<WeeklyWeightTracker> {
                                 ),
                               ),
                               const SizedBox(width: 14),
-                              InkWell(
-                                onTap: () => _handleDelete(p.id),
-                                child: const Text(
-                                  'Excluir',
-                                  style: TextStyle(
-                                    fontSize: 13,
-                                    fontWeight: FontWeight.w600,
-                                    color: AppColors.rose,
+                              Semantics(
+                                button: true,
+                                label:
+                                    'Excluir pesagem de ${fullDateFmt.format(p.data)}',
+                                child: InkWell(
+                                  onTap: () => _handleDelete(p.id),
+                                  borderRadius: BorderRadius.circular(8),
+                                  child: Padding(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 10,
+                                      vertical: 10,
+                                    ),
+                                    child: Text(
+                                      'Excluir',
+                                      style: TextStyle(
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.w600,
+                                        color: context.bioColors.dangerText,
+                                      ),
+                                    ),
                                   ),
                                 ),
                               ),
@@ -985,9 +1009,13 @@ class _WeeklyWeightTrackerState extends State<WeeklyWeightTracker> {
             ],
           ),
           const SizedBox(height: 14),
-          SizedBox(
-            height: 180,
-            child: LineChart(
+          Semantics(
+            label:
+                'Gráfico de tendência de peso com ${displayPoints.length} registros',
+            excludeSemantics: true,
+            child: SizedBox(
+              height: 180,
+              child: LineChart(
               LineChartData(
                 minY: minY,
                 maxY: maxY,
@@ -1143,6 +1171,7 @@ class _WeeklyWeightTrackerState extends State<WeeklyWeightTracker> {
                 ],
               ),
             ),
+          ),
           ),
         ],
       ),

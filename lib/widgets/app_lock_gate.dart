@@ -42,7 +42,7 @@ class AppLockGate extends StatefulWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                'Proteja suas avaliações e fotos corporais com uma senha criptografada de 4 números (SHA-256) ao abrir o aplicativo.',
+                'Proteja suas avaliações e fotos corporais com uma senha de 4 dígitos protegida com criptografia local.',
                 style: TextStyle(
                   fontSize: 13.5,
                   color: isDark
@@ -313,50 +313,57 @@ class _AppLockGateState extends State<AppLockGate>
                       ),
                     ),
                     const SizedBox(height: 6),
-                    Text(
-                      subtitleText,
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        fontSize: 14,
-                        height: 1.35,
-                        fontWeight: (_hasError || isLockedOut)
-                            ? FontWeight.w600
-                            : FontWeight.normal,
-                        color: (_hasError || isLockedOut)
-                            ? AppColors.rose
-                            : (isDark
-                                ? AppColors.darkTextSecondary
-                                : AppColors.lightTextSecondary),
+                    Semantics(
+                      liveRegion: true,
+                      child: Text(
+                        subtitleText,
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          fontSize: 14,
+                          height: 1.35,
+                          fontWeight: (_hasError || isLockedOut)
+                              ? FontWeight.w600
+                              : FontWeight.normal,
+                          color: (_hasError || isLockedOut)
+                              ? context.bioColors.dangerText
+                              : (isDark
+                                  ? AppColors.darkTextSecondary
+                                  : AppColors.lightTextSecondary),
+                        ),
                       ),
                     ),
                     const SizedBox(height: 24),
 
                     // 4 Dots indicator
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: List.generate(4, (idx) {
-                        final filled = idx < _typedPin.length;
-                        return AnimatedContainer(
-                          duration: const Duration(milliseconds: 150),
-                          margin: const EdgeInsets.symmetric(horizontal: 10),
-                          width: 16,
-                          height: 16,
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            color: filled
-                                ? AppColors.indigoPrimary
-                                : Colors.transparent,
-                            border: Border.all(
-                              color: (_hasError || isLockedOut)
-                                  ? AppColors.rose
-                                  : (filled
-                                      ? AppColors.indigoPrimary
-                                      : const Color(0xFF94A3B8)),
-                              width: 2,
+                    Semantics(
+                      label: '${_typedPin.length} de 4 dígitos inseridos',
+                      excludeSemantics: true,
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: List.generate(4, (idx) {
+                          final filled = idx < _typedPin.length;
+                          return AnimatedContainer(
+                            duration: const Duration(milliseconds: 150),
+                            margin: const EdgeInsets.symmetric(horizontal: 10),
+                            width: 16,
+                            height: 16,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              color: filled
+                                  ? context.bioColors.accent
+                                  : Colors.transparent,
+                              border: Border.all(
+                                color: (_hasError || isLockedOut)
+                                    ? context.bioColors.dangerText
+                                    : (filled
+                                        ? context.bioColors.accent
+                                        : context.bioColors.textMuted),
+                                width: 2,
+                              ),
                             ),
-                          ),
-                        );
-                      }),
+                          );
+                        }),
+                      ),
                     ),
                     const SizedBox(height: 32),
 
@@ -387,26 +394,32 @@ class _AppLockGateState extends State<AppLockGate>
 
                           // Botão de Biometria (se ativada)
                           if (widget.appState.useBiometrics)
-                            Material(
-                              color: isDark ? AppColors.darkSurface : Colors.white,
-                              shape: CircleBorder(
-                                side: BorderSide(
-                                  color: isDark
-                                      ? AppColors.darkBorder
-                                      : AppColors.lightBorder,
+                            Semantics(
+                              button: true,
+                              label: 'Desbloquear com biometria',
+                              child: Material(
+                                color: isDark
+                                    ? AppColors.darkSurface
+                                    : Colors.white,
+                                shape: CircleBorder(
+                                  side: BorderSide(
+                                    color: isDark
+                                        ? AppColors.darkBorder
+                                        : AppColors.lightBorder,
+                                  ),
                                 ),
-                              ),
-                              child: InkWell(
-                                onTap: isLockedOut ? null : _tryBiometrics,
-                                customBorder: const CircleBorder(),
-                                child: const SizedBox(
-                                  width: 68,
-                                  height: 68,
-                                  child: Center(
-                                    child: Icon(
-                                      Icons.fingerprint_rounded,
-                                      size: 32,
-                                      color: AppColors.indigoPrimary,
+                                child: InkWell(
+                                  onTap: isLockedOut ? null : _tryBiometrics,
+                                  customBorder: const CircleBorder(),
+                                  child: SizedBox(
+                                    width: 68,
+                                    height: 68,
+                                    child: Center(
+                                      child: Icon(
+                                        Icons.fingerprint_rounded,
+                                        size: 32,
+                                        color: context.bioColors.accent,
+                                      ),
                                     ),
                                   ),
                                 ),
@@ -425,6 +438,7 @@ class _AppLockGateState extends State<AppLockGate>
                             height: 68,
                             child: IconButton(
                               onPressed: isLockedOut ? null : _onBackspace,
+                              tooltip: 'Apagar último dígito',
                               icon: const Icon(Icons.backspace_outlined),
                             ),
                           ),

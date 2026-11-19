@@ -249,53 +249,62 @@ class _QuickWeightDialogState extends State<QuickWeightDialog> {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Row(
-                  children: [
-                    Container(
-                      width: 40,
-                      height: 40,
-                      decoration: BoxDecoration(
-                        color: AppColors.indigoPrimary.withValues(alpha: 0.12),
-                        shape: BoxShape.circle,
-                      ),
-                      child: const Icon(
-                        Icons.monitor_weight_outlined,
-                        color: AppColors.indigoPrimary,
-                        size: 22,
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          isToday ? 'Pesagem de Hoje' : 'Registro de Peso',
-                          style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                            color: isDark
-                                ? AppColors.darkTextPrimary
-                                : AppColors.lightTextPrimary,
-                          ),
+                Expanded(
+                  child: Row(
+                    children: [
+                      Container(
+                        width: 40,
+                        height: 40,
+                        decoration: BoxDecoration(
+                          color: AppColors.indigoPrimary.withValues(alpha: 0.12),
+                          shape: BoxShape.circle,
                         ),
-                        Text(
-                          dateFmt.format(_selectedDate),
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: isDark
-                                ? AppColors.darkTextSecondary
-                                : AppColors.lightTextSecondary,
-                          ),
+                        child: Icon(
+                          Icons.monitor_weight_outlined,
+                          color: context.bioColors.accent,
+                          size: 22,
                         ),
-                      ],
-                    ),
-                  ],
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              isToday ? 'Pesagem de Hoje' : 'Registro de Peso',
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                                color: isDark
+                                    ? AppColors.darkTextPrimary
+                                    : AppColors.lightTextPrimary,
+                              ),
+                            ),
+                            Text(
+                              dateFmt.format(_selectedDate),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: isDark
+                                    ? AppColors.darkTextSecondary
+                                    : AppColors.lightTextSecondary,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
+                const SizedBox(width: 8),
                 TextButton.icon(
                   onPressed: () => _pickDate(context),
                   style: TextButton.styleFrom(
                     visualDensity: VisualDensity.compact,
-                    foregroundColor: AppColors.indigoPrimary,
+                    foregroundColor: context.bioColors.accent,
                   ),
                   icon: const Icon(Icons.calendar_today_rounded, size: 15),
                   label: const Text(
@@ -421,30 +430,39 @@ class _QuickWeightDialogState extends State<QuickWeightDialog> {
 
   Widget _buildQuickChip(String label, VoidCallback onTap) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(100),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
-        decoration: BoxDecoration(
-          color: isDark
-              ? const Color(0xFF1E293B)
-              : const Color(0xFFF1F5F9),
-          borderRadius: BorderRadius.circular(100),
-          border: Border.all(
-            color: isDark
-                ? AppColors.darkBorder
-                : const Color(0xFFE2E8F0),
-          ),
-        ),
-        child: Text(
-          label,
-          style: TextStyle(
-            fontSize: 13,
-            fontWeight: FontWeight.w700,
-            color: isDark
-                ? AppColors.indigoLight
-                : AppColors.indigoPrimary,
+    return Semantics(
+      button: true,
+      label: 'Ajustar peso em $label quilos',
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(100),
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(minHeight: 44, minWidth: 52),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+            decoration: BoxDecoration(
+              color: isDark
+                  ? const Color(0xFF1E293B)
+                  : const Color(0xFFF1F5F9),
+              borderRadius: BorderRadius.circular(100),
+              border: Border.all(
+                color: isDark
+                    ? AppColors.darkBorder
+                    : const Color(0xFFE2E8F0),
+              ),
+            ),
+            child: Center(
+              widthFactor: 1.0,
+              heightFactor: 1.0,
+              child: Text(
+                label,
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w700,
+                  color: context.bioColors.accent,
+                ),
+              ),
+            ),
           ),
         ),
       ),

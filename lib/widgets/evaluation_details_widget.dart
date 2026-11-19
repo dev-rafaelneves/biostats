@@ -312,33 +312,11 @@ class EvaluationDetailsWidget extends StatelessWidget {
     final ciEval = _evaluateCi(ci, profile.sexo);
 
     final prevMed = previousAvaliacao?.medidas;
+    final colors = context.bioColors;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Botão Compartilhar no WhatsApp
-        SizedBox(
-          width: double.infinity,
-          height: 52,
-          child: ElevatedButton.icon(
-            onPressed: () => _handleShare(context),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF22C55E), // green-500
-              foregroundColor: Colors.white,
-              elevation: 0,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(16),
-              ),
-            ),
-            icon: const Icon(Icons.share_rounded, size: 20),
-            label: const Text(
-              'Compartilhar no WhatsApp',
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
-            ),
-          ),
-        ),
-        const SizedBox(height: 20),
-
         // 1. Metabolismo e Metas
         if (bmrKatch > 0 && tdee > 0) ...[
           DetailSectionCard(
@@ -671,10 +649,10 @@ class EvaluationDetailsWidget extends StatelessWidget {
             onPressed: () => _showIndicesGuide(context),
             tooltip: 'O que significam estes índices?',
             visualDensity: VisualDensity.compact,
-            icon: const Icon(
+            icon: Icon(
               Icons.help_outline_rounded,
               size: 18,
-              color: AppColors.indigoPrimary,
+              color: colors.accent,
             ),
           ),
           child: Wrap(
@@ -682,6 +660,7 @@ class EvaluationDetailsWidget extends StatelessWidget {
             runSpacing: 12,
             children: [
               GridHalfItem(
+                spacing: 12,
                 child: RiskMiniCard(
                   title: 'IMC',
                   value: imc.toStringAsFixed(1),
@@ -690,6 +669,7 @@ class EvaluationDetailsWidget extends StatelessWidget {
                 ),
               ),
               GridHalfItem(
+                spacing: 12,
                 child: RiskMiniCard(
                   title: 'RCQ',
                   value: rcq > 0 ? rcq.toStringAsFixed(2) : '--',
@@ -698,6 +678,7 @@ class EvaluationDetailsWidget extends StatelessWidget {
                 ),
               ),
               GridHalfItem(
+                spacing: 12,
                 child: RiskMiniCard(
                   title: 'RCEst',
                   value: rcEst > 0 ? rcEst.toStringAsFixed(2) : '--',
@@ -706,6 +687,7 @@ class EvaluationDetailsWidget extends StatelessWidget {
                 ),
               ),
               GridHalfItem(
+                spacing: 12,
                 child: RiskMiniCard(
                   title: 'Massa Magra',
                   value: '${lbmFinal.toStringAsFixed(1)} kg',
@@ -714,6 +696,7 @@ class EvaluationDetailsWidget extends StatelessWidget {
               ),
               if (bai > 0)
                 GridHalfItem(
+                  spacing: 12,
                   child: RiskMiniCard(
                     title: 'BAI',
                     value: '${bai.toStringAsFixed(1)}%',
@@ -722,6 +705,7 @@ class EvaluationDetailsWidget extends StatelessWidget {
                 ),
               if (bri > 0)
                 GridHalfItem(
+                  spacing: 12,
                   child: RiskMiniCard(
                     title: 'BRI',
                     value: bri.toStringAsFixed(1),
@@ -731,6 +715,7 @@ class EvaluationDetailsWidget extends StatelessWidget {
                 ),
               if (ci > 0)
                 GridHalfItem(
+                  spacing: 12,
                   child: RiskMiniCard(
                     title: 'CI',
                     value: ci.toStringAsFixed(2),
@@ -829,6 +814,31 @@ class EvaluationDetailsWidget extends StatelessWidget {
                 ),
               ),
             ],
+          ),
+        ),
+        const SizedBox(height: 18),
+
+        // Ação secundária de compartilhamento posicionada após os dados clínicos
+        SizedBox(
+          width: double.infinity,
+          height: 48,
+          child: OutlinedButton.icon(
+            onPressed: () => _handleShare(context),
+            style: OutlinedButton.styleFrom(
+              foregroundColor: colors.successText,
+              side: BorderSide(
+                color: colors.successText.withValues(alpha: 0.45),
+                width: 1.3,
+              ),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(14),
+              ),
+            ),
+            icon: const Icon(Icons.share_rounded, size: 19),
+            label: const Text(
+              'Compartilhar no WhatsApp',
+              style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
+            ),
           ),
         ),
       ],

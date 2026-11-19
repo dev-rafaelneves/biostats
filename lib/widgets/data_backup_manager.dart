@@ -89,9 +89,10 @@ class _DataBackupManagerState extends State<DataBackupManager> {
         _isSuccess = shared;
       });
     } catch (e) {
+      debugPrint('Erro ao compartilhar backup: $e');
       if (!mounted) return;
       setState(() {
-        _messageText = 'Erro ao compartilhar backup: $e';
+        _messageText = 'Não foi possível compartilhar o backup agora.';
         _isSuccess = false;
       });
     } finally {
@@ -116,9 +117,10 @@ class _DataBackupManagerState extends State<DataBackupManager> {
         _isSuccess = res.success;
       });
     } catch (e) {
+      debugPrint('Erro ao salvar backup: $e');
       if (!mounted) return;
       setState(() {
-        _messageText = 'Erro ao salvar backup: $e';
+        _messageText = 'Não foi possível salvar o backup no dispositivo.';
         _isSuccess = false;
       });
     } finally {

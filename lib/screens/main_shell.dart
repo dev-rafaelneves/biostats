@@ -26,6 +26,7 @@ class MainShell extends StatefulWidget {
 
 class _MainShellState extends State<MainShell> {
   int _selectedIndex = 0;
+  int _progressSegment = 0;
 
   @override
   void initState() {
@@ -135,7 +136,7 @@ class _MainShellState extends State<MainShell> {
                       ),
                     ),
                     title: const Text(
-                      '⚡ Registrar Peso de Hoje',
+                      'Registrar Peso de Hoje',
                       style: TextStyle(
                         fontWeight: FontWeight.w700,
                         fontSize: 16,
@@ -172,7 +173,7 @@ class _MainShellState extends State<MainShell> {
                       ),
                     ),
                     title: const Text(
-                      '📋 Nova Avaliação Completa',
+                      'Nova Avaliação Completa',
                       style: TextStyle(
                         fontWeight: FontWeight.w700,
                         fontSize: 16,
@@ -210,7 +211,7 @@ class _MainShellState extends State<MainShell> {
                         ),
                       ),
                       title: const Text(
-                        '⚖️ Comparar Avaliações',
+                        'Comparar Avaliações',
                         style: TextStyle(
                           fontWeight: FontWeight.w700,
                           fontSize: 16,
@@ -241,7 +242,7 @@ class _MainShellState extends State<MainShell> {
       appState: widget.appState,
       child: Scaffold(
         extendBody: true,
-        floatingActionButton: _selectedIndex == 0
+        floatingActionButton: (_selectedIndex == 0 && _progressSegment != 0)
             ? FloatingActionButton.extended(
                 key: const ValueKey('fab_quick_actions'),
                 onPressed: () => _showQuickActionSheet(context),
@@ -261,7 +262,15 @@ class _MainShellState extends State<MainShell> {
         body: IndexedStack(
           index: _selectedIndex,
           children: [
-            PersonalProgressTab(appState: widget.appState),
+            PersonalProgressTab(
+              appState: widget.appState,
+              onSegmentChanged: (seg) {
+                if (_progressSegment != seg) {
+                  setState(() => _progressSegment = seg);
+                }
+              },
+              onNavigateToSettings: () => setState(() => _selectedIndex = 1),
+            ),
             SettingsTab(appState: widget.appState),
           ],
         ),

@@ -1,6 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:biostats/models/models.dart';
+import 'package:biostats/screens/main_shell/progress_overview_section.dart';
 import 'package:biostats/services/app_state.dart';
 import 'package:biostats/services/database_service.dart';
 import 'package:biostats/theme/app_theme.dart';
@@ -150,6 +151,57 @@ void main() {
       expect(darkExt, isNotNull);
       expect(lightExt!.background, equals(AppColors.lightBackground));
       expect(darkExt!.background, equals(AppColors.darkBackground));
+      expect(lightExt.successText.value, equals(0xFF047857));
+      expect(lightExt.warningText.value, equals(0xFFC2410C));
+      expect(lightExt.dangerText.value, equals(0xFFBE123C));
+      expect(darkExt.successText.value, equals(0xFF34D399));
+      expect(darkExt.warningText.value, equals(0xFFFB923C));
+      expect(darkExt.dangerText.value, equals(0xFFFB7185));
+    });
+
+    test('ProgressOverviewSection.isWeightDeltaFavorable avalia delta conforme objetivo', () {
+      expect(
+        ProgressOverviewSection.isWeightDeltaFavorable(
+          0.5,
+          Objetivo.hipertrofia,
+        ),
+        isTrue,
+      );
+      expect(
+        ProgressOverviewSection.isWeightDeltaFavorable(
+          -0.5,
+          Objetivo.hipertrofia,
+        ),
+        isFalse,
+      );
+      expect(
+        ProgressOverviewSection.isWeightDeltaFavorable(
+          -0.5,
+          Objetivo.emagrecimento,
+        ),
+        isTrue,
+      );
+      expect(
+        ProgressOverviewSection.isWeightDeltaFavorable(
+          0.5,
+          Objetivo.emagrecimento,
+        ),
+        isFalse,
+      );
+      expect(
+        ProgressOverviewSection.isWeightDeltaFavorable(
+          0.5,
+          Objetivo.manutencao,
+        ),
+        isNull,
+      );
+      expect(
+        ProgressOverviewSection.isWeightDeltaFavorable(
+          0.0,
+          Objetivo.emagrecimento,
+        ),
+        isNull,
+      );
     });
   });
 }

@@ -42,6 +42,9 @@ class BioThemeColors extends ThemeExtension<BioThemeColors> {
   final Color textSecondary;
   final Color textMuted;
   final Color accent;
+  final Color successText;
+  final Color warningText;
+  final Color dangerText;
 
   const BioThemeColors({
     required this.background,
@@ -52,6 +55,9 @@ class BioThemeColors extends ThemeExtension<BioThemeColors> {
     required this.textSecondary,
     required this.textMuted,
     required this.accent,
+    required this.successText,
+    required this.warningText,
+    required this.dangerText,
   });
 
   static const BioThemeColors light = BioThemeColors(
@@ -61,8 +67,11 @@ class BioThemeColors extends ThemeExtension<BioThemeColors> {
     border: AppColors.lightBorder,
     textPrimary: AppColors.lightTextPrimary,
     textSecondary: AppColors.lightTextAccessibleMuted,
-    textMuted: AppColors.lightTextSecondary,
+    textMuted: Color(0xFF475569),
     accent: AppColors.indigoPrimary,
+    successText: Color(0xFF047857),
+    warningText: Color(0xFFC2410C),
+    dangerText: Color(0xFFBE123C),
   );
 
   static const BioThemeColors dark = BioThemeColors(
@@ -73,7 +82,10 @@ class BioThemeColors extends ThemeExtension<BioThemeColors> {
     textPrimary: AppColors.darkTextPrimary,
     textSecondary: AppColors.darkTextSecondary,
     textMuted: AppColors.darkTextAccessibleMuted,
-    accent: AppColors.indigoLight,
+    accent: Color(0xFF818CF8),
+    successText: Color(0xFF34D399),
+    warningText: Color(0xFFFB923C),
+    dangerText: Color(0xFFFB7185),
   );
 
   @override
@@ -86,6 +98,9 @@ class BioThemeColors extends ThemeExtension<BioThemeColors> {
     Color? textSecondary,
     Color? textMuted,
     Color? accent,
+    Color? successText,
+    Color? warningText,
+    Color? dangerText,
   }) {
     return BioThemeColors(
       background: background ?? this.background,
@@ -96,6 +111,9 @@ class BioThemeColors extends ThemeExtension<BioThemeColors> {
       textSecondary: textSecondary ?? this.textSecondary,
       textMuted: textMuted ?? this.textMuted,
       accent: accent ?? this.accent,
+      successText: successText ?? this.successText,
+      warningText: warningText ?? this.warningText,
+      dangerText: dangerText ?? this.dangerText,
     );
   }
 
@@ -111,6 +129,9 @@ class BioThemeColors extends ThemeExtension<BioThemeColors> {
       textSecondary: Color.lerp(textSecondary, other.textSecondary, t)!,
       textMuted: Color.lerp(textMuted, other.textMuted, t)!,
       accent: Color.lerp(accent, other.accent, t)!,
+      successText: Color.lerp(successText, other.successText, t)!,
+      warningText: Color.lerp(warningText, other.warningText, t)!,
+      dangerText: Color.lerp(dangerText, other.dangerText, t)!,
     );
   }
 }

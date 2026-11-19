@@ -14,6 +14,7 @@ class AiInsightCard extends StatefulWidget {
   final AppState appState;
   final UserProfile profile;
   final AiInsightType type;
+  final VoidCallback? onOpenSettings;
 
   // Parâmetros para avaliação única
   final Avaliacao? avaliacao;
@@ -31,6 +32,7 @@ class AiInsightCard extends StatefulWidget {
     required this.profile,
     required this.avaliacao,
     required this.resultado,
+    this.onOpenSettings,
   })  : type = AiInsightType.evaluation,
         anterior = null,
         resultadoAnt = null,
@@ -45,6 +47,7 @@ class AiInsightCard extends StatefulWidget {
     required this.resultadoAnt,
     required this.atual,
     required this.resultadoAtual,
+    this.onOpenSettings,
   })  : type = AiInsightType.comparison,
         avaliacao = null,
         resultado = null;
@@ -224,15 +227,18 @@ class _AiInsightCardState extends State<AiInsightCard> {
                 child: ElevatedButton(
                   onPressed: () {
                     Navigator.of(ctx).pop();
-                    // Navega ou orienta para a aba de Ajustes
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text(
-                          'Acesse Ajustes > Inteligência Artificial para configurar sua chave.',
+                    if (widget.onOpenSettings != null) {
+                      widget.onOpenSettings!();
+                    } else {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text(
+                            'Acesse Ajustes > Inteligência Artificial para configurar sua chave.',
+                          ),
+                          behavior: SnackBarBehavior.floating,
                         ),
-                        behavior: SnackBarBehavior.floating,
-                      ),
-                    );
+                      );
+                    }
                   },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppColors.indigoPrimary,
@@ -408,10 +414,11 @@ class _AiInsightCardState extends State<AiInsightCard> {
     }
 
     if (_errorMessage != null) {
+      final colors = context.bioColors;
       return Container(
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
-          color: const Color(0xFFEF4444).withValues(alpha: 0.1),
+          color: AppColors.rose.withValues(alpha: 0.12),
           borderRadius: BorderRadius.circular(10),
         ),
         child: Column(
@@ -419,18 +426,18 @@ class _AiInsightCardState extends State<AiInsightCard> {
           children: [
             Row(
               children: [
-                const Icon(
+                Icon(
                   Icons.error_outline_rounded,
                   size: 16,
-                  color: Color(0xFFEF4444),
+                  color: colors.dangerText,
                 ),
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(
                     _errorMessage!,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 12.5,
-                      color: Color(0xFFEF4444),
+                      color: colors.dangerText,
                     ),
                   ),
                 ),
@@ -444,7 +451,8 @@ class _AiInsightCardState extends State<AiInsightCard> {
                 icon: const Icon(Icons.refresh_rounded, size: 16),
                 label: const Text('Tentar Novamente'),
                 style: TextButton.styleFrom(
-                  visualDensity: VisualDensity.compact,
+                  foregroundColor: colors.accent,
+                  minimumSize: const Size(0, 44),
                 ),
               ),
             ),
@@ -454,40 +462,47 @@ class _AiInsightCardState extends State<AiInsightCard> {
     }
 
     if (_insightText != null && _insightText!.isNotEmpty) {
+      final colors = context.bioColors;
       return Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                decoration: BoxDecoration(
-                  color: const Color(0xFF10B981).withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(6),
-                ),
-                child: const Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(
-                      Icons.check_circle_outline_rounded,
-                      size: 13,
-                      color: Color(0xFF10B981),
-                    ),
-                    SizedBox(width: 4),
-                    Text(
-                      'Salvo no aparelho (0 tokens)',
-                      style: TextStyle(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w600,
-                        color: Color(0xFF10B981),
+              Flexible(
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: AppColors.emerald.withValues(alpha: 0.14),
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        Icons.check_circle_outline_rounded,
+                        size: 13,
+                        color: colors.successText,
                       ),
-                    ),
-                  ],
+                      const SizedBox(width: 4),
+                      Flexible(
+                        child: Text(
+                          'Salvo offline • Sem custo extra',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            fontSize: 11.5,
+                            fontWeight: FontWeight.w600,
+                            color: colors.successText,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
               IconButton(
-                icon: const Icon(Icons.copy_rounded, size: 16),
+                icon: const Icon(Icons.copy_rounded, size: 18),
                 tooltip: 'Copiar Parecer',
                 onPressed: () {
                   HapticFeedback.selectionClick();
@@ -685,8 +700,8 @@ class _MarkdownFormattedView extends StatelessWidget {
       );
     }
 
-    return RichText(
-      text: TextSpan(children: spans),
+    return Text.rich(
+      TextSpan(children: spans),
     );
   }
 }

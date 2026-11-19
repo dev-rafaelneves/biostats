@@ -19,8 +19,15 @@ import 'progress_overview_section.dart';
 
 class PersonalProgressTab extends StatefulWidget {
   final AppState appState;
+  final ValueChanged<int>? onSegmentChanged;
+  final VoidCallback? onNavigateToSettings;
 
-  const PersonalProgressTab({super.key, required this.appState});
+  const PersonalProgressTab({
+    super.key,
+    required this.appState,
+    this.onSegmentChanged,
+    this.onNavigateToSettings,
+  });
 
   @override
   State<PersonalProgressTab> createState() => _PersonalProgressTabState();
@@ -29,6 +36,175 @@ class PersonalProgressTab extends StatefulWidget {
 class _PersonalProgressTabState extends State<PersonalProgressTab> {
   String? _selectedAvaliacaoId;
   int _selectedSegment = 0; // 0: Resumo, 1: Pesagens, 2: Evolução, 3: Ficha
+
+  void _selectSegment(int tabIdx) {
+    setState(() => _selectedSegment = tabIdx);
+    widget.onSegmentChanged?.call(tabIdx);
+  }
+
+  Future<void> _showEditGoalSheet(
+    BuildContext context,
+    UserProfile profile,
+  ) async {
+    HapticFeedback.selectionClick();
+    final pesoCtrl = TextEditingController(
+      text: profile.metaPesoKg != null
+          ? profile.metaPesoKg!.toStringAsFixed(1)
+          : '',
+    );
+    final bfCtrl = TextEditingController(
+      text: profile.metaBfPct != null
+          ? profile.metaBfPct!.toStringAsFixed(1)
+          : '',
+    );
+
+    double? parseVal(TextEditingController c) {
+      final raw = c.text.trim().replaceAll(',', '.');
+      if (raw.isEmpty) return null;
+      final v = double.tryParse(raw);
+      return (v != null && v > 0) ? v : null;
+    }
+
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) {
+        final colors = ctx.bioColors;
+        return Padding(
+          padding: EdgeInsets.only(
+            bottom: MediaQuery.of(ctx).viewInsets.bottom,
+          ),
+          child: Container(
+            decoration: BoxDecoration(
+              color: colors.surface,
+              borderRadius: const BorderRadius.vertical(
+                top: Radius.circular(24),
+              ),
+            ),
+            padding: const EdgeInsets.fromLTRB(20, 14, 20, 28),
+            child: SafeArea(
+              top: false,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Center(
+                    child: Container(
+                      width: 40,
+                      height: 4,
+                      decoration: BoxDecoration(
+                        color: colors.textMuted.withValues(alpha: 0.35),
+                        borderRadius: BorderRadius.circular(100),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  Text(
+                    'Definir Metas Corporais',
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: colors.textPrimary,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    'Opcional: acompanhe quanto falta e a previsão de chegada nos gráficos.',
+                    style: TextStyle(
+                      fontSize: 13,
+                      color: colors.textSecondary,
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  TextField(
+                    controller: pesoCtrl,
+                    keyboardType: const TextInputType.numberWithOptions(
+                      decimal: true,
+                    ),
+                    decoration: InputDecoration(
+                      labelText: 'Meta de Peso (kg)',
+                      hintText: 'Ex: 78.0',
+                      filled: true,
+                      fillColor: colors.surfaceSubtle,
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide(color: colors.border),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: bfCtrl,
+                    keyboardType: const TextInputType.numberWithOptions(
+                      decimal: true,
+                    ),
+                    decoration: InputDecoration(
+                      labelText: 'Meta de Gordura (%BF)',
+                      hintText: 'Ex: 15.0',
+                      filled: true,
+                      fillColor: colors.surfaceSubtle,
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide(color: colors.border),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                  SizedBox(
+                    width: double.infinity,
+                    height: 48,
+                    child: ElevatedButton(
+                      onPressed: () async {
+                        final updated = UserProfile(
+                          id: profile.id,
+                          nome: profile.nome,
+                          dataNascimento: profile.dataNascimento,
+                          sexo: profile.sexo,
+                          alturaCm: profile.alturaCm,
+                          metaPesoKg: parseVal(pesoCtrl),
+                          metaBfPct: parseVal(bfCtrl),
+                          criadoEm: profile.criadoEm,
+                        );
+                        await widget.appState.saveUserProfile(updated);
+                        if (ctx.mounted) Navigator.of(ctx).pop();
+                        if (context.mounted) {
+                          HapticFeedback.mediumImpact();
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('Metas atualizadas com sucesso!'),
+                              behavior: SnackBarBehavior.floating,
+                            ),
+                          );
+                        }
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.indigoPrimary,
+                        foregroundColor: Colors.white,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                      ),
+                      child: const Text(
+                        'Salvar Metas',
+                        style: TextStyle(
+                          fontSize: 15.5,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
+
+    pesoCtrl.dispose();
+    bfCtrl.dispose();
+  }
 
   Future<void> _openNewEvaluation(BuildContext context) async {
     final createdId = await Navigator.of(context).push<String>(
@@ -128,84 +304,79 @@ class _PersonalProgressTabState extends State<PersonalProgressTab> {
             ? evaluations[selectedIdx + 1].avaliacao
             : null;
 
+    final colors = context.bioColors;
     final now = DateTime.now();
     final dateStr = DateFormat("EEEE, d 'de' MMMM", 'pt_BR').format(now);
 
     return CustomScrollView(
       slivers: [
-        // App Bar com Large Title estilo iOS HIG
+        // App Bar com Large Title estilo iOS HIG (centralizado até 460px no Desktop/Web)
         SliverAppBar(
           pinned: true,
           toolbarHeight: 74,
-          backgroundColor: isDark
-              ? AppColors.darkBackground.withValues(alpha: 0.92)
-              : AppColors.lightBackground.withValues(alpha: 0.92),
+          backgroundColor: colors.background.withValues(alpha: 0.92),
           centerTitle: false,
-          titleSpacing: 20,
-          title: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Expanded(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      dateStr.toUpperCase(),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
+          titleSpacing: 16,
+          title: Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 460),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Expanded(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          dateStr.toUpperCase(),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w700,
+                            letterSpacing: 0.8,
+                            color: colors.textMuted,
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          'Meu Progresso',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            fontSize: 24,
+                            fontWeight: FontWeight.w800,
+                            letterSpacing: -0.6,
+                            color: colors.textPrimary,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 5,
+                    ),
+                    decoration: BoxDecoration(
+                      color: colors.surface,
+                      borderRadius: BorderRadius.circular(100),
+                      border: Border.all(color: colors.border),
+                    ),
+                    child: Text(
+                      '${profile.sexo.shortLabel} • ${profile.idade}a • ${profile.alturaCm.toStringAsFixed(0)}cm',
                       style: TextStyle(
-                        fontSize: 10.5,
-                        fontWeight: FontWeight.w700,
-                        letterSpacing: 0.8,
-                        color: isDark
-                            ? AppColors.darkTextSecondary
-                            : const Color(0xFF64748B),
+                        fontSize: 11.5,
+                        fontWeight: FontWeight.w600,
+                        color: colors.textSecondary,
                       ),
                     ),
-                    const SizedBox(height: 2),
-                    Text(
-                      'Meu Progresso',
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        fontSize: 24,
-                        fontWeight: FontWeight.w800,
-                        letterSpacing: -0.6,
-                        color: isDark
-                            ? AppColors.darkTextPrimary
-                            : AppColors.lightTextPrimary,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(width: 8),
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 10,
-                  vertical: 5,
-                ),
-                decoration: BoxDecoration(
-                  color: isDark ? AppColors.darkSurface : Colors.white,
-                  borderRadius: BorderRadius.circular(100),
-                  border: Border.all(
-                    color:
-                        isDark ? AppColors.darkBorder : AppColors.lightBorder,
                   ),
-                ),
-                child: Text(
-                  '${profile.sexo.shortLabel} • ${profile.idade}a • ${profile.alturaCm.toStringAsFixed(0)}cm',
-                  style: TextStyle(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w600,
-                    color: isDark
-                        ? AppColors.darkTextSecondary
-                        : AppColors.lightTextSecondary,
-                  ),
-                ),
+                ],
               ),
-            ],
+            ),
           ),
         ),
 
@@ -231,91 +402,15 @@ class _PersonalProgressTabState extends State<PersonalProgressTab> {
                             : Colors.white,
                         padding: const EdgeInsets.all(4),
                         children: {
-                          0: Padding(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 8,
-                              vertical: 7,
-                            ),
-                            child: Text(
-                              'Resumo',
-                              style: TextStyle(
-                                fontSize: 13,
-                                fontWeight: FontWeight.w700,
-                                color: _selectedSegment == 0
-                                    ? (isDark
-                                        ? Colors.white
-                                        : const Color(0xFF0F172A))
-                                    : (isDark
-                                        ? AppColors.darkTextSecondary
-                                        : const Color(0xFF64748B)),
-                              ),
-                            ),
-                          ),
-                          1: Padding(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 8,
-                              vertical: 7,
-                            ),
-                            child: Text(
-                              'Pesagens',
-                              style: TextStyle(
-                                fontSize: 13,
-                                fontWeight: FontWeight.w700,
-                                color: _selectedSegment == 1
-                                    ? (isDark
-                                        ? Colors.white
-                                        : const Color(0xFF0F172A))
-                                    : (isDark
-                                        ? AppColors.darkTextSecondary
-                                        : const Color(0xFF64748B)),
-                              ),
-                            ),
-                          ),
-                          2: Padding(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 8,
-                              vertical: 7,
-                            ),
-                            child: Text(
-                              'Evolução',
-                              style: TextStyle(
-                                fontSize: 13,
-                                fontWeight: FontWeight.w700,
-                                color: _selectedSegment == 2
-                                    ? (isDark
-                                        ? Colors.white
-                                        : const Color(0xFF0F172A))
-                                    : (isDark
-                                        ? AppColors.darkTextSecondary
-                                        : const Color(0xFF64748B)),
-                              ),
-                            ),
-                          ),
-                          3: Padding(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 8,
-                              vertical: 7,
-                            ),
-                            child: Text(
-                              'Ficha',
-                              style: TextStyle(
-                                fontSize: 13,
-                                fontWeight: FontWeight.w700,
-                                color: _selectedSegment == 3
-                                    ? (isDark
-                                        ? Colors.white
-                                        : const Color(0xFF0F172A))
-                                    : (isDark
-                                        ? AppColors.darkTextSecondary
-                                        : const Color(0xFF64748B)),
-                              ),
-                            ),
-                          ),
+                          0: _buildSegmentLabel('Resumo', 0, context),
+                          1: _buildSegmentLabel('Pesagens', 1, context),
+                          2: _buildSegmentLabel('Evolução', 2, context),
+                          3: _buildSegmentLabel('Ficha', 3, context),
                         },
                         onValueChanged: (val) {
                           if (val != null) {
                             HapticFeedback.selectionClick();
-                            setState(() => _selectedSegment = val);
+                            _selectSegment(val);
                           }
                         },
                       ),
@@ -343,6 +438,30 @@ class _PersonalProgressTabState extends State<PersonalProgressTab> {
     );
   }
 
+  Widget _buildSegmentLabel(String label, int index, BuildContext context) {
+    final colors = context.bioColors;
+    final isDark = context.isDarkMode;
+    final selected = _selectedSegment == index;
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 7),
+      child: FittedBox(
+        fit: BoxFit.scaleDown,
+        child: Text(
+          label,
+          maxLines: 1,
+          style: TextStyle(
+            fontSize: 13,
+            fontWeight: FontWeight.w700,
+            color: selected
+                ? (isDark ? Colors.white : const Color(0xFF0F172A))
+                : colors.textSecondary,
+          ),
+        ),
+      ),
+    );
+  }
+
   Widget _buildActiveTabContent(
     BuildContext context, {
     required bool isDark,
@@ -352,6 +471,8 @@ class _PersonalProgressTabState extends State<PersonalProgressTab> {
     required JoinedEvaluation? selectedJoined,
     required Avaliacao? previousAvaliacao,
   }) {
+    final colors = context.bioColors;
+
     switch (_selectedSegment) {
       case 0:
         // 1. Aba Resumo (Destaques Apple Health style)
@@ -368,8 +489,8 @@ class _PersonalProgressTabState extends State<PersonalProgressTab> {
           ),
           onNewEvaluation: () => _openNewEvaluation(context),
           onOpenComparator: () => _openComparator(context),
-          onNavigateToTab: (tabIdx) =>
-              setState(() => _selectedSegment = tabIdx),
+          onNavigateToTab: _selectSegment,
+          onEditGoal: () => _showEditGoalSheet(context, profile),
         );
 
       case 1:
@@ -394,12 +515,10 @@ class _PersonalProgressTabState extends State<PersonalProgressTab> {
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(
-                        fontSize: 11,
+                        fontSize: 11.5,
                         fontWeight: FontWeight.w700,
                         letterSpacing: 0.8,
-                        color: isDark
-                            ? AppColors.darkTextSecondary
-                            : const Color(0xFF64748B),
+                        color: colors.textMuted,
                       ),
                     ),
                   ),
@@ -408,14 +527,14 @@ class _PersonalProgressTabState extends State<PersonalProgressTab> {
                     key: const ValueKey('btn_open_comparator_header'),
                     onPressed: () => _openComparator(context),
                     style: TextButton.styleFrom(
-                      foregroundColor: AppColors.indigoPrimary,
-                      visualDensity: VisualDensity.compact,
+                      foregroundColor: colors.accent,
+                      minimumSize: const Size(0, 44),
                     ),
                     icon: const Icon(Icons.compare_arrows_rounded, size: 17),
                     label: const Text(
-                      'Comparar 2 Marcos',
+                      'Comparar Avaliações',
                       style: TextStyle(
-                        fontSize: 13,
+                        fontSize: 13.5,
                         fontWeight: FontWeight.w700,
                       ),
                     ),
@@ -454,12 +573,10 @@ class _PersonalProgressTabState extends State<PersonalProgressTab> {
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: TextStyle(
-                      fontSize: 11,
+                      fontSize: 11.5,
                       fontWeight: FontWeight.w700,
                       letterSpacing: 0.8,
-                      color: isDark
-                          ? AppColors.darkTextSecondary
-                          : const Color(0xFF64748B),
+                      color: colors.textMuted,
                     ),
                   ),
                 ),
@@ -474,18 +591,19 @@ class _PersonalProgressTabState extends State<PersonalProgressTab> {
                           selectedJoined.avaliacao,
                         ),
                         style: TextButton.styleFrom(
-                          visualDensity: VisualDensity.compact,
+                          foregroundColor: colors.accent,
+                          minimumSize: const Size(0, 44),
                         ),
-                        icon: const Icon(
+                        icon: Icon(
                           Icons.edit_outlined,
-                          size: 15,
-                          color: AppColors.indigoPrimary,
+                          size: 16,
+                          color: colors.accent,
                         ),
-                        label: const Text(
+                        label: Text(
                           'Editar',
                           style: TextStyle(
-                            color: AppColors.indigoPrimary,
-                            fontSize: 13,
+                            color: colors.accent,
+                            fontSize: 13.5,
                             fontWeight: FontWeight.w600,
                           ),
                         ),
@@ -496,13 +614,14 @@ class _PersonalProgressTabState extends State<PersonalProgressTab> {
                           selectedJoined.avaliacao.id,
                         ),
                         style: TextButton.styleFrom(
-                          visualDensity: VisualDensity.compact,
+                          foregroundColor: colors.dangerText,
+                          minimumSize: const Size(0, 44),
                         ),
-                        child: const Text(
+                        child: Text(
                           'Excluir',
                           style: TextStyle(
-                            color: AppColors.rose,
-                            fontSize: 13,
+                            color: colors.dangerText,
+                            fontSize: 13.5,
                             fontWeight: FontWeight.w600,
                           ),
                         ),
@@ -533,6 +652,7 @@ class _PersonalProgressTabState extends State<PersonalProgressTab> {
                         label: Text(label),
                         selected: isSelected,
                         showCheckmark: false,
+                        materialTapTargetSize: MaterialTapTargetSize.padded,
                         onSelected: (_) {
                           HapticFeedback.selectionClick();
                           setState(() {
@@ -542,25 +662,20 @@ class _PersonalProgressTabState extends State<PersonalProgressTab> {
                         selectedColor: isDark
                             ? AppColors.indigoPrimary
                             : const Color(0xFF0F172A),
-                        backgroundColor:
-                            isDark ? AppColors.darkSurface : Colors.white,
+                        backgroundColor: colors.surface,
                         labelStyle: TextStyle(
                           fontSize: 13,
                           fontWeight: FontWeight.w600,
                           color: isSelected
                               ? Colors.white
-                              : (isDark
-                                  ? AppColors.darkTextSecondary
-                                  : const Color(0xFF475569)),
+                              : colors.textSecondary,
                         ),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(100),
                           side: BorderSide(
                             color: isSelected
                                 ? Colors.transparent
-                                : (isDark
-                                    ? AppColors.darkBorder
-                                    : AppColors.lightBorder),
+                                : colors.border,
                           ),
                         ),
                       ),
@@ -581,6 +696,7 @@ class _PersonalProgressTabState extends State<PersonalProgressTab> {
                   profile: profile,
                   avaliacao: selectedJoined.avaliacao,
                   resultado: selectedJoined.resultado,
+                  onOpenSettings: widget.onNavigateToSettings,
                 ),
                 const SizedBox(height: 18),
               ],

@@ -99,7 +99,9 @@ class _EvaluationComparatorScreenState
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 8),
                   child: Text(
-                    isBase ? 'Selecionar Marco Base (A)' : 'Selecionar Marco de Comparação (B)',
+                    isBase
+                        ? 'Selecionar Avaliação Anterior (A)'
+                        : 'Selecionar Avaliação Mais Recente (B)',
                     style: TextStyle(
                       fontSize: 17,
                       fontWeight: FontWeight.bold,
@@ -155,7 +157,7 @@ class _EvaluationComparatorScreenState
                           ),
                         ),
                         subtitle: Text(
-                          '${item.avaliacao.pesoKg.toStringAsFixed(1)} kg • ${idx == 0 ? "Última registrada" : "Avaliação #$idx"}',
+                          '${item.avaliacao.pesoKg.toStringAsFixed(1)} kg • ${idx == 0 ? "Última registrada" : "Avaliação #${evals.length - idx}"}',
                           style: TextStyle(
                             fontSize: 12.5,
                             color: isDark

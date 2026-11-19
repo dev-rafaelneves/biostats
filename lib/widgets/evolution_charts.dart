@@ -119,35 +119,47 @@ class _EvolutionChartsState extends State<EvolutionCharts> {
     final active = _range == value;
     return Padding(
       padding: const EdgeInsets.only(left: 6),
-      child: InkWell(
-        onTap: () {
-          HapticFeedback.selectionClick();
-          setState(() => _range = value);
-        },
-        borderRadius: BorderRadius.circular(100),
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-          decoration: BoxDecoration(
-            color: active
-                ? AppColors.indigoPrimary
-                : (isDark ? AppColors.darkSurface : Colors.white),
-            borderRadius: BorderRadius.circular(100),
-            border: Border.all(
-              color: active
-                  ? Colors.transparent
-                  : (isDark ? AppColors.darkBorder : AppColors.lightBorder),
-            ),
-          ),
-          child: Text(
-            label,
-            style: TextStyle(
-              fontSize: 11.5,
-              fontWeight: FontWeight.w600,
-              color: active
-                  ? Colors.white
-                  : (isDark
-                      ? AppColors.darkTextSecondary
-                      : const Color(0xFF64748B)),
+      child: Semantics(
+        button: true,
+        selected: active,
+        label: 'Período do gráfico: $label',
+        child: InkWell(
+          onTap: () {
+            HapticFeedback.selectionClick();
+            setState(() => _range = value);
+          },
+          borderRadius: BorderRadius.circular(100),
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(minHeight: 44, minWidth: 44),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+              decoration: BoxDecoration(
+                color: active
+                    ? AppColors.indigoPrimary
+                    : (isDark ? AppColors.darkSurface : Colors.white),
+                borderRadius: BorderRadius.circular(100),
+                border: Border.all(
+                  color: active
+                      ? Colors.transparent
+                      : (isDark ? AppColors.darkBorder : AppColors.lightBorder),
+                ),
+              ),
+              child: Center(
+                widthFactor: 1.0,
+                heightFactor: 1.0,
+                child: Text(
+                  label,
+                  style: TextStyle(
+                    fontSize: 11.5,
+                    fontWeight: FontWeight.w600,
+                    color: active
+                        ? Colors.white
+                        : (isDark
+                            ? AppColors.darkTextSecondary
+                            : const Color(0xFF475569)),
+                  ),
+                ),
+              ),
             ),
           ),
         ),
@@ -375,11 +387,15 @@ class _ChartCard extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 22),
-          SizedBox(
-            height: 220,
-            child: Padding(
-              padding: const EdgeInsets.only(right: 12),
-              child: LineChart(
+          Semantics(
+            label:
+                'Gráfico: $title com ${points.length} avaliações registradas',
+            excludeSemantics: true,
+            child: SizedBox(
+              height: 220,
+              child: Padding(
+                padding: const EdgeInsets.only(right: 12),
+                child: LineChart(
                 LineChartData(
                   minX: 0,
                   maxX: (points.length - 1).toDouble(),
@@ -508,6 +524,7 @@ class _ChartCard extends StatelessWidget {
                 ),
               ),
             ),
+          ),
           ),
           const SizedBox(height: 14),
           // Legenda

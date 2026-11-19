@@ -84,6 +84,7 @@ class _PhotoComparisonState extends State<PhotoComparison> {
                     ),
                   IconButton(
                     onPressed: () => Navigator.of(ctx).pop(),
+                    tooltip: 'Fechar tela cheia',
                     icon: const Icon(Icons.close_rounded, color: Colors.white),
                   ),
                 ],
@@ -633,107 +634,124 @@ class _PhotoComparisonState extends State<PhotoComparison> {
                     child: LayoutBuilder(
                       builder: (context, constraints) {
                         final width = constraints.maxWidth;
-                        return GestureDetector(
-                          onHorizontalDragUpdate: isDiscreet
+                        return Semantics(
+                          slider: true,
+                          label: 'Comparador de fotos antes e depois',
+                          value: '${(_sliderPos * 100).round()}%',
+                          onIncrease: isDiscreet
                               ? null
-                              : (details) {
-                                  final newPos =
-                                      (details.localPosition.dx / width)
-                                          .clamp(0.0, 1.0);
-                                  if ((_sliderPos < 0.5 && newPos >= 0.5) ||
-                                      (_sliderPos > 0.5 && newPos <= 0.5)) {
-                                    HapticFeedback.selectionClick();
-                                  }
-                                  setState(() => _sliderPos = newPos);
-                                },
-                          onTapDown: isDiscreet
-                              ? null
-                              : (details) {
-                                  final newPos =
-                                      (details.localPosition.dx / width)
-                                          .clamp(0.0, 1.0);
-                                  HapticFeedback.lightImpact();
-                                  setState(() => _sliderPos = newPos);
-                                },
-                          child: Container(
-                            decoration: BoxDecoration(
-                              borderRadius: BorderRadius.circular(18),
-                              border: Border.all(
-                                color: isDark
-                                    ? AppColors.darkBorder
-                                    : const Color(0xFFE2E8F0),
-                              ),
-                            ),
-                            clipBehavior: Clip.antiAlias,
-                            child: wrapDiscreetBlur(
-                              Stack(
-                                fit: StackFit.expand,
-                                children: [
-                                  // Foto 1 (Base - Antes)
-                                  Image.memory(
-                                    bytesPrimeira,
-                                    fit: BoxFit.cover,
-                                    gaplessPlayback: true,
+                              : () => setState(
+                                    () => _sliderPos =
+                                        (_sliderPos + 0.1).clamp(0.0, 1.0),
                                   ),
-
-                                  // Foto 2 (Overlay - Depois, recortada da posição do slider até 100%)
-                                  ClipRect(
-                                    clipper: _RightPortionClipper(_sliderPos),
-                                    child: Image.memory(
-                                      bytesSelecionada,
+                          onDecrease: isDiscreet
+                              ? null
+                              : () => setState(
+                                    () => _sliderPos =
+                                        (_sliderPos - 0.1).clamp(0.0, 1.0),
+                                  ),
+                          child: GestureDetector(
+                            onHorizontalDragUpdate: isDiscreet
+                                ? null
+                                : (details) {
+                                    final newPos =
+                                        (details.localPosition.dx / width)
+                                            .clamp(0.0, 1.0);
+                                    if ((_sliderPos < 0.5 && newPos >= 0.5) ||
+                                        (_sliderPos > 0.5 && newPos <= 0.5)) {
+                                      HapticFeedback.selectionClick();
+                                    }
+                                    setState(() => _sliderPos = newPos);
+                                  },
+                            onTapDown: isDiscreet
+                                ? null
+                                : (details) {
+                                    final newPos =
+                                        (details.localPosition.dx / width)
+                                            .clamp(0.0, 1.0);
+                                    HapticFeedback.lightImpact();
+                                    setState(() => _sliderPos = newPos);
+                                  },
+                            child: Container(
+                              decoration: BoxDecoration(
+                                borderRadius: BorderRadius.circular(18),
+                                border: Border.all(
+                                  color: isDark
+                                      ? AppColors.darkBorder
+                                      : const Color(0xFFE2E8F0),
+                                ),
+                              ),
+                              clipBehavior: Clip.antiAlias,
+                              child: wrapDiscreetBlur(
+                                Stack(
+                                  fit: StackFit.expand,
+                                  children: [
+                                    // Foto 1 (Base - Antes)
+                                    Image.memory(
+                                      bytesPrimeira,
                                       fit: BoxFit.cover,
                                       gaplessPlayback: true,
                                     ),
-                                  ),
 
-                                  // Barra divisória e botão central
-                                  Positioned(
-                                    left: (width * _sliderPos) - 16,
-                                    top: 0,
-                                    bottom: 0,
-                                    width: 32,
-                                    child: Stack(
-                                      alignment: Alignment.center,
-                                      children: [
-                                        Container(
-                                          width: 2.5,
-                                          color: Colors.white,
-                                        ),
-                                        Container(
-                                          width: 32,
-                                          height: 32,
-                                          decoration: BoxDecoration(
-                                            color: Colors.white,
-                                            shape: BoxShape.circle,
-                                            boxShadow: [
-                                              BoxShadow(
-                                                color: Colors.black
-                                                    .withValues(alpha: 0.25),
-                                                blurRadius: 8,
-                                              ),
-                                            ],
-                                          ),
-                                          child: const Row(
-                                            mainAxisAlignment:
-                                                MainAxisAlignment.center,
-                                            children: [
-                                              Icon(
-                                                Icons.chevron_left_rounded,
-                                                size: 14,
-                                                color: Color(0xFF64748B),
-                                              ),
-                                              Icon(
-                                                Icons.chevron_right_rounded,
-                                                size: 14,
-                                                color: Color(0xFF64748B),
-                                              ),
-                                            ],
-                                          ),
-                                        ),
-                                      ],
+                                    // Foto 2 (Overlay - Depois, recortada da posição do slider até 100%)
+                                    ClipRect(
+                                      clipper: _RightPortionClipper(_sliderPos),
+                                      child: Image.memory(
+                                        bytesSelecionada,
+                                        fit: BoxFit.cover,
+                                        gaplessPlayback: true,
+                                      ),
                                     ),
-                                  ),
-                                ],
+
+                                    // Barra divisória e botão central
+                                    Positioned(
+                                      left: (width * _sliderPos) - 16,
+                                      top: 0,
+                                      bottom: 0,
+                                      width: 32,
+                                      child: Stack(
+                                        alignment: Alignment.center,
+                                        children: [
+                                          Container(
+                                            width: 2.5,
+                                            color: Colors.white,
+                                          ),
+                                          Container(
+                                            width: 32,
+                                            height: 32,
+                                            decoration: BoxDecoration(
+                                              color: Colors.white,
+                                              shape: BoxShape.circle,
+                                              boxShadow: [
+                                                BoxShadow(
+                                                  color: Colors.black
+                                                      .withValues(alpha: 0.25),
+                                                  blurRadius: 8,
+                                                ),
+                                              ],
+                                            ),
+                                            child: const Row(
+                                              mainAxisAlignment:
+                                                  MainAxisAlignment.center,
+                                              children: [
+                                                Icon(
+                                                  Icons.chevron_left_rounded,
+                                                  size: 14,
+                                                  color: Color(0xFF64748B),
+                                                ),
+                                                Icon(
+                                                  Icons.chevron_right_rounded,
+                                                  size: 14,
+                                                  color: Color(0xFF64748B),
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ],
+                                ),
                               ),
                             ),
                           ),

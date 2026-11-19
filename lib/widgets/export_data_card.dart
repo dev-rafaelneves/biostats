@@ -55,9 +55,12 @@ class _ExportDataCardState extends State<ExportDataCard> {
 
       await Printing.sharePdf(bytes: bytes, filename: fileName);
     } catch (e) {
+      debugPrint('Erro ao gerar PDF: $e');
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Erro ao gerar o PDF: $e')),
+        const SnackBar(
+          content: Text('Não foi possível gerar o PDF agora. Tente novamente.'),
+        ),
       );
     } finally {
       if (mounted) {

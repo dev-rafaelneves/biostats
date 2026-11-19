@@ -291,6 +291,7 @@ class MeasurementGuideModal extends StatelessWidget {
                 ),
                 IconButton(
                   onPressed: () => Navigator.of(context).pop(),
+                  tooltip: 'Fechar',
                   icon: const Icon(Icons.close_rounded),
                   color: isDark
                       ? AppColors.darkTextSecondary

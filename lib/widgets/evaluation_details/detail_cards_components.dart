@@ -378,7 +378,7 @@ class MeasureRow extends StatelessWidget {
     final diff = hasDelta ? (currentVal! - prevVal!) : 0.0;
     final sign = diff > 0 ? '+' : '';
     final isGood = lowerIsBetter ? diff < 0 : diff > 0;
-    final deltaColor = isGood ? AppColors.emerald : AppColors.orange;
+    final deltaColor = isGood ? colors.successText : colors.warningText;
 
     return Semantics(
       label: '$label: $value',
@@ -435,15 +435,24 @@ class MeasureRow extends StatelessWidget {
 
 class GridHalfItem extends StatelessWidget {
   final Widget child;
-  const GridHalfItem({super.key, required this.child});
+  final double spacing;
+
+  const GridHalfItem({
+    super.key,
+    required this.child,
+    this.spacing = 16,
+  });
 
   @override
   Widget build(BuildContext context) {
     return LayoutBuilder(
       builder: (context, constraints) {
+        final maxW = constraints.hasBoundedWidth
+            ? constraints.maxWidth
+            : (MediaQuery.sizeOf(context).width.clamp(300.0, 460.0) - 66);
+        final itemWidth = ((maxW - spacing) / 2 - 0.5).clamp(110.0, 220.0);
         return SizedBox(
-          width: (MediaQuery.sizeOf(context).width.clamp(300.0, 460.0) - 80) /
-              2,
+          width: itemWidth,
           child: child,
         );
       },
