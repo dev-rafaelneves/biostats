@@ -15,6 +15,7 @@ class ProgressOverviewSection extends StatelessWidget {
   final VoidCallback onOpenComparator;
   final void Function(int tabIndex) onNavigateToTab;
   final VoidCallback? onEditGoal;
+  final VoidCallback? onOpenBioCoach;
 
   const ProgressOverviewSection({
     super.key,
@@ -26,6 +27,7 @@ class ProgressOverviewSection extends StatelessWidget {
     required this.onOpenComparator,
     required this.onNavigateToTab,
     this.onEditGoal,
+    this.onOpenBioCoach,
   });
 
   /// Indica se a variação de peso é favorável segundo o objetivo declarado.
@@ -36,6 +38,22 @@ class ProgressOverviewSection extends StatelessWidget {
       return null;
     }
     return objetivo == Objetivo.hipertrofia ? delta > 0 : delta < 0;
+  }
+
+  /// Gera descrição clara de direção e conclusão para a meta de peso.
+  @visibleForTesting
+  static String buildWeightGoalSublabel(
+    double currentWeight,
+    double targetWeight,
+  ) {
+    final diff = currentWeight - targetWeight;
+    if (diff.abs() < 0.1) {
+      return 'Meta atingida!';
+    }
+    if (diff > 0) {
+      return '${diff.toStringAsFixed(1)} kg acima da meta';
+    }
+    return 'Faltam ${(-diff).toStringAsFixed(1)} kg';
   }
 
   int _computeStreak(List<Pesagem> pesagens) {
@@ -82,10 +100,6 @@ class ProgressOverviewSection extends StatelessWidget {
         (currentWeight > 0 && currentBf > 0
             ? BioCalculator.round2(currentWeight * (currentBf / 100.0))
             : 0.0);
-    final targetKcal = liveMeta?.targetCalories ??
-        (snapshot?.macros.targetCalories ?? 0.0);
-    final macros = liveMeta?.macros ?? snapshot?.macros;
-
     // Streak & Pesagens
     final pesagens = appState.pesagens;
     final streak = _computeStreak(pesagens);
@@ -105,8 +119,8 @@ class ProgressOverviewSection extends StatelessWidget {
     final deltaPesoBg = deltaFavorable == null
         ? colors.surfaceSubtle
         : (deltaFavorable
-            ? AppColors.emerald.withValues(alpha: 0.14)
-            : AppColors.rose.withValues(alpha: 0.14));
+            ? AppColors.emerald.withValues(alpha: 0.12)
+            : AppColors.rose.withValues(alpha: 0.12));
 
     double? deltaBf;
     double? deltaLbm;
@@ -128,44 +142,128 @@ class ProgressOverviewSection extends StatelessWidget {
       }
     }
 
+    Color? deltaBfColor;
+    if (deltaBf != null) {
+      if (deltaBf.abs() < 0.05) {
+        deltaBfColor = colors.textSecondary;
+      } else if (deltaBf < 0) {
+        deltaBfColor = colors.successText;
+      } else {
+        deltaBfColor = latest?.avaliacao.objetivo == Objetivo.hipertrofia
+            ? colors.warningText
+            : colors.dangerText;
+      }
+    }
+
+    Color? deltaLbmColor;
+    if (deltaLbm != null) {
+      if (deltaLbm.abs() < 0.05) {
+        deltaLbmColor = colors.textSecondary;
+      } else {
+        deltaLbmColor =
+            deltaLbm > 0 ? colors.successText : colors.dangerText;
+      }
+    }
+
     final bfMethodLabel = (snapshot != null && snapshot.metodoPrincipal != 'none')
         ? snapshot.metodoPrincipalLabel
         : (liveMeta != null && liveMeta.bfMethod != 'none'
             ? liveMeta.bfMethod.toUpperCase()
             : null);
 
+    Widget buildQuickActions() {
+      final weighBtn = ElevatedButton.icon(
+        key: const ValueKey('btn_quick_weight_home'),
+        onPressed: () {
+          HapticFeedback.lightImpact();
+          onQuickWeight();
+        },
+        style: ElevatedButton.styleFrom(
+          backgroundColor: AppColors.indigoPrimary,
+          foregroundColor: Colors.white,
+          elevation: 0,
+          minimumSize: const Size(0, 48),
+          padding: const EdgeInsets.symmetric(horizontal: 14),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(14),
+          ),
+        ),
+        icon: const Icon(Icons.monitor_weight_outlined, size: 20),
+        label: const FittedBox(
+          fit: BoxFit.scaleDown,
+          child: Text(
+            'Pesar Hoje',
+            maxLines: 1,
+            style: TextStyle(
+              fontSize: 14.5,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ),
+      );
+
+      final evalBtn = OutlinedButton.icon(
+        key: const ValueKey('btn_new_eval_home'),
+        onPressed: () {
+          HapticFeedback.lightImpact();
+          onNewEvaluation();
+        },
+        style: OutlinedButton.styleFrom(
+          foregroundColor: colors.accent,
+          side: BorderSide(
+            color: colors.accent,
+            width: 1.4,
+          ),
+          minimumSize: const Size(0, 48),
+          padding: const EdgeInsets.symmetric(horizontal: 14),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(14),
+          ),
+        ),
+        icon: const Icon(Icons.add_rounded, size: 20),
+        label: const FittedBox(
+          fit: BoxFit.scaleDown,
+          child: Text(
+            'Nova Avaliação',
+            maxLines: 1,
+            style: TextStyle(
+              fontSize: 14.5,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ),
+      );
+
+      return LayoutBuilder(
+        builder: (context, constraints) {
+          final scaledFont = MediaQuery.textScalerOf(context).scale(14.5);
+          final stackVertically =
+              constraints.maxWidth < 340 || scaledFont > 18.5;
+          if (stackVertically) {
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                weighBtn,
+                const SizedBox(height: 10),
+                evalBtn,
+              ],
+            );
+          }
+          return Row(
+            children: [
+              Expanded(child: weighBtn),
+              const SizedBox(width: 12),
+              Expanded(child: evalBtn),
+            ],
+          );
+        },
+      );
+    }
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        if (evaluations.length >= 2) ...[
-          Row(
-            mainAxisAlignment: MainAxisAlignment.end,
-            children: [
-              TextButton.icon(
-                key: const ValueKey('btn_open_comparator_header'),
-                onPressed: () {
-                  HapticFeedback.lightImpact();
-                  onOpenComparator();
-                },
-                style: TextButton.styleFrom(
-                  foregroundColor: colors.accent,
-                  minimumSize: const Size(0, 44),
-                ),
-                icon: const Icon(Icons.compare_arrows_rounded, size: 17),
-                label: const Text(
-                  'Comparar Avaliações',
-                  style: TextStyle(
-                    fontSize: 13.5,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 4),
-        ],
-
-        // 1. Hero Metric Card (Apple Health style)
+        // 1. Hero Metric Card (Rotina diária)
         Container(
           width: double.infinity,
           padding: const EdgeInsets.all(20),
@@ -187,7 +285,7 @@ class ProgressOverviewSection extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Top row responsiva: Origem + Tendência/Método + Streak Pill
+              // Top row responsiva: Origem + Tendência (quando relevante) + Streak
               Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -239,26 +337,6 @@ class ProgressOverviewSection extends StatelessWidget {
                                 color: colors.textSecondary,
                               ),
                             ),
-                          )
-                        else if (snapshot != null &&
-                            snapshot.metodoPrincipal != 'none')
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 8,
-                              vertical: 4,
-                            ),
-                            decoration: BoxDecoration(
-                              color: colors.surfaceSubtle,
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            child: Text(
-                              snapshot.metodoPrincipalLabel,
-                              style: TextStyle(
-                                fontSize: 11.5,
-                                fontWeight: FontWeight.w600,
-                                color: colors.textSecondary,
-                              ),
-                            ),
                           ),
                       ],
                     ),
@@ -266,15 +344,16 @@ class ProgressOverviewSection extends StatelessWidget {
                   const SizedBox(width: 8),
                   Semantics(
                     label: streak > 0
-                        ? 'Sequência atual de $streak dias com pesagem'
+                        ? 'Sequência atual de $streak dia${streak > 1 ? 's' : ''} com pesagem'
                         : 'Sem sequência ativa de pesagens',
+                    excludeSemantics: true,
                     child: Container(
                       padding: const EdgeInsets.symmetric(
                         horizontal: 9,
                         vertical: 4,
                       ),
                       decoration: BoxDecoration(
-                        color: AppColors.orange.withValues(alpha: 0.14),
+                        color: AppColors.orange.withValues(alpha: 0.10),
                         borderRadius: BorderRadius.circular(100),
                       ),
                       child: Text(
@@ -320,7 +399,8 @@ class ProgressOverviewSection extends StatelessWidget {
                   if (deltaPeso != null)
                     Semantics(
                       label:
-                          'Variação de peso: ${deltaPeso > 0 ? '+' : ''}${deltaPeso.toStringAsFixed(1)} quilos',
+                          'Variação de peso: ${deltaPeso > 0 ? '+' : ''}${deltaPeso.toStringAsFixed(1)} quilos em relação ao registro anterior',
+                      excludeSemantics: true,
                       child: Container(
                         padding: const EdgeInsets.symmetric(
                           horizontal: 8,
@@ -344,7 +424,7 @@ class ProgressOverviewSection extends StatelessWidget {
                             ),
                             const SizedBox(width: 4),
                             Text(
-                              '${deltaPeso.abs().toStringAsFixed(1)} kg',
+                              '${deltaPeso.abs().toStringAsFixed(1)} kg vs ant.',
                               style: TextStyle(
                                 fontSize: 12,
                                 fontWeight: FontWeight.w700,
@@ -362,78 +442,70 @@ class ProgressOverviewSection extends StatelessWidget {
               const Divider(height: 1),
               const SizedBox(height: 16),
 
-              // Grade 2x2 Clean: Gordura, Massa Magra, Meta e Calorias
-              Row(
-                children: [
-                  Expanded(
-                    child: _MetricTile(
-                      label: 'GORDURA (%BF)',
-                      value: currentBf > 0
-                          ? '${currentBf.toStringAsFixed(1)}%'
-                          : '--',
-                      sublabel:
-                          bfMethodLabel != null ? 'Método: $bfMethodLabel' : null,
-                      delta: deltaBf != null
-                          ? '${deltaBf >= 0 ? '+' : ''}${deltaBf.toStringAsFixed(1)}%'
-                          : null,
-                      deltaColor: deltaBf != null
-                          ? (deltaBf <= 0
-                              ? colors.successText
-                              : colors.dangerText)
-                          : null,
+              // Grade enxuta: Gordura Corporal, Massa Magra (quando houver avaliação) e Meta de Peso
+              if (evaluations.isNotEmpty) ...[
+                Row(
+                  children: [
+                    Expanded(
+                      child: _MetricTile(
+                        label: 'GORDURA CORPORAL',
+                        value: currentBf > 0
+                            ? '${currentBf.toStringAsFixed(1)}%'
+                            : '--',
+                        sublabel: bfMethodLabel != null
+                            ? 'Método: $bfMethodLabel'
+                            : null,
+                        delta: deltaBf != null
+                            ? '${deltaBf >= 0 ? '+' : ''}${deltaBf.toStringAsFixed(1)}%'
+                            : null,
+                        deltaColor: deltaBfColor,
+                        onTap: () => onNavigateToTab(3),
+                        tapSemanticLabel:
+                            'Toque para ver detalhes na ficha completa',
+                      ),
                     ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: _MetricTile(
-                      label: 'MASSA MAGRA',
-                      value: currentLbm > 0
-                          ? '${currentLbm.toStringAsFixed(1)} kg'
-                          : '--',
-                      sublabel: currentFatKg > 0
-                          ? 'Gordura: ${currentFatKg.toStringAsFixed(1)} kg'
-                          : null,
-                      delta: deltaLbm != null
-                          ? '${deltaLbm >= 0 ? '+' : ''}${deltaLbm.toStringAsFixed(1)} kg'
-                          : null,
-                      deltaColor: deltaLbm != null
-                          ? (deltaLbm >= 0
-                              ? colors.successText
-                              : colors.dangerText)
-                          : null,
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: _MetricTile(
+                        label: 'MASSA MAGRA',
+                        value: currentLbm > 0
+                            ? '${currentLbm.toStringAsFixed(1)} kg'
+                            : '--',
+                        sublabel: currentFatKg > 0
+                            ? '${currentFatKg.toStringAsFixed(1)} kg de gordura'
+                            : null,
+                        delta: deltaLbm != null
+                            ? '${deltaLbm >= 0 ? '+' : ''}${deltaLbm.toStringAsFixed(1)} kg'
+                            : null,
+                        deltaColor: deltaLbmColor,
+                        onTap: () => onNavigateToTab(3),
+                        tapSemanticLabel:
+                            'Toque para ver detalhes na ficha completa',
+                      ),
                     ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 12),
-              Row(
-                children: [
-                  Expanded(
-                    child: _MetricTile(
-                      key: const ValueKey('tile_meta_peso'),
-                      label: 'META DE PESO',
-                      value: profile.metaPesoKg != null
-                          ? '${profile.metaPesoKg!.toStringAsFixed(1)} kg'
-                          : 'Definir meta',
-                      sublabel: profile.metaPesoKg != null && currentWeight > 0
-                          ? '${(currentWeight - profile.metaPesoKg!).abs().toStringAsFixed(1)} kg restante'
-                          : (onEditGoal != null ? 'Toque para configurar' : null),
-                      onTap: onEditGoal,
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: _MetricTile(
-                      label: 'META CALÓRICA',
-                      value: targetKcal > 0
-                          ? '${targetKcal.toStringAsFixed(0)} kcal'
-                          : '--',
-                      sublabel: macros?.grams != null
-                          ? 'Prot ${macros!.grams.protein}g • Carb ${macros.grams.carbs}g • Gord ${macros.grams.fat}g'
-                          : null,
-                    ),
-                  ),
-                ],
+                  ],
+                ),
+                const SizedBox(height: 12),
+              ],
+
+              SizedBox(
+                width: double.infinity,
+                child: _MetricTile(
+                  key: const ValueKey('tile_meta_peso'),
+                  label: 'META DE PESO',
+                  value: profile.metaPesoKg != null
+                      ? '${profile.metaPesoKg!.toStringAsFixed(1)} kg'
+                      : 'Definir meta',
+                  sublabel: profile.metaPesoKg != null && currentWeight > 0
+                      ? buildWeightGoalSublabel(
+                          currentWeight,
+                          profile.metaPesoKg!,
+                        )
+                      : (onEditGoal != null ? 'Toque para configurar' : null),
+                  onTap: onEditGoal,
+                  trailingIcon: Icons.edit_outlined,
+                  tapSemanticLabel: 'Toque para configurar ou editar sua meta',
+                ),
               ),
             ],
           ),
@@ -441,145 +513,194 @@ class ProgressOverviewSection extends StatelessWidget {
 
         const SizedBox(height: 16),
 
-        // 2. Dupla de Ações Rápidas (Pílulas iOS)
-        Row(
-          children: [
-            Expanded(
-              child: ElevatedButton.icon(
-                key: const ValueKey('btn_quick_weight_home'),
-                onPressed: () {
-                  HapticFeedback.lightImpact();
-                  onQuickWeight();
-                },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.indigoPrimary,
-                  foregroundColor: Colors.white,
-                  elevation: 0,
-                  minimumSize: const Size(0, 48),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(14),
-                  ),
-                ),
-                icon: const Icon(Icons.bolt_rounded, size: 20),
-                label: const Text(
-                  'Pesar Hoje',
-                  style: TextStyle(
-                    fontSize: 14.5,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: OutlinedButton.icon(
-                key: const ValueKey('btn_new_eval_home'),
-                onPressed: () {
+        // 2. Dupla de Ações Rápidas responsiva
+        buildQuickActions(),
+
+        // Convite contextual quando o usuário já tem pesagens mas ainda não fez avaliação física completa
+        if (evaluations.isEmpty) ...[
+          const SizedBox(height: 16),
+          Semantics(
+            button: true,
+            label:
+                'Complete sua primeira avaliação física para acompanhar percentual de gordura, massa magra e liberar o Bio-Coach.',
+            child: Material(
+              color: Colors.transparent,
+              child: InkWell(
+                key: const ValueKey('btn_complete_first_eval_invite'),
+                onTap: () {
                   HapticFeedback.lightImpact();
                   onNewEvaluation();
                 },
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: colors.accent,
-                  side: BorderSide(
-                    color: colors.accent,
-                    width: 1.4,
+                borderRadius: BorderRadius.circular(16),
+                child: Ink(
+                  width: double.infinity,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 14,
                   ),
-                  minimumSize: const Size(0, 48),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(14),
-                  ),
-                ),
-                icon: const Icon(Icons.add_rounded, size: 20),
-                label: const Text(
-                  'Nova Avaliação',
-                  style: TextStyle(
-                    fontSize: 14.5,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-              ),
-            ),
-          ],
-        ),
-
-        // 3. Card Inteligente de Recomposição Corporal (quando houver >= 2 avaliações)
-        if (deltaFat != null && deltaLbm != null) ...[
-          const SizedBox(height: 16),
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            decoration: BoxDecoration(
-              color: colors.surface,
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: colors.border),
-            ),
-            child: Row(
-              children: [
-                Container(
-                  width: 38,
-                  height: 38,
                   decoration: BoxDecoration(
-                    color: (deltaFat < 0 && deltaLbm > 0)
-                        ? AppColors.emerald.withValues(alpha: 0.14)
-                        : colors.accent.withValues(alpha: 0.14),
-                    shape: BoxShape.circle,
+                    color: colors.surface,
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(
+                      color: colors.accent.withValues(alpha: 0.28),
+                    ),
                   ),
-                  child: Icon(
-                    (deltaFat < 0 && deltaLbm > 0)
-                        ? Icons.auto_awesome_rounded
-                        : Icons.insights_rounded,
-                    color: (deltaFat < 0 && deltaLbm > 0)
-                        ? colors.successText
-                        : colors.accent,
-                    size: 20,
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+                  child: Row(
                     children: [
-                      Text(
-                        (deltaFat < 0 && deltaLbm > 0)
-                            ? 'Recomposição Corporal Perfeita!'
-                            : 'Evolução da Composição',
-                        style: TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w700,
-                          color: colors.textPrimary,
+                      Container(
+                        width: 38,
+                        height: 38,
+                        decoration: BoxDecoration(
+                          color: colors.accent.withValues(alpha: 0.14),
+                          shape: BoxShape.circle,
+                        ),
+                        child: Icon(
+                          Icons.straighten_rounded,
+                          color: colors.accent,
+                          size: 20,
                         ),
                       ),
-                      const SizedBox(height: 2),
-                      Text(
-                        'Gordura: ${deltaFat >= 0 ? "+" : ""}${deltaFat.toStringAsFixed(1)}kg  •  Músculo: ${deltaLbm >= 0 ? "+" : ""}${deltaLbm.toStringAsFixed(1)}kg',
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: colors.textSecondary,
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Complete sua 1ª avaliação física',
+                              style: TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w700,
+                                color: colors.textPrimary,
+                              ),
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              'Adicione medidas corporais para ver % de gordura, massa magra e liberar o Bio-Coach.',
+                              style: TextStyle(
+                                fontSize: 12.5,
+                                color: colors.textSecondary,
+                              ),
+                            ),
+                          ],
                         ),
+                      ),
+                      const SizedBox(width: 8),
+                      Icon(
+                        Icons.arrow_forward_ios_rounded,
+                        size: 14,
+                        color: colors.accent,
                       ),
                     ],
                   ),
                 ),
-              ],
+              ),
             ),
           ),
         ],
 
-        const SizedBox(height: 16),
-
-        // Atalho de Destaque para o Bio-Coach Inteligente (Gemini)
-        if (latest != null && latest.resultado != null) ...[
+        // 3. Card Inteligente de Recomposição Corporal (tappable para abrir Comparador)
+        if (deltaFat != null && deltaLbm != null) ...[
+          const SizedBox(height: 16),
           Semantics(
             button: true,
             label:
-                'Bio-Coach Inteligente Gemini. Toque para ver o parecer clínico da sua avaliação.',
+                'Evolução da composição corporal. Toque para comparar avaliações lado a lado.',
+            child: Material(
+              color: Colors.transparent,
+              child: InkWell(
+                key: const ValueKey('btn_open_comparator_card'),
+                onTap: () {
+                  HapticFeedback.lightImpact();
+                  onOpenComparator();
+                },
+                borderRadius: BorderRadius.circular(16),
+                child: Ink(
+                  width: double.infinity,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 12,
+                  ),
+                  decoration: BoxDecoration(
+                    color: colors.surface,
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: colors.border),
+                  ),
+                  child: Row(
+                    children: [
+                      Container(
+                        width: 38,
+                        height: 38,
+                        decoration: BoxDecoration(
+                          color: (deltaFat < 0 && deltaLbm > 0)
+                              ? AppColors.emerald.withValues(alpha: 0.14)
+                              : colors.accent.withValues(alpha: 0.14),
+                          shape: BoxShape.circle,
+                        ),
+                        child: Icon(
+                          (deltaFat < 0 && deltaLbm > 0)
+                              ? Icons.auto_awesome_rounded
+                              : Icons.insights_rounded,
+                          color: (deltaFat < 0 && deltaLbm > 0)
+                              ? colors.successText
+                              : colors.accent,
+                          size: 20,
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              (deltaFat < 0 && deltaLbm > 0)
+                                  ? 'Recomposição Corporal Perfeita!'
+                                  : 'Evolução da Composição',
+                              style: TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w700,
+                                color: colors.textPrimary,
+                              ),
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              'Gordura: ${deltaFat >= 0 ? "+" : ""}${deltaFat.toStringAsFixed(1)} kg  •  Massa magra: ${deltaLbm >= 0 ? "+" : ""}${deltaLbm.toStringAsFixed(1)} kg',
+                              style: TextStyle(
+                                fontSize: 12.5,
+                                color: colors.textSecondary,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Icon(
+                        Icons.compare_arrows_rounded,
+                        size: 18,
+                        color: colors.accent,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
+
+        // Atalho de Destaque para o Bio-Coach Inteligente
+        if (latest != null && latest.resultado != null) ...[
+          const SizedBox(height: 16),
+          Semantics(
+            button: true,
+            label:
+                'Bio-Coach Inteligente. Toque para ver a análise personalizada da sua avaliação.',
+            excludeSemantics: true,
             child: Material(
               color: Colors.transparent,
               child: InkWell(
                 key: const ValueKey('btn_biocoach_overview_shortcut'),
                 onTap: () {
                   HapticFeedback.lightImpact();
-                  onNavigateToTab(3);
+                  (onOpenBioCoach ?? () => onNavigateToTab(3))();
                 },
                 borderRadius: BorderRadius.circular(18),
                 child: Ink(
@@ -664,9 +785,9 @@ class ProgressOverviewSection extends StatelessWidget {
                             ),
                             const SizedBox(height: 2),
                             Text(
-                              'Toque para gerar ou ler o diagnóstico clínico da sua avaliação',
+                              'Ver análise personalizada e próximos passos',
                               style: TextStyle(
-                                fontSize: 12,
+                                fontSize: 12.5,
                                 color: colors.textSecondary,
                               ),
                             ),
@@ -697,6 +818,8 @@ class _MetricTile extends StatelessWidget {
   final String? delta;
   final Color? deltaColor;
   final VoidCallback? onTap;
+  final IconData? trailingIcon;
+  final String? tapSemanticLabel;
 
   const _MetricTile({
     super.key,
@@ -706,6 +829,8 @@ class _MetricTile extends StatelessWidget {
     this.delta,
     this.deltaColor,
     this.onTap,
+    this.trailingIcon,
+    this.tapSemanticLabel,
   });
 
   @override
@@ -713,6 +838,8 @@ class _MetricTile extends StatelessWidget {
     final colors = context.bioColors;
 
     final container = Container(
+      constraints:
+          onTap != null ? const BoxConstraints(minHeight: 48) : null,
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       decoration: BoxDecoration(
         color: colors.surfaceSubtle,
@@ -732,17 +859,17 @@ class _MetricTile extends StatelessWidget {
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(
-                    fontSize: 11,
+                    fontSize: 11.5,
                     fontWeight: FontWeight.w700,
                     letterSpacing: 0.5,
                     color: colors.textMuted,
                   ),
                 ),
               ),
-              if (onTap != null)
+              if (trailingIcon != null)
                 Icon(
-                  Icons.edit_outlined,
-                  size: 13,
+                  trailingIcon,
+                  size: 14,
                   color: colors.accent,
                 ),
             ],
@@ -768,9 +895,9 @@ class _MetricTile extends StatelessWidget {
                 Text(
                   delta!,
                   style: TextStyle(
-                    fontSize: 11.5,
+                    fontSize: 12,
                     fontWeight: FontWeight.w700,
-                    color: deltaColor ?? colors.successText,
+                    color: deltaColor ?? colors.textSecondary,
                   ),
                 ),
             ],
@@ -780,7 +907,7 @@ class _MetricTile extends StatelessWidget {
             Text(
               sublabel!,
               style: TextStyle(
-                fontSize: 11,
+                fontSize: 12,
                 color: colors.textSecondary,
               ),
             ),
@@ -798,7 +925,8 @@ class _MetricTile extends StatelessWidget {
 
     return Semantics(
       button: true,
-      label: '$label: $value. Toque para configurar ou editar sua meta',
+      label:
+          '$label: $value. ${tapSemanticLabel ?? 'Toque para abrir opções'}',
       child: Material(
         color: Colors.transparent,
         child: InkWell(

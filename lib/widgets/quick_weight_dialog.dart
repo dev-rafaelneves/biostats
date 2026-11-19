@@ -8,22 +8,28 @@ import '../theme/app_theme.dart';
 
 class QuickWeightDialog extends StatefulWidget {
   final AppState appState;
+  final DateTime? initialDate;
 
   const QuickWeightDialog({
     super.key,
     required this.appState,
+    this.initialDate,
   });
 
   static Future<void> show(
     BuildContext context, {
     required AppState appState,
+    DateTime? initialDate,
   }) {
     HapticFeedback.lightImpact();
     return showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (ctx) => QuickWeightDialog(appState: appState),
+      builder: (ctx) => QuickWeightDialog(
+        appState: appState,
+        initialDate: initialDate,
+      ),
     );
   }
 
@@ -40,7 +46,7 @@ class _QuickWeightDialogState extends State<QuickWeightDialog> {
   @override
   void initState() {
     super.initState();
-    _selectedDate = DateTime.now();
+    _selectedDate = widget.initialDate ?? DateTime.now();
     _loadExistingOrSuggestedWeight();
   }
 

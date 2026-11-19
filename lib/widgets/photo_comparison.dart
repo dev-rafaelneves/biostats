@@ -9,11 +9,13 @@ import '../theme/app_theme.dart';
 class PhotoComparison extends StatefulWidget {
   final AppState appState;
   final String? selectedAvaliacaoId;
+  final VoidCallback? onNewEvaluation;
 
   const PhotoComparison({
     super.key,
     required this.appState,
     required this.selectedAvaliacaoId,
+    this.onNewEvaluation,
   });
 
   @override
@@ -155,21 +157,21 @@ class _PhotoComparisonState extends State<PhotoComparison> {
                   ),
                   if (temDuasFotos)
                     Padding(
-                      padding: const EdgeInsets.fromLTRB(24, 8, 24, 24),
+                      padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
                       child: Row(
                         children: [
                           const Text(
-                            'DEPOIS',
+                            '100% Depois',
                             style: TextStyle(
-                              color: Colors.white70,
-                              fontSize: 11,
-                              fontWeight: FontWeight.bold,
+                              color: Colors.white,
+                              fontSize: 11.5,
+                              fontWeight: FontWeight.w700,
                             ),
                           ),
                           Expanded(
                             child: Slider(
                               value: modalSlider,
-                              activeColor: AppColors.indigoLight,
+                              activeColor: const Color(0xFF818CF8),
                               inactiveColor: Colors.white24,
                               onChanged: (v) {
                                 setModalState(() => modalSlider = v);
@@ -177,11 +179,11 @@ class _PhotoComparisonState extends State<PhotoComparison> {
                             ),
                           ),
                           const Text(
-                            'ANTES',
+                            '100% Antes',
                             style: TextStyle(
-                              color: Colors.white70,
-                              fontSize: 11,
-                              fontWeight: FontWeight.bold,
+                              color: Colors.white,
+                              fontSize: 11.5,
+                              fontWeight: FontWeight.w700,
                             ),
                           ),
                         ],
@@ -196,15 +198,114 @@ class _PhotoComparisonState extends State<PhotoComparison> {
     );
   }
 
+  Widget _buildPhotoCornerBadge(String text) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: Colors.black.withValues(alpha: 0.65),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Text(
+        text,
+        style: const TextStyle(
+          color: Colors.white,
+          fontSize: 11,
+          fontWeight: FontWeight.w700,
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final avaliacoesDesc = widget.appState.avaliacoes;
     final fotos = widget.appState.fotos;
+    final colors = context.bioColors;
+    final isDark = context.isDarkMode;
 
-    if (avaliacoesDesc.isEmpty ||
-        fotos.isEmpty ||
-        widget.selectedAvaliacaoId == null) {
+    if (avaliacoesDesc.isEmpty) {
       return const SizedBox.shrink();
+    }
+
+    if (fotos.isEmpty) {
+      return Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          color: colors.surface,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: colors.border),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: isDark ? 0.18 : 0.025),
+              blurRadius: 8,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Column(
+          children: [
+            Container(
+              width: 48,
+              height: 48,
+              decoration: BoxDecoration(
+                color: colors.accent.withValues(alpha: 0.12),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(
+                Icons.add_a_photo_outlined,
+                size: 24,
+                color: colors.accent,
+              ),
+            ),
+            const SizedBox(height: 12),
+            Text(
+              'Evolução Visual',
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w700,
+                color: colors.textPrimary,
+              ),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              'Adicione fotos de frente, perfil ou costas ao registrar avaliações para comparar sua evolução com a cortina antes e depois.',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 13.5,
+                height: 1.4,
+                color: colors.textSecondary,
+              ),
+            ),
+            if (widget.onNewEvaluation != null) ...[
+              const SizedBox(height: 14),
+              OutlinedButton.icon(
+                key: const ValueKey('btn_photos_empty_add'),
+                onPressed: () {
+                  HapticFeedback.lightImpact();
+                  widget.onNewEvaluation!();
+                },
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: colors.accent,
+                  side: BorderSide(color: colors.accent, width: 1.4),
+                  minimumSize: const Size(190, 46),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+                icon: const Icon(Icons.add_a_photo_outlined, size: 18),
+                label: const Text(
+                  'Registrar com Fotos',
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+            ],
+          ],
+        ),
+      );
     }
 
     // avaliacoes ordenadas por data crescente (primeira = mais antiga)
@@ -218,24 +319,33 @@ class _PhotoComparisonState extends State<PhotoComparison> {
       return null;
     }
 
-    final defaultBeforeAv = avaliacoesAsc.first;
-    final defaultAfterAv = avaliacoesAsc.firstWhere(
-      (a) => a.id == widget.selectedAvaliacaoId,
-      orElse: () => avaliacoesAsc.last,
-    );
+    bool hasAnyPhotoForType(FotoTipo tipo) {
+      return fotos.any((f) => f.tipo == tipo);
+    }
 
-    final effectiveBeforeAv = avaliacoesAsc.firstWhere(
-      (a) => a.id == _customBeforeId,
-      orElse: () => defaultBeforeAv,
-    );
-    final effectiveAfterAv = avaliacoesAsc.firstWhere(
-      (a) => a.id == (_customAfterId ?? widget.selectedAvaliacaoId),
-      orElse: () => defaultAfterAv,
-    );
+    int beforeIdx = avaliacoesAsc.indexWhere((a) => a.id == _customBeforeId);
+    if (beforeIdx < 0) beforeIdx = 0;
 
-    // Verifica se existe alguma foto em qualquer ângulo
-    final hasAnyPhotoInAnyAngle = fotos.isNotEmpty;
-    if (!hasAnyPhotoInAnyAngle) return const SizedBox.shrink();
+    final targetAfterId = _customAfterId ?? widget.selectedAvaliacaoId;
+    int afterIdx = avaliacoesAsc.indexWhere((a) => a.id == targetAfterId);
+    if (afterIdx < 0) afterIdx = avaliacoesAsc.length - 1;
+
+    if (avaliacoesAsc.length >= 2 && beforeIdx >= afterIdx) {
+      beforeIdx = 0;
+      if (afterIdx <= 0) {
+        afterIdx = avaliacoesAsc.length - 1;
+      }
+    }
+
+    final effectiveBeforeAv = avaliacoesAsc[beforeIdx];
+    final effectiveAfterAv = avaliacoesAsc[afterIdx];
+
+    final beforeOptions = avaliacoesAsc.length >= 2
+        ? avaliacoesAsc.sublist(0, afterIdx)
+        : avaliacoesAsc;
+    final afterOptions = avaliacoesAsc.length >= 2
+        ? avaliacoesAsc.sublist(beforeIdx + 1)
+        : avaliacoesAsc;
 
     final primeiraFoto = findFoto(effectiveBeforeAv.id, _view);
     final selecionadaFoto = findFoto(effectiveAfterAv.id, _view);
@@ -250,7 +360,6 @@ class _PhotoComparisonState extends State<PhotoComparison> {
         bytesSelecionada != null &&
         effectiveBeforeAv.id != effectiveAfterAv.id;
 
-    final isDark = Theme.of(context).brightness == Brightness.dark;
     final dateFmt = DateFormat('dd/MM/yy', 'pt_BR');
     final isDiscreet = widget.appState.discreetPhotos;
 
@@ -312,14 +421,12 @@ class _PhotoComparisonState extends State<PhotoComparison> {
     return Container(
       width: double.infinity,
       decoration: BoxDecoration(
-        color: isDark ? AppColors.darkSurface : Colors.white,
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(
-          color: isDark ? AppColors.darkBorder : const Color(0xFFF1F5F9),
-        ),
+        color: colors.surface,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: colors.border),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.025),
+            color: Colors.black.withValues(alpha: isDark ? 0.18 : 0.025),
             blurRadius: 8,
             offset: const Offset(0, 2),
           ),
@@ -329,18 +436,13 @@ class _PhotoComparisonState extends State<PhotoComparison> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Header
+          // Header limpo (sem texto longo competindo com título)
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             decoration: BoxDecoration(
-              color: isDark
-                  ? const Color(0xFF1E293B).withValues(alpha: 0.5)
-                  : const Color(0xFFF8FAFC),
+              color: colors.surfaceSubtle.withValues(alpha: 0.7),
               border: Border(
-                bottom: BorderSide(
-                  color:
-                      isDark ? AppColors.darkBorder : const Color(0xFFF1F5F9),
-                ),
+                bottom: BorderSide(color: colors.border),
               ),
             ),
             child: Row(
@@ -352,22 +454,31 @@ class _PhotoComparisonState extends State<PhotoComparison> {
                       Icon(
                         Icons.camera_alt_outlined,
                         size: 20,
-                        color: isDark
-                            ? AppColors.indigoLight
-                            : AppColors.indigoPrimary,
+                        color: colors.accent,
                       ),
                       const SizedBox(width: 8),
-                      Flexible(
-                        child: Text(
-                          'Evolução Visual',
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
-                            fontSize: 15.5,
-                            fontWeight: FontWeight.w600,
-                            color: isDark
-                                ? AppColors.darkTextPrimary
-                                : const Color(0xFF1E293B),
-                          ),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Evolução Visual',
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                fontSize: 15.5,
+                                fontWeight: FontWeight.w600,
+                                color: colors.textPrimary,
+                              ),
+                            ),
+                            if (temDuasFotos && !isDiscreet)
+                              Text(
+                                'Arraste a barra na foto para comparar',
+                                style: TextStyle(
+                                  fontSize: 11.5,
+                                  color: colors.textSecondary,
+                                ),
+                              ),
+                          ],
                         ),
                       ),
                     ],
@@ -376,28 +487,6 @@ class _PhotoComparisonState extends State<PhotoComparison> {
                 Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    if (temDuasFotos && !isDiscreet) ...[
-                      Icon(
-                        Icons.compare_rounded,
-                        size: 15,
-                        color: isDark
-                            ? AppColors.darkTextSecondary
-                            : const Color(0xFF94A3B8),
-                      ),
-                      const SizedBox(width: 4),
-                      Text(
-                        'DESLIZE PARA COMPARAR',
-                        style: TextStyle(
-                          fontSize: 10,
-                          fontWeight: FontWeight.w700,
-                          letterSpacing: 0.4,
-                          color: isDark
-                              ? AppColors.darkTextSecondary
-                              : const Color(0xFF94A3B8),
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                    ],
                     if (temFotoNoAngulo && !isDiscreet)
                       IconButton(
                         onPressed: () => _openFullScreenZoom(
@@ -409,13 +498,10 @@ class _PhotoComparisonState extends State<PhotoComparison> {
                               '${_view.label} • ${dateFmt.format(effectiveBeforeAv.dataAvaliacao)} vs ${dateFmt.format(effectiveAfterAv.dataAvaliacao)}',
                         ),
                         tooltip: 'Tela Cheia com Zoom',
-                        visualDensity: VisualDensity.compact,
                         icon: Icon(
                           Icons.fullscreen_rounded,
-                          size: 21,
-                          color: isDark
-                              ? AppColors.darkTextSecondary
-                              : const Color(0xFF64748B),
+                          size: 22,
+                          color: colors.textSecondary,
                         ),
                       ),
                     IconButton(
@@ -426,17 +512,12 @@ class _PhotoComparisonState extends State<PhotoComparison> {
                       tooltip: isDiscreet
                           ? 'Revelar Fotos'
                           : 'Modo Discreto (Ocultar Fotos)',
-                      visualDensity: VisualDensity.compact,
                       icon: Icon(
                         isDiscreet
                             ? Icons.visibility_off_rounded
                             : Icons.visibility_outlined,
-                        size: 19,
-                        color: isDiscreet
-                            ? AppColors.indigoPrimary
-                            : (isDark
-                                ? AppColors.darkTextSecondary
-                                : const Color(0xFF64748B)),
+                        size: 20,
+                        color: isDiscreet ? colors.accent : colors.textSecondary,
                       ),
                     ),
                   ],
@@ -449,57 +530,80 @@ class _PhotoComparisonState extends State<PhotoComparison> {
             padding: const EdgeInsets.all(16),
             child: Column(
               children: [
-                // Tabs Frente | Perfil | Costas
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: FotoTipo.values.map((tipo) {
-                    final active = _view == tipo;
-                    return Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 4),
-                      child: InkWell(
-                        onTap: () {
-                          HapticFeedback.selectionClick();
-                          setState(() => _view = tipo);
-                        },
-                        borderRadius: BorderRadius.circular(100),
-                        child: Container(
-                          constraints: const BoxConstraints(
-                            minHeight: 40,
-                            minWidth: 82,
-                          ),
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 16,
-                            vertical: 8,
-                          ),
-                          alignment: Alignment.center,
-                          decoration: BoxDecoration(
-                            color: active
-                                ? AppColors.indigoPrimary
-                                : (isDark
-                                    ? const Color(0xFF1E293B)
-                                    : const Color(0xFFF1F5F9)),
-                            borderRadius: BorderRadius.circular(100),
-                          ),
-                          child: Text(
-                            tipo.label,
-                            style: TextStyle(
-                              fontSize: 13.5,
-                              fontWeight: FontWeight.w600,
+                // Tabs Frente | Perfil | Costas responsivas com indicador de foto
+                SizedBox(
+                  width: double.infinity,
+                  child: Wrap(
+                    alignment: WrapAlignment.center,
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: FotoTipo.values.map((tipo) {
+                      final active = _view == tipo;
+                      final hasPhoto = hasAnyPhotoForType(tipo);
+                      return Semantics(
+                        button: true,
+                        selected: active,
+                        label:
+                            '${tipo.label}${hasPhoto ? ", com foto registrada" : ", sem foto"}',
+                        child: InkWell(
+                          onTap: () {
+                            HapticFeedback.selectionClick();
+                            setState(() => _view = tipo);
+                          },
+                          borderRadius: BorderRadius.circular(100),
+                          child: Container(
+                            constraints: const BoxConstraints(
+                              minHeight: 44,
+                              minWidth: 84,
+                            ),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 14,
+                              vertical: 10,
+                            ),
+                            decoration: BoxDecoration(
                               color: active
-                                  ? Colors.white
-                                  : (isDark
-                                      ? AppColors.darkTextSecondary
-                                      : const Color(0xFF475569)),
+                                  ? AppColors.indigoPrimary
+                                  : colors.surfaceSubtle,
+                              borderRadius: BorderRadius.circular(100),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                if (hasPhoto) ...[
+                                  Container(
+                                    width: 6,
+                                    height: 6,
+                                    decoration: BoxDecoration(
+                                      color: active
+                                          ? Colors.white
+                                          : colors.accent,
+                                      shape: BoxShape.circle,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 6),
+                                ],
+                                Text(
+                                  tipo.label,
+                                  style: TextStyle(
+                                    fontSize: 13.5,
+                                    fontWeight: FontWeight.w600,
+                                    color: active
+                                        ? Colors.white
+                                        : colors.textSecondary,
+                                  ),
+                                ),
+                              ],
                             ),
                           ),
                         ),
-                      ),
-                    );
-                  }).toList(),
+                      );
+                    }).toList(),
+                  ),
                 ),
                 const SizedBox(height: 16),
 
-                // Seletor Livre Antes x Depois (quando houver >= 2 avaliações)
+                // Seletor Antes x Depois sem sobreposição nem inversão cronológica
                 if (avaliacoesAsc.length >= 2) ...[
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -510,42 +614,44 @@ class _PhotoComparisonState extends State<PhotoComparison> {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              '1ª AVALIAÇÃO (ANTES)',
+                              'FOTO ANTERIOR (ANTES)',
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
                               style: TextStyle(
-                                fontSize: 10.5,
+                                fontSize: 11,
                                 fontWeight: FontWeight.w700,
                                 letterSpacing: 0.4,
-                                color: isDark
-                                    ? AppColors.darkTextSecondary
-                                    : const Color(0xFF64748B),
+                                color: colors.textSecondary,
                               ),
                             ),
-                            const SizedBox(height: 4),
-                            DropdownButtonHideUnderline(
-                              child: DropdownButton<String>(
-                                value: effectiveBeforeAv.id,
-                                isDense: true,
-                                items: avaliacoesAsc.map((av) {
-                                  return DropdownMenuItem<String>(
-                                    value: av.id,
-                                    child: Text(
-                                      '${dateFmt.format(av.dataAvaliacao)} (${av.pesoKg.toStringAsFixed(1)}kg)',
-                                      style: TextStyle(
-                                        fontSize: 12,
-                                        fontWeight: FontWeight.w600,
-                                        color: isDark
-                                            ? AppColors.darkTextPrimary
-                                            : const Color(0xFF334155),
+                            const SizedBox(height: 2),
+                            ConstrainedBox(
+                              constraints: const BoxConstraints(minHeight: 44),
+                              child: DropdownButtonHideUnderline(
+                                child: DropdownButton<String>(
+                                  value: effectiveBeforeAv.id,
+                                  isExpanded: true,
+                                  items: beforeOptions.map((av) {
+                                    return DropdownMenuItem<String>(
+                                      value: av.id,
+                                      child: Text(
+                                        '${dateFmt.format(av.dataAvaliacao)} (${av.pesoKg.toStringAsFixed(1)}kg)',
+                                        overflow: TextOverflow.ellipsis,
+                                        style: TextStyle(
+                                          fontSize: 12.5,
+                                          fontWeight: FontWeight.w600,
+                                          color: colors.textPrimary,
+                                        ),
                                       ),
-                                    ),
-                                  );
-                                }).toList(),
-                                onChanged: (val) {
-                                  if (val != null) {
-                                    HapticFeedback.selectionClick();
-                                    setState(() => _customBeforeId = val);
-                                  }
-                                },
+                                    );
+                                  }).toList(),
+                                  onChanged: (val) {
+                                    if (val != null) {
+                                      HapticFeedback.selectionClick();
+                                      setState(() => _customBeforeId = val);
+                                    }
+                                  },
+                                ),
                               ),
                             ),
                           ],
@@ -558,44 +664,46 @@ class _PhotoComparisonState extends State<PhotoComparison> {
                           crossAxisAlignment: CrossAxisAlignment.end,
                           children: [
                             Text(
-                              'ATUAL (DEPOIS)',
+                              'FOTO POSTERIOR (DEPOIS)',
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
                               style: TextStyle(
-                                fontSize: 10.5,
+                                fontSize: 11,
                                 fontWeight: FontWeight.w700,
                                 letterSpacing: 0.4,
-                                color: isDark
-                                    ? AppColors.indigoLight
-                                    : AppColors.indigoPrimary,
+                                color: colors.accent,
                               ),
                             ),
-                            const SizedBox(height: 4),
-                            DropdownButtonHideUnderline(
-                              child: DropdownButton<String>(
-                                value: effectiveAfterAv.id,
-                                isDense: true,
-                                alignment: AlignmentDirectional.centerEnd,
-                                items: avaliacoesAsc.map((av) {
-                                  return DropdownMenuItem<String>(
-                                    value: av.id,
-                                    alignment: AlignmentDirectional.centerEnd,
-                                    child: Text(
-                                      '${dateFmt.format(av.dataAvaliacao)} (${av.pesoKg.toStringAsFixed(1)}kg)',
-                                      style: TextStyle(
-                                        fontSize: 12,
-                                        fontWeight: FontWeight.w600,
-                                        color: isDark
-                                            ? AppColors.indigoLight
-                                            : AppColors.indigoPrimary,
+                            const SizedBox(height: 2),
+                            ConstrainedBox(
+                              constraints: const BoxConstraints(minHeight: 44),
+                              child: DropdownButtonHideUnderline(
+                                child: DropdownButton<String>(
+                                  value: effectiveAfterAv.id,
+                                  isExpanded: true,
+                                  alignment: AlignmentDirectional.centerEnd,
+                                  items: afterOptions.map((av) {
+                                    return DropdownMenuItem<String>(
+                                      value: av.id,
+                                      alignment: AlignmentDirectional.centerEnd,
+                                      child: Text(
+                                        '${dateFmt.format(av.dataAvaliacao)} (${av.pesoKg.toStringAsFixed(1)}kg)',
+                                        overflow: TextOverflow.ellipsis,
+                                        style: TextStyle(
+                                          fontSize: 12.5,
+                                          fontWeight: FontWeight.w600,
+                                          color: colors.accent,
+                                        ),
                                       ),
-                                    ),
-                                  );
-                                }).toList(),
-                                onChanged: (val) {
-                                  if (val != null) {
-                                    HapticFeedback.selectionClick();
-                                    setState(() => _customAfterId = val);
-                                  }
-                                },
+                                    );
+                                  }).toList(),
+                                  onChanged: (val) {
+                                    if (val != null) {
+                                      HapticFeedback.selectionClick();
+                                      setState(() => _customAfterId = val);
+                                    }
+                                  },
+                                ),
                               ),
                             ),
                           ],
@@ -611,9 +719,7 @@ class _PhotoComparisonState extends State<PhotoComparison> {
                     width: double.infinity,
                     padding: const EdgeInsets.all(24),
                     decoration: BoxDecoration(
-                      color: isDark
-                          ? AppColors.darkBackground
-                          : const Color(0xFFF8FAFC),
+                      color: colors.surfaceSubtle,
                       borderRadius: BorderRadius.circular(16),
                     ),
                     child: Text(
@@ -621,9 +727,7 @@ class _PhotoComparisonState extends State<PhotoComparison> {
                       textAlign: TextAlign.center,
                       style: TextStyle(
                         fontSize: 13.5,
-                        color: isDark
-                            ? AppColors.darkTextSecondary
-                            : const Color(0xFF64748B),
+                        color: colors.textSecondary,
                       ),
                     ),
                   )
@@ -638,6 +742,12 @@ class _PhotoComparisonState extends State<PhotoComparison> {
                           slider: true,
                           label: 'Comparador de fotos antes e depois',
                           value: '${(_sliderPos * 100).round()}%',
+                          increasedValue: isDiscreet
+                              ? null
+                              : '${((_sliderPos + 0.1).clamp(0.0, 1.0) * 100).round()}%',
+                          decreasedValue: isDiscreet
+                              ? null
+                              : '${((_sliderPos - 0.1).clamp(0.0, 1.0) * 100).round()}%',
                           onIncrease: isDiscreet
                               ? null
                               : () => setState(
@@ -675,11 +785,7 @@ class _PhotoComparisonState extends State<PhotoComparison> {
                             child: Container(
                               decoration: BoxDecoration(
                                 borderRadius: BorderRadius.circular(18),
-                                border: Border.all(
-                                  color: isDark
-                                      ? AppColors.darkBorder
-                                      : const Color(0xFFE2E8F0),
-                                ),
+                                border: Border.all(color: colors.border),
                               ),
                               clipBehavior: Clip.antiAlias,
                               child: wrapDiscreetBlur(
@@ -702,6 +808,24 @@ class _PhotoComparisonState extends State<PhotoComparison> {
                                         gaplessPlayback: true,
                                       ),
                                     ),
+
+                                    // Badges discretos Antes / Depois nos cantos superiores
+                                    if (!isDiscreet) ...[
+                                      Positioned(
+                                        top: 10,
+                                        left: 10,
+                                        child: _buildPhotoCornerBadge(
+                                          'Antes • ${dateFmt.format(effectiveBeforeAv.dataAvaliacao)}',
+                                        ),
+                                      ),
+                                      Positioned(
+                                        top: 10,
+                                        right: 10,
+                                        child: _buildPhotoCornerBadge(
+                                          'Depois • ${dateFmt.format(effectiveAfterAv.dataAvaliacao)}',
+                                        ),
+                                      ),
+                                    ],
 
                                     // Barra divisória e botão central
                                     Positioned(
@@ -764,15 +888,13 @@ class _PhotoComparisonState extends State<PhotoComparison> {
                     children: [
                       Text(
                         bytesSelecionada != null
-                            ? 'FOTO ATUAL'
-                            : 'PRIMEIRA FOTO',
+                            ? 'FOTO POSTERIOR'
+                            : 'FOTO ANTERIOR',
                         style: TextStyle(
-                          fontSize: 11,
+                          fontSize: 11.5,
                           fontWeight: FontWeight.w700,
                           letterSpacing: 0.6,
-                          color: isDark
-                              ? AppColors.darkTextSecondary
-                              : const Color(0xFF64748B),
+                          color: colors.textSecondary,
                         ),
                       ),
                       const SizedBox(height: 8),
@@ -781,11 +903,7 @@ class _PhotoComparisonState extends State<PhotoComparison> {
                         child: Container(
                           decoration: BoxDecoration(
                             borderRadius: BorderRadius.circular(18),
-                            border: Border.all(
-                              color: isDark
-                                  ? AppColors.darkBorder
-                                  : const Color(0xFFE2E8F0),
-                            ),
+                            border: Border.all(color: colors.border),
                           ),
                           clipBehavior: Clip.antiAlias,
                           child: wrapDiscreetBlur(

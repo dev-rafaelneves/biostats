@@ -157,20 +157,19 @@ class _ExportDataCardState extends State<ExportDataCard> {
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final colors = context.bioColors;
+    final isDark = context.isDarkMode;
 
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
-        color: isDark ? AppColors.darkSurface : Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: isDark ? AppColors.darkBorder : AppColors.lightBorder,
-        ),
+        color: colors.surface,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: colors.border),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.025),
+            color: Colors.black.withValues(alpha: isDark ? 0.18 : 0.025),
             blurRadius: 8,
             offset: const Offset(0, 2),
           ),
@@ -184,9 +183,7 @@ class _ExportDataCardState extends State<ExportDataCard> {
             style: TextStyle(
               fontSize: 17,
               fontWeight: FontWeight.w600,
-              color: isDark
-                  ? AppColors.darkTextPrimary
-                  : AppColors.lightTextPrimary,
+              color: colors.textPrimary,
             ),
           ),
           const SizedBox(height: 4),
@@ -195,44 +192,49 @@ class _ExportDataCardState extends State<ExportDataCard> {
             style: TextStyle(
               fontSize: 13.5,
               height: 1.4,
-              color: isDark
-                  ? AppColors.darkTextSecondary
-                  : AppColors.lightTextSecondary,
+              color: colors.textSecondary,
             ),
           ),
           const SizedBox(height: 16),
 
           // Botão PDF
-          SizedBox(
-            width: double.infinity,
-            height: 48,
-            child: ElevatedButton.icon(
-              onPressed: _isExportingPdf ? null : _handleExportPdf,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.indigoPrimary,
-                foregroundColor: Colors.white,
-                elevation: 0,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
+          ConstrainedBox(
+            constraints: const BoxConstraints(minHeight: 48),
+            child: SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                onPressed: _isExportingPdf ? null : _handleExportPdf,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.indigoPrimary,
+                  foregroundColor: Colors.white,
+                  elevation: 0,
+                  minimumSize: const Size(double.infinity, 48),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 12,
+                  ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
                 ),
-              ),
-              icon: _isExportingPdf
-                  ? const SizedBox(
-                      width: 18,
-                      height: 18,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        color: Colors.white,
-                      ),
-                    )
-                  : const Icon(Icons.download_rounded, size: 20),
-              label: Text(
-                _isExportingPdf
-                    ? 'Gerando Relatório Premium...'
-                    : 'Baixar Relatório (PDF)',
-                style: const TextStyle(
-                  fontSize: 15.5,
-                  fontWeight: FontWeight.w600,
+                icon: _isExportingPdf
+                    ? const SizedBox(
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: Colors.white,
+                        ),
+                      )
+                    : const Icon(Icons.download_rounded, size: 20),
+                label: Text(
+                  _isExportingPdf
+                      ? 'Gerando Relatório Premium...'
+                      : 'Baixar Relatório (PDF)',
+                  style: const TextStyle(
+                    fontSize: 15.5,
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
               ),
             ),
@@ -240,36 +242,43 @@ class _ExportDataCardState extends State<ExportDataCard> {
           const SizedBox(height: 10),
 
           // Botão CSV
-          SizedBox(
-            width: double.infinity,
-            height: 48,
-            child: ElevatedButton.icon(
-              onPressed: _isExportingCsv ? null : _handleExportCsv,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF059669), // emerald-600
-                foregroundColor: Colors.white,
-                elevation: 0,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
+          ConstrainedBox(
+            constraints: const BoxConstraints(minHeight: 48),
+            child: SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                onPressed: _isExportingCsv ? null : _handleExportCsv,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF059669), // emerald-600
+                  foregroundColor: Colors.white,
+                  elevation: 0,
+                  minimumSize: const Size(double.infinity, 48),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 12,
+                  ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
                 ),
-              ),
-              icon: _isExportingCsv
-                  ? const SizedBox(
-                      width: 18,
-                      height: 18,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        color: Colors.white,
-                      ),
-                    )
-                  : const Icon(Icons.table_chart_outlined, size: 20),
-              label: Text(
-                _isExportingCsv
-                    ? 'Processando Tabela...'
-                    : 'Exportar Tabela (CSV)',
-                style: const TextStyle(
-                  fontSize: 15.5,
-                  fontWeight: FontWeight.w600,
+                icon: _isExportingCsv
+                    ? const SizedBox(
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: Colors.white,
+                        ),
+                      )
+                    : const Icon(Icons.table_chart_outlined, size: 20),
+                label: Text(
+                  _isExportingCsv
+                      ? 'Processando Tabela...'
+                      : 'Exportar Tabela (CSV)',
+                  style: const TextStyle(
+                    fontSize: 15.5,
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
               ),
             ),

@@ -28,7 +28,7 @@ class DetailSectionCard extends StatelessWidget {
       width: double.infinity,
       decoration: BoxDecoration(
         color: colors.surface,
-        borderRadius: BorderRadius.circular(24),
+        borderRadius: BorderRadius.circular(20),
         border: Border.all(color: colors.border),
         boxShadow: [
           BoxShadow(
@@ -205,7 +205,7 @@ class MethodologyRow extends StatelessWidget {
                         child: Text(
                           'Referência',
                           style: TextStyle(
-                            fontSize: 10,
+                            fontSize: 11,
                             fontWeight: FontWeight.w700,
                             color: colors.accent,
                           ),
@@ -335,7 +335,7 @@ class RiskMiniCard extends StatelessWidget {
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               style: TextStyle(
-                fontSize: 11.5,
+                fontSize: 12,
                 fontWeight:
                     badgeColor != null ? FontWeight.w600 : FontWeight.normal,
                 color: badgeColor ?? colors.textMuted,
@@ -379,9 +379,12 @@ class MeasureRow extends StatelessWidget {
     final sign = diff > 0 ? '+' : '';
     final isGood = lowerIsBetter ? diff < 0 : diff > 0;
     final deltaColor = isGood ? colors.successText : colors.warningText;
+    final deltaDesc = hasDelta
+        ? ', variação de $sign${diff.toStringAsFixed(1)} $unit'
+        : '';
 
     return Semantics(
-      label: '$label: $value',
+      label: '$label: $value$deltaDesc',
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 4),
         decoration: BoxDecoration(
@@ -419,7 +422,7 @@ class MeasureRow extends StatelessWidget {
                   Text(
                     '$sign${diff.toStringAsFixed(1)} $unit',
                     style: TextStyle(
-                      fontSize: 10.5,
+                      fontSize: 11.5,
                       fontWeight: FontWeight.bold,
                       color: deltaColor,
                     ),
@@ -450,7 +453,11 @@ class GridHalfItem extends StatelessWidget {
         final maxW = constraints.hasBoundedWidth
             ? constraints.maxWidth
             : (MediaQuery.sizeOf(context).width.clamp(300.0, 460.0) - 66);
-        final itemWidth = ((maxW - spacing) / 2 - 0.5).clamp(110.0, 220.0);
+        final scaledText = MediaQuery.textScalerOf(context).scale(13.5);
+        final singleColumn = maxW < 250 || scaledText > 17.5;
+        final itemWidth = singleColumn
+            ? maxW
+            : ((maxW - spacing) / 2 - 0.5).clamp(110.0, 220.0);
         return SizedBox(
           width: itemWidth,
           child: child,

@@ -70,7 +70,7 @@ class BioThemeColors extends ThemeExtension<BioThemeColors> {
     textMuted: Color(0xFF475569),
     accent: AppColors.indigoPrimary,
     successText: Color(0xFF047857),
-    warningText: Color(0xFFC2410C),
+    warningText: Color(0xFF9A3412),
     dangerText: Color(0xFFBE123C),
   );
 

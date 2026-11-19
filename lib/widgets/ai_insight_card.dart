@@ -218,7 +218,7 @@ class _AiInsightCardState extends State<AiInsightCard> {
               ),
               const SizedBox(height: 12),
               const Text(
-                'Para gerar diagnósticos clínicos e análises comparativas com IA, insira sua chave da API do Google Gemini. Ela fica salva com criptografia apenas no seu celular.',
+                'Para gerar análises personalizadas e comparativos de evolução com IA, insira sua chave da API do Google Gemini. Ela fica salva com criptografia apenas no seu celular.',
                 style: TextStyle(fontSize: 14, height: 1.4),
               ),
               const SizedBox(height: 20),
@@ -261,16 +261,15 @@ class _AiInsightCardState extends State<AiInsightCard> {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final colors = context.bioColors;
     final isEval = widget.type == AiInsightType.evaluation;
 
     return Container(
       width: double.infinity,
       decoration: BoxDecoration(
-        color: isDark ? AppColors.darkSurface : Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: isDark ? AppColors.darkBorder : AppColors.lightBorder,
-        ),
+        color: colors.surface,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: colors.border),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.04),
@@ -319,19 +318,15 @@ class _AiInsightCardState extends State<AiInsightCard> {
                           fontSize: 15.5,
                           fontWeight: FontWeight.bold,
                           letterSpacing: -0.2,
-                          color: isDark
-                              ? AppColors.darkTextPrimary
-                              : AppColors.lightTextPrimary,
+                          color: colors.textPrimary,
                         ),
                       ),
                       const SizedBox(height: 1),
                       Text(
-                        'Diagnóstico inteligente com Google Gemini',
+                        'Análise personalizada do seu físico e metas',
                         style: TextStyle(
-                          fontSize: 11.5,
-                          color: isDark
-                              ? AppColors.darkTextSecondary
-                              : AppColors.lightTextSecondary,
+                          fontSize: 12,
+                          color: colors.textSecondary,
                         ),
                       ),
                     ],
@@ -359,6 +354,8 @@ class _AiInsightCardState extends State<AiInsightCard> {
   }
 
   Widget _buildBody(BuildContext context, {required bool isDark}) {
+    final colors = context.bioColors;
+
     if (_isLoading) {
       return const Center(
         child: Padding(
@@ -394,9 +391,7 @@ class _AiInsightCardState extends State<AiInsightCard> {
               style: TextStyle(
                 fontSize: 13,
                 fontWeight: FontWeight.w500,
-                color: isDark
-                    ? AppColors.darkTextSecondary
-                    : AppColors.lightTextSecondary,
+                color: colors.textSecondary,
               ),
             ),
             const SizedBox(height: 4),
@@ -404,8 +399,8 @@ class _AiInsightCardState extends State<AiInsightCard> {
               'Cruzando dobras cutâneas, circunferências e gasto energético',
               textAlign: TextAlign.center,
               style: TextStyle(
-                fontSize: 11.5,
-                color: isDark ? const Color(0xFF64748B) : const Color(0xFF94A3B8),
+                fontSize: 12,
+                color: colors.textMuted,
               ),
             ),
           ],
@@ -414,7 +409,6 @@ class _AiInsightCardState extends State<AiInsightCard> {
     }
 
     if (_errorMessage != null) {
-      final colors = context.bioColors;
       return Container(
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
@@ -462,7 +456,6 @@ class _AiInsightCardState extends State<AiInsightCard> {
     }
 
     if (_insightText != null && _insightText!.isNotEmpty) {
-      final colors = context.bioColors;
       return Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -470,34 +463,41 @@ class _AiInsightCardState extends State<AiInsightCard> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Flexible(
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: AppColors.emerald.withValues(alpha: 0.14),
-                    borderRadius: BorderRadius.circular(6),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(
-                        Icons.check_circle_outline_rounded,
-                        size: 13,
-                        color: colors.successText,
-                      ),
-                      const SizedBox(width: 4),
-                      Flexible(
-                        child: Text(
-                          'Salvo offline • Sem custo extra',
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
-                            fontSize: 11.5,
-                            fontWeight: FontWeight.w600,
-                            color: colors.successText,
+                child: Semantics(
+                  label: 'Salvo offline, sem custo extra',
+                  excludeSemantics: true,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 4,
+                    ),
+                    decoration: BoxDecoration(
+                      color: AppColors.emerald.withValues(alpha: 0.14),
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          Icons.check_circle_outline_rounded,
+                          size: 13,
+                          color: colors.successText,
+                        ),
+                        const SizedBox(width: 4),
+                        Flexible(
+                          child: Text(
+                            'Salvo offline • Sem custo extra',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              fontSize: 11.5,
+                              fontWeight: FontWeight.w600,
+                              color: colors.successText,
+                            ),
                           ),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
                 ),
               ),

@@ -36,10 +36,26 @@ class PersonalProgressTab extends StatefulWidget {
 class _PersonalProgressTabState extends State<PersonalProgressTab> {
   String? _selectedAvaliacaoId;
   int _selectedSegment = 0; // 0: Resumo, 1: Pesagens, 2: Evolução, 3: Ficha
+  final GlobalKey _aiCoachAnchorKey = GlobalKey();
 
   void _selectSegment(int tabIdx) {
     setState(() => _selectedSegment = tabIdx);
     widget.onSegmentChanged?.call(tabIdx);
+  }
+
+  void _openBioCoachInFicha() {
+    _selectSegment(3);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final targetCtx = _aiCoachAnchorKey.currentContext;
+      if (targetCtx != null && targetCtx.mounted) {
+        Scrollable.ensureVisible(
+          targetCtx,
+          duration: const Duration(milliseconds: 350),
+          curve: Curves.easeOutCubic,
+          alignment: 0.08,
+        );
+      }
+    });
   }
 
   Future<void> _showEditGoalSheet(
@@ -381,7 +397,12 @@ class _PersonalProgressTabState extends State<PersonalProgressTab> {
         ),
 
         SliverPadding(
-          padding: const EdgeInsets.fromLTRB(16, 10, 16, 120),
+          padding: EdgeInsets.fromLTRB(
+            16,
+            10,
+            16,
+            _selectedSegment == 0 ? 32 : 120,
+          ),
           sliver: SliverToBoxAdapter(
             child: Center(
               child: ConstrainedBox(
@@ -444,7 +465,7 @@ class _PersonalProgressTabState extends State<PersonalProgressTab> {
     final selected = _selectedSegment == index;
 
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 7),
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 10),
       child: FittedBox(
         fit: BoxFit.scaleDown,
         child: Text(
@@ -475,9 +496,16 @@ class _PersonalProgressTabState extends State<PersonalProgressTab> {
 
     switch (_selectedSegment) {
       case 0:
-        // 1. Aba Resumo (Destaques Apple Health style)
-        if (evaluations.isEmpty) {
-          return _buildEmptyState(context, isDark, profile);
+        // 1. Aba Resumo (Rotina diária)
+        final hasAnyData =
+            evaluations.isNotEmpty || widget.appState.pesagens.isNotEmpty;
+        if (!hasAnyData) {
+          return _buildEmptyState(
+            context,
+            isDark,
+            profile,
+            allowQuickWeight: true,
+          );
         }
         return ProgressOverviewSection(
           appState: widget.appState,
@@ -491,6 +519,7 @@ class _PersonalProgressTabState extends State<PersonalProgressTab> {
           onOpenComparator: () => _openComparator(context),
           onNavigateToTab: _selectSegment,
           onEditGoal: () => _showEditGoalSheet(context, profile),
+          onOpenBioCoach: _openBioCoachInFicha,
         );
 
       case 1:
@@ -506,14 +535,16 @@ class _PersonalProgressTabState extends State<PersonalProgressTab> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             if (evaluations.length >= 2) ...[
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Expanded(
-                    child: Text(
+              SizedBox(
+                width: double.infinity,
+                child: Wrap(
+                  alignment: WrapAlignment.spaceBetween,
+                  crossAxisAlignment: WrapCrossAlignment.center,
+                  spacing: 8,
+                  runSpacing: 4,
+                  children: [
+                    Text(
                       'CURVAS HISTÓRICAS',
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
                       style: TextStyle(
                         fontSize: 11.5,
                         fontWeight: FontWeight.w700,
@@ -521,36 +552,37 @@ class _PersonalProgressTabState extends State<PersonalProgressTab> {
                         color: colors.textMuted,
                       ),
                     ),
-                  ),
-                  const SizedBox(width: 8),
-                  TextButton.icon(
-                    key: const ValueKey('btn_open_comparator_header'),
-                    onPressed: () => _openComparator(context),
-                    style: TextButton.styleFrom(
-                      foregroundColor: colors.accent,
-                      minimumSize: const Size(0, 44),
-                    ),
-                    icon: const Icon(Icons.compare_arrows_rounded, size: 17),
-                    label: const Text(
-                      'Comparar Avaliações',
-                      style: TextStyle(
-                        fontSize: 13.5,
-                        fontWeight: FontWeight.w700,
+                    TextButton.icon(
+                      key: const ValueKey('btn_open_comparator_header'),
+                      onPressed: () => _openComparator(context),
+                      style: TextButton.styleFrom(
+                        foregroundColor: colors.accent,
+                        minimumSize: const Size(0, 44),
+                      ),
+                      icon: const Icon(Icons.compare_arrows_rounded, size: 17),
+                      label: const Text(
+                        'Comparar Avaliações',
+                        style: TextStyle(
+                          fontSize: 13.5,
+                          fontWeight: FontWeight.w700,
+                        ),
                       ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
               const SizedBox(height: 6),
             ],
             EvolutionCharts(
               evaluations: evaluations,
               pesagens: widget.appState.pesagens,
+              onNewEvaluation: () => _openNewEvaluation(context),
             ),
             const SizedBox(height: 20),
             PhotoComparison(
               appState: widget.appState,
               selectedAvaliacaoId: effectiveSelectedId,
+              onNewEvaluation: () => _openNewEvaluation(context),
             ),
           ],
         );
@@ -561,17 +593,20 @@ class _PersonalProgressTabState extends State<PersonalProgressTab> {
         if (evaluations.isEmpty) {
           return _buildEmptyState(context, isDark, profile);
         }
+        final shortChipFmt = DateFormat('dd/MM');
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Expanded(
-                  child: Text(
+            SizedBox(
+              width: double.infinity,
+              child: Wrap(
+                alignment: WrapAlignment.spaceBetween,
+                crossAxisAlignment: WrapCrossAlignment.center,
+                spacing: 8,
+                runSpacing: 4,
+                children: [
+                  Text(
                     'DATA DA AVALIAÇÃO',
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
                     style: TextStyle(
                       fontSize: 11.5,
                       fontWeight: FontWeight.w700,
@@ -579,56 +614,55 @@ class _PersonalProgressTabState extends State<PersonalProgressTab> {
                       color: colors.textMuted,
                     ),
                   ),
-                ),
-                const SizedBox(width: 8),
-                if (selectedJoined != null)
-                  Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      TextButton.icon(
-                        onPressed: () => _openEditEvaluation(
-                          context,
-                          selectedJoined.avaliacao,
-                        ),
-                        style: TextButton.styleFrom(
-                          foregroundColor: colors.accent,
-                          minimumSize: const Size(0, 44),
-                        ),
-                        icon: Icon(
-                          Icons.edit_outlined,
-                          size: 16,
-                          color: colors.accent,
-                        ),
-                        label: Text(
-                          'Editar',
-                          style: TextStyle(
+                  if (selectedJoined != null)
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        TextButton.icon(
+                          onPressed: () => _openEditEvaluation(
+                            context,
+                            selectedJoined.avaliacao,
+                          ),
+                          style: TextButton.styleFrom(
+                            foregroundColor: colors.accent,
+                            minimumSize: const Size(0, 44),
+                          ),
+                          icon: Icon(
+                            Icons.edit_outlined,
+                            size: 16,
                             color: colors.accent,
-                            fontSize: 13.5,
-                            fontWeight: FontWeight.w600,
+                          ),
+                          label: Text(
+                            'Editar',
+                            style: TextStyle(
+                              color: colors.accent,
+                              fontSize: 13.5,
+                              fontWeight: FontWeight.w600,
+                            ),
                           ),
                         ),
-                      ),
-                      TextButton(
-                        onPressed: () => _confirmDeleteEvaluation(
-                          context,
-                          selectedJoined.avaliacao.id,
-                        ),
-                        style: TextButton.styleFrom(
-                          foregroundColor: colors.dangerText,
-                          minimumSize: const Size(0, 44),
-                        ),
-                        child: Text(
-                          'Excluir',
-                          style: TextStyle(
-                            color: colors.dangerText,
-                            fontSize: 13.5,
-                            fontWeight: FontWeight.w600,
+                        TextButton(
+                          onPressed: () => _confirmDeleteEvaluation(
+                            context,
+                            selectedJoined.avaliacao.id,
+                          ),
+                          style: TextButton.styleFrom(
+                            foregroundColor: colors.dangerText,
+                            minimumSize: const Size(0, 44),
+                          ),
+                          child: Text(
+                            'Excluir',
+                            style: TextStyle(
+                              color: colors.dangerText,
+                              fontSize: 13.5,
+                              fontWeight: FontWeight.w600,
+                            ),
                           ),
                         ),
-                      ),
-                    ],
-                  ),
-              ],
+                      ],
+                    ),
+                ],
+              ),
             ),
             const SizedBox(height: 8),
 
@@ -642,7 +676,7 @@ class _PersonalProgressTabState extends State<PersonalProgressTab> {
                     final ev = evaluations[idx];
                     final isSelected = ev.avaliacao.id == effectiveSelectedId;
                     final label = idx == 0
-                        ? 'Mais Recente'
+                        ? 'Atual • ${shortChipFmt.format(ev.avaliacao.dataAvaliacao)}'
                         : DateFormat('dd/MM/yyyy')
                             .format(ev.avaliacao.dataAvaliacao);
 
@@ -659,9 +693,7 @@ class _PersonalProgressTabState extends State<PersonalProgressTab> {
                             _selectedAvaliacaoId = ev.avaliacao.id;
                           });
                         },
-                        selectedColor: isDark
-                            ? AppColors.indigoPrimary
-                            : const Color(0xFF0F172A),
+                        selectedColor: AppColors.indigoPrimary,
                         backgroundColor: colors.surface,
                         labelStyle: TextStyle(
                           fontSize: 13,
@@ -688,15 +720,18 @@ class _PersonalProgressTabState extends State<PersonalProgressTab> {
 
             if (selectedJoined != null) ...[
               if (selectedJoined.resultado != null) ...[
-                AiInsightCard.evaluation(
-                  key: ValueKey(
-                    'ai_eval_${selectedJoined.avaliacao.id}_${selectedJoined.resultado?.snapshot.metodoPrincipal}',
+                KeyedSubtree(
+                  key: _aiCoachAnchorKey,
+                  child: AiInsightCard.evaluation(
+                    key: ValueKey(
+                      'ai_eval_${selectedJoined.avaliacao.id}_${selectedJoined.resultado?.snapshot.metodoPrincipal}',
+                    ),
+                    appState: widget.appState,
+                    profile: profile,
+                    avaliacao: selectedJoined.avaliacao,
+                    resultado: selectedJoined.resultado,
+                    onOpenSettings: widget.onNavigateToSettings,
                   ),
-                  appState: widget.appState,
-                  profile: profile,
-                  avaliacao: selectedJoined.avaliacao,
-                  resultado: selectedJoined.resultado,
-                  onOpenSettings: widget.onNavigateToSettings,
                 ),
                 const SizedBox(height: 18),
               ],
@@ -728,17 +763,18 @@ class _PersonalProgressTabState extends State<PersonalProgressTab> {
   Widget _buildEmptyState(
     BuildContext context,
     bool isDark,
-    UserProfile profile,
-  ) {
+    UserProfile profile, {
+    bool allowQuickWeight = false,
+  }) {
+    final colors = context.bioColors;
+
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(28),
+      padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
-        color: isDark ? AppColors.darkSurface : Colors.white,
+        color: colors.surface,
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(
-          color: isDark ? AppColors.darkBorder : AppColors.lightBorder,
-        ),
+        border: Border.all(color: colors.border),
       ),
       child: Column(
         children: [
@@ -746,59 +782,112 @@ class _PersonalProgressTabState extends State<PersonalProgressTab> {
             width: 56,
             height: 56,
             decoration: BoxDecoration(
-              color: AppColors.indigoPrimary.withValues(alpha: 0.1),
+              color: colors.accent.withValues(alpha: 0.12),
               shape: BoxShape.circle,
             ),
-            child: const Icon(
-              Icons.straighten_rounded,
+            child: Icon(
+              allowQuickWeight
+                  ? Icons.monitor_weight_outlined
+                  : Icons.straighten_rounded,
               size: 28,
-              color: AppColors.indigoPrimary,
+              color: colors.accent,
             ),
           ),
           const SizedBox(height: 14),
           Text(
             'Comece seu acompanhamento!',
+            textAlign: TextAlign.center,
             style: TextStyle(
               fontSize: 17,
               fontWeight: FontWeight.bold,
-              color: isDark
-                  ? AppColors.darkTextPrimary
-                  : AppColors.lightTextPrimary,
+              color: colors.textPrimary,
             ),
           ),
           const SizedBox(height: 6),
           Text(
-            'Registre sua primeira avaliação física para visualizar sua composição corporal, gráficos e fotos.',
+            allowQuickWeight
+                ? 'Registre seu peso de hoje em segundos ou faça sua primeira avaliação física completa para ver % de gordura e evolução.'
+                : 'Registre sua primeira avaliação física para visualizar sua composição corporal, gráficos e fotos.',
             textAlign: TextAlign.center,
             style: TextStyle(
               fontSize: 13.5,
               height: 1.4,
-              color: isDark
-                  ? AppColors.darkTextSecondary
-                  : AppColors.lightTextSecondary,
+              color: colors.textSecondary,
             ),
           ),
           const SizedBox(height: 18),
-          ElevatedButton.icon(
-            onPressed: () => _openNewEvaluation(context),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.indigoPrimary,
-              foregroundColor: Colors.white,
-              elevation: 0,
-              minimumSize: const Size(190, 44),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
+          if (allowQuickWeight) ...[
+            SizedBox(
+              width: double.infinity,
+              height: 48,
+              child: ElevatedButton.icon(
+                key: const ValueKey('empty_btn_quick_weight'),
+                onPressed: () {
+                  HapticFeedback.lightImpact();
+                  QuickWeightDialog.show(context, appState: widget.appState);
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.indigoPrimary,
+                  foregroundColor: Colors.white,
+                  elevation: 0,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+                icon: const Icon(Icons.monitor_weight_outlined, size: 20),
+                label: const Text(
+                  'Pesar Hoje',
+                  style: TextStyle(
+                    fontSize: 14.5,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
               ),
             ),
-            icon: const Icon(Icons.add_rounded, size: 20),
-            label: const Text(
-              'Nova Avaliação',
-              style: TextStyle(
-                fontSize: 14.5,
-                fontWeight: FontWeight.w700,
+            const SizedBox(height: 10),
+            SizedBox(
+              width: double.infinity,
+              height: 48,
+              child: OutlinedButton.icon(
+                onPressed: () => _openNewEvaluation(context),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: colors.accent,
+                  side: BorderSide(color: colors.accent, width: 1.4),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+                icon: const Icon(Icons.add_rounded, size: 20),
+                label: const Text(
+                  'Nova Avaliação',
+                  style: TextStyle(
+                    fontSize: 14.5,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
               ),
             ),
-          ),
+          ] else
+            ElevatedButton.icon(
+              onPressed: () => _openNewEvaluation(context),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.indigoPrimary,
+                foregroundColor: Colors.white,
+                elevation: 0,
+                minimumSize: const Size(190, 48),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+              icon: const Icon(Icons.add_rounded, size: 20),
+              label: const Text(
+                'Nova Avaliação',
+                style: TextStyle(
+                  fontSize: 14.5,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ),
         ],
       ),
     );

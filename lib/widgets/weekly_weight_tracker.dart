@@ -9,6 +9,7 @@ import '../services/app_state.dart';
 import '../theme/app_theme.dart';
 import '../utils/weight_trend_calculator.dart';
 import 'consistency_heatmap.dart';
+import 'quick_weight_dialog.dart';
 
 class WeeklyWeightTracker extends StatefulWidget {
   final AppState appState;
@@ -24,14 +25,32 @@ class WeeklyWeightTracker extends StatefulWidget {
 
 class _WeeklyWeightTrackerState extends State<WeeklyWeightTracker> {
   final _weightCtrl = TextEditingController();
+  final _weightFocusNode = FocusNode();
   DateTime _selectedDate = DateTime.now();
   bool _showHistory = false;
+  int _historyLimit = 10;
   bool _isSyncing = false;
 
   @override
   void dispose() {
     _weightCtrl.dispose();
+    _weightFocusNode.dispose();
     super.dispose();
+  }
+
+  BoxDecoration _cardDecoration(BioThemeColors colors, bool isDark) {
+    return BoxDecoration(
+      color: colors.surface,
+      borderRadius: BorderRadius.circular(20),
+      border: Border.all(color: colors.border),
+      boxShadow: [
+        BoxShadow(
+          color: Colors.black.withValues(alpha: isDark ? 0.18 : 0.025),
+          blurRadius: 8,
+          offset: const Offset(0, 2),
+        ),
+      ],
+    );
   }
 
   Future<void> _syncSmartScale() async {
@@ -92,7 +111,15 @@ class _WeeklyWeightTrackerState extends State<WeeklyWeightTracker> {
     if (profile == null) return;
 
     final raw = _weightCtrl.text.trim().replaceAll(',', '.');
-    if (raw.isEmpty) return;
+    if (raw.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Digite o peso em kg antes de salvar.'),
+        ),
+      );
+      _weightFocusNode.requestFocus();
+      return;
+    }
 
     final parsed = double.tryParse(raw);
     if (parsed == null || parsed < 30 || parsed > 350) {
@@ -134,6 +161,7 @@ class _WeeklyWeightTrackerState extends State<WeeklyWeightTracker> {
   }
 
   Future<void> _handleDelete(String id) async {
+    if (id.startsWith('av_')) return;
     final removed =
         widget.appState.pesagens.where((p) => p.id == id).firstOrNull;
     await widget.appState.deletePesagem(id);
@@ -185,20 +213,696 @@ class _WeeklyWeightTrackerState extends State<WeeklyWeightTracker> {
     return sortedWeeks;
   }
 
+  Widget _buildQuickFormCard(
+    BuildContext context,
+    BioThemeColors colors,
+    bool isDark,
+    DateFormat dateFmt,
+  ) {
+    final datePickerField = Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.only(left: 4, bottom: 5),
+          child: Text(
+            'DATA',
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w700,
+              letterSpacing: 0.6,
+              color: colors.textMuted,
+            ),
+          ),
+        ),
+        Semantics(
+          button: true,
+          label:
+              'Selecionar data da pesagem. Atual: ${dateFmt.format(_selectedDate)}',
+          child: InkWell(
+            onTap: () => _pickDate(context),
+            borderRadius: BorderRadius.circular(10),
+            child: Container(
+              constraints: const BoxConstraints(minHeight: 48),
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+              decoration: BoxDecoration(
+                color: colors.surfaceSubtle,
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: colors.border),
+              ),
+              alignment: Alignment.centerLeft,
+              child: Row(
+                children: [
+                  Icon(
+                    Icons.calendar_today_rounded,
+                    size: 15,
+                    color: colors.textSecondary,
+                  ),
+                  const SizedBox(width: 6),
+                  Expanded(
+                    child: Text(
+                      dateFmt.format(_selectedDate),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w500,
+                        color: colors.textPrimary,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+
+    final weightField = Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.only(left: 4, bottom: 5),
+          child: Text(
+            'PESO (KG)',
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w700,
+              letterSpacing: 0.6,
+              color: colors.textMuted,
+            ),
+          ),
+        ),
+        Container(
+          constraints: const BoxConstraints(minHeight: 48),
+          padding: const EdgeInsets.symmetric(horizontal: 10),
+          decoration: BoxDecoration(
+            color: colors.surfaceSubtle,
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(color: colors.border),
+          ),
+          alignment: Alignment.center,
+          child: TextField(
+            key: const ValueKey('daily_weight_input'),
+            controller: _weightCtrl,
+            focusNode: _weightFocusNode,
+            keyboardType: const TextInputType.numberWithOptions(
+              decimal: true,
+            ),
+            textInputAction: TextInputAction.done,
+            onSubmitted: (_) => _handleAddWeight(),
+            style: TextStyle(
+              fontSize: 14.5,
+              color: colors.textPrimary,
+            ),
+            decoration: InputDecoration(
+              hintText: 'Ex: 72,5',
+              hintStyle: TextStyle(
+                fontSize: 13.5,
+                color: colors.textMuted,
+              ),
+              border: InputBorder.none,
+              isDense: true,
+            ),
+          ),
+        ),
+      ],
+    );
+
+    final saveBtn = ElevatedButton(
+      key: const ValueKey('save_daily_weight_btn'),
+      onPressed: _handleAddWeight,
+      style: ElevatedButton.styleFrom(
+        backgroundColor: AppColors.indigoPrimary,
+        foregroundColor: Colors.white,
+        elevation: 0,
+        minimumSize: const Size(0, 48),
+        padding: const EdgeInsets.symmetric(horizontal: 18),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(10),
+        ),
+      ),
+      child: const FittedBox(
+        fit: BoxFit.scaleDown,
+        child: Text(
+          'Salvar',
+          maxLines: 1,
+          style: TextStyle(
+            fontSize: 14.5,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+      ),
+    );
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(20),
+      decoration: _cardDecoration(colors, isDark),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: colors.accent.withValues(alpha: 0.14),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Icon(
+                  Icons.monitor_weight_outlined,
+                  color: colors.accent,
+                  size: 20,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Pesagens Diárias & Média Semanal',
+                      style: TextStyle(
+                        fontSize: 17,
+                        fontWeight: FontWeight.bold,
+                        letterSpacing: -0.3,
+                        color: colors.textPrimary,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      'Acompanhe a média semanal e a tendência para filtrar oscilações diárias de água.',
+                      style: TextStyle(
+                        fontSize: 12.5,
+                        height: 1.3,
+                        color: colors.textSecondary,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 4),
+              IconButton(
+                onPressed: _isSyncing ? null : _syncSmartScale,
+                tooltip: 'Sincronizar balança inteligente (Health Connect)',
+                icon: _isSyncing
+                    ? const SizedBox(
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : Icon(
+                        Icons.sync_rounded,
+                        color: colors.accent,
+                      ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          const Divider(height: 1),
+          const SizedBox(height: 16),
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final scaledFont = MediaQuery.textScalerOf(context).scale(14.5);
+              final stackSave =
+                  constraints.maxWidth < 330 || scaledFont > 17.5;
+              if (stackSave) {
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: [
+                        Expanded(flex: 5, child: datePickerField),
+                        const SizedBox(width: 8),
+                        Expanded(flex: 4, child: weightField),
+                      ],
+                    ),
+                    const SizedBox(height: 10),
+                    saveBtn,
+                  ],
+                );
+              }
+              return Row(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  Expanded(flex: 5, child: datePickerField),
+                  const SizedBox(width: 8),
+                  Expanded(flex: 4, child: weightField),
+                  const SizedBox(width: 8),
+                  saveBtn,
+                ],
+              );
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildWeeklyAndHistoryCard(
+    BuildContext context,
+    BioThemeColors colors,
+    bool isDark,
+    List<Pesagem> pesagens,
+    List<_WeekSummary> weeklyData,
+    DateFormat shortDateFmt,
+    DateFormat fullDateFmt,
+  ) {
+    if (weeklyData.isEmpty) {
+      return Container(
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(vertical: 26, horizontal: 20),
+        decoration: _cardDecoration(colors, isDark),
+        child: Text(
+          'Adicione sua primeira pesagem diária para calcular a média semanal e a tendência.',
+          textAlign: TextAlign.center,
+          style: TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.w500,
+            color: colors.textSecondary,
+          ),
+        ),
+      );
+    }
+
+    final currentGoal =
+        widget.appState.avaliacoes.firstOrNull?.objetivo ??
+            Objetivo.emagrecimento;
+    final isHypertrophy = currentGoal == Objetivo.hipertrofia;
+
+    final int visibleHistoryCount =
+        math.min(_historyLimit, pesagens.length);
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(18),
+      decoration: _cardDecoration(colors, isDark),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'MÉDIAS SEMANAIS',
+            style: TextStyle(
+              fontSize: 11.5,
+              fontWeight: FontWeight.w700,
+              letterSpacing: 0.7,
+              color: colors.textMuted,
+            ),
+          ),
+          const SizedBox(height: 12),
+          Column(
+            children: List.generate(weeklyData.length, (index) {
+              final week = weeklyData[index];
+              final prevWeek =
+                  index + 1 < weeklyData.length ? weeklyData[index + 1] : null;
+              final diff = prevWeek != null ? week.avg - prevWeek.avg : 0.0;
+
+              Color badgeBg = colors.surfaceSubtle;
+              Color badgeBorder = colors.border;
+              Color badgeText = colors.textSecondary;
+              IconData badgeIcon = Icons.remove_rounded;
+
+              if (diff > 0.1) {
+                final isGood = isHypertrophy;
+                badgeBg = (isGood ? AppColors.emerald : AppColors.rose)
+                    .withValues(alpha: isDark ? 0.18 : 0.10);
+                badgeBorder = (isGood ? AppColors.emerald : AppColors.rose)
+                    .withValues(alpha: 0.25);
+                badgeText = isGood ? colors.successText : colors.dangerText;
+                badgeIcon = Icons.trending_up_rounded;
+              } else if (diff < -0.1) {
+                final isGood = !isHypertrophy;
+                badgeBg = (isGood ? AppColors.emerald : AppColors.rose)
+                    .withValues(alpha: isDark ? 0.18 : 0.10);
+                badgeBorder = (isGood ? AppColors.emerald : AppColors.rose)
+                    .withValues(alpha: 0.25);
+                badgeText = isGood ? colors.successText : colors.dangerText;
+                badgeIcon = Icons.trending_down_rounded;
+              }
+
+              return Padding(
+                padding: EdgeInsets.only(
+                  bottom: index == weeklyData.length - 1 ? 0 : 10,
+                ),
+                child: Container(
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
+                    color: colors.surfaceSubtle,
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(color: colors.border),
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              '${shortDateFmt.format(week.start)} a ${shortDateFmt.format(week.end)}'
+                                  .toUpperCase(),
+                              style: TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w700,
+                                letterSpacing: 0.6,
+                                color: colors.textMuted,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Row(
+                              crossAxisAlignment: CrossAxisAlignment.baseline,
+                              textBaseline: TextBaseline.alphabetic,
+                              children: [
+                                Text(
+                                  week.avg.toStringAsFixed(1),
+                                  style: TextStyle(
+                                    fontSize: 26,
+                                    fontWeight: FontWeight.w800,
+                                    letterSpacing: -0.5,
+                                    color: colors.textPrimary,
+                                  ),
+                                ),
+                                const SizedBox(width: 4),
+                                Text(
+                                  'kg',
+                                  style: TextStyle(
+                                    fontSize: 13.5,
+                                    fontWeight: FontWeight.w500,
+                                    color: colors.textSecondary,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              '${week.weights.length} ${week.weights.length == 1 ? 'pesagem nesta semana' : 'pesagens nesta semana'}',
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w500,
+                                color: colors.textSecondary,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      if (prevWeek != null)
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 10,
+                            vertical: 8,
+                          ),
+                          decoration: BoxDecoration(
+                            color: badgeBg,
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(color: badgeBorder),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.end,
+                            children: [
+                              Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(badgeIcon, size: 15, color: badgeText),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    '${diff.abs().toStringAsFixed(1)} kg',
+                                    style: TextStyle(
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.bold,
+                                      color: badgeText,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 2),
+                              Text(
+                                'vs sem. anterior',
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w600,
+                                  color: badgeText,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+              );
+            }),
+          ),
+
+          // Histórico Expansível de Registros (inline sem scroll aninhado)
+          if (pesagens.isNotEmpty) ...[
+            const SizedBox(height: 14),
+            const Divider(height: 1),
+            const SizedBox(height: 6),
+            Semantics(
+              button: true,
+              label: _showHistory
+                  ? 'Ocultar registros individuais'
+                  : 'Ver registros individuais (${pesagens.length})',
+              child: InkWell(
+                key: const ValueKey('btn_toggle_weight_history'),
+                onTap: () {
+                  HapticFeedback.selectionClick();
+                  setState(() => _showHistory = !_showHistory);
+                },
+                borderRadius: BorderRadius.circular(10),
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(minHeight: 44),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 4),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Expanded(
+                          child: Text(
+                            _showHistory
+                                ? 'Ocultar registros individuais'
+                                : 'Ver registros individuais (${pesagens.length})',
+                            style: TextStyle(
+                              fontSize: 13.5,
+                              fontWeight: FontWeight.w700,
+                              color: colors.accent,
+                            ),
+                          ),
+                        ),
+                        Icon(
+                          _showHistory
+                              ? Icons.expand_less_rounded
+                              : Icons.expand_more_rounded,
+                          color: colors.accent,
+                          size: 20,
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+            if (_showHistory) ...[
+              const SizedBox(height: 4),
+              for (int idx = 0; idx < visibleHistoryCount; idx++) ...[
+                if (idx > 0) const Divider(height: 1),
+                Builder(
+                  builder: (context) {
+                    final p = pesagens[pesagens.length - 1 - idx];
+                    final isFromEvaluation = p.id.startsWith('av_');
+
+                    final rowContent = ConstrainedBox(
+                      constraints: const BoxConstraints(minHeight: 48),
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(
+                          vertical: 6,
+                          horizontal: 4,
+                        ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Text(
+                                    fullDateFmt.format(p.data),
+                                    style: TextStyle(
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w500,
+                                      color: colors.textSecondary,
+                                    ),
+                                  ),
+                                  if (!isFromEvaluation)
+                                    Text(
+                                      'Toque para editar',
+                                      style: TextStyle(
+                                        fontSize: 11,
+                                        color: colors.textMuted,
+                                      ),
+                                    ),
+                                ],
+                              ),
+                            ),
+                            Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Text(
+                                  '${p.pesoKg.toStringAsFixed(1)} kg',
+                                  style: TextStyle(
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.bold,
+                                    color: colors.textPrimary,
+                                  ),
+                                ),
+                                const SizedBox(width: 10),
+                                if (isFromEvaluation)
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 8,
+                                      vertical: 4,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: colors.accent.withValues(
+                                        alpha: 0.12,
+                                      ),
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                    child: Text(
+                                      'Avaliação',
+                                      style: TextStyle(
+                                        fontSize: 11.5,
+                                        fontWeight: FontWeight.w700,
+                                        color: colors.accent,
+                                      ),
+                                    ),
+                                  )
+                                else ...[
+                                  Icon(
+                                    Icons.edit_outlined,
+                                    size: 16,
+                                    color: colors.accent,
+                                  ),
+                                  const SizedBox(width: 6),
+                                  Semantics(
+                                    button: true,
+                                    label:
+                                        'Excluir pesagem de ${fullDateFmt.format(p.data)}',
+                                    child: InkWell(
+                                      onTap: () => _handleDelete(p.id),
+                                      borderRadius: BorderRadius.circular(8),
+                                      child: ConstrainedBox(
+                                        constraints: const BoxConstraints(
+                                          minHeight: 44,
+                                          minWidth: 48,
+                                        ),
+                                        child: Center(
+                                          widthFactor: 1.0,
+                                          heightFactor: 1.0,
+                                          child: Padding(
+                                            padding: const EdgeInsets.symmetric(
+                                              horizontal: 8,
+                                            ),
+                                            child: Text(
+                                              'Excluir',
+                                              style: TextStyle(
+                                                fontSize: 13,
+                                                fontWeight: FontWeight.w600,
+                                                color: colors.dangerText,
+                                              ),
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                    );
+
+                    if (isFromEvaluation) {
+                      return rowContent;
+                    }
+
+                    return Semantics(
+                      button: true,
+                      label:
+                          'Editar pesagem de ${fullDateFmt.format(p.data)}, ${p.pesoKg.toStringAsFixed(1)} quilos',
+                      child: InkWell(
+                        onTap: () => QuickWeightDialog.show(
+                          context,
+                          appState: widget.appState,
+                          initialDate: p.data,
+                        ),
+                        borderRadius: BorderRadius.circular(10),
+                        child: rowContent,
+                      ),
+                    );
+                  },
+                ),
+              ],
+              if (pesagens.length > _historyLimit)
+                Align(
+                  alignment: Alignment.center,
+                  child: TextButton(
+                    onPressed: () {
+                      setState(() => _historyLimit += 10);
+                    },
+                    style: TextButton.styleFrom(
+                      foregroundColor: colors.accent,
+                      minimumSize: const Size(0, 44),
+                    ),
+                    child: Text(
+                      'Carregar mais (${pesagens.length - _historyLimit} restantes)',
+                      style: const TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                ),
+            ],
+          ],
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final colors = context.bioColors;
+
     final pesagens = () {
       final list = List<Pesagem>.from(widget.appState.pesagens);
       for (final av in widget.appState.avaliacoes) {
-        final d = DateTime(av.dataAvaliacao.year, av.dataAvaliacao.month, av.dataAvaliacao.day);
-        if (!list.any((p) => p.data.year == d.year && p.data.month == d.month && p.data.day == d.day)) {
-          list.add(Pesagem(
-            id: 'av_${av.id}',
-            userId: av.userId,
-            data: d,
-            pesoKg: av.pesoKg,
-          ));
+        final d = DateTime(
+          av.dataAvaliacao.year,
+          av.dataAvaliacao.month,
+          av.dataAvaliacao.day,
+        );
+        if (!list.any(
+          (p) =>
+              p.data.year == d.year &&
+              p.data.month == d.month &&
+              p.data.day == d.day,
+        )) {
+          list.add(
+            Pesagem(
+              id: 'av_${av.id}',
+              userId: av.userId,
+              data: d,
+              pesoKg: av.pesoKg,
+            ),
+          );
         }
       }
       list.sort((a, b) => a.data.compareTo(b.data));
@@ -214,587 +918,55 @@ class _WeeklyWeightTrackerState extends State<WeeklyWeightTracker> {
     final shortDateFmt = DateFormat('dd MMM', 'pt_BR');
     final fullDateFmt = DateFormat("dd 'de' MMM, yyyy", 'pt_BR');
 
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: isDark ? AppColors.darkSurface : Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(
-          color: isDark ? AppColors.darkBorder : AppColors.lightBorder,
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // 1. Card de Registro Rápido
+        _buildQuickFormCard(context, colors, isDark, dateFmt),
+        const SizedBox(height: 16),
+
+        // 2. Card de Projeção & Meta
+        if (pesagens.isNotEmpty) ...[
+          _buildProjectionCard(context, projection, colors, isDark),
+          const SizedBox(height: 16),
+        ],
+
+        // 3. Card Gráfico de Tendência Suavizada
+        if (pesagens.length >= 2) ...[
+          _buildTrendChart(
+            context,
+            pesagens,
+            profile?.metaPesoKg,
+            colors,
+            isDark,
+          ),
+          const SizedBox(height: 16),
+        ],
+
+        // 4. Card Heatmap de Consistência (12 Semanas)
+        if (pesagens.isNotEmpty) ...[
+          ConsistencyHeatmap(pesagens: pesagens),
+          const SizedBox(height: 16),
+        ],
+
+        // 5. Card de Médias Semanais & Histórico
+        _buildWeeklyAndHistoryCard(
+          context,
+          colors,
+          isDark,
+          pesagens,
+          weeklyData,
+          shortDateFmt,
+          fullDateFmt,
         ),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.025),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Header
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Container(
-                padding: const EdgeInsets.all(10),
-                decoration: BoxDecoration(
-                  color: AppColors.indigoPrimary.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: const Icon(
-                  Icons.monitor_weight_outlined,
-                  color: AppColors.indigoPrimary,
-                  size: 20,
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Pesagens Diárias & Média Semanal',
-                      style: TextStyle(
-                        fontSize: 17,
-                        fontWeight: FontWeight.bold,
-                        letterSpacing: -0.3,
-                        color: isDark
-                            ? AppColors.darkTextPrimary
-                            : const Color(0xFF1E293B),
-                      ),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      'Foque na tendência e na média semanal para filtrar oscilações diárias de água.',
-                      style: TextStyle(
-                        fontSize: 12.5,
-                        height: 1.3,
-                        color: isDark
-                            ? AppColors.darkTextSecondary
-                            : const Color(0xFF64748B),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(width: 8),
-              IconButton(
-                onPressed: _isSyncing ? null : _syncSmartScale,
-                tooltip: 'Sincronizar balança inteligente (Health Connect)',
-                icon: _isSyncing
-                    ? const SizedBox(
-                        width: 18,
-                        height: 18,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
-                    : const Icon(
-                        Icons.sync_rounded,
-                        color: AppColors.indigoPrimary,
-                      ),
-              ),
-            ],
-          ),
-
-          const SizedBox(height: 16),
-          const Divider(height: 1),
-          const SizedBox(height: 16),
-
-          // Form (Data + Peso + Salvar)
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              // Data Picker
-              Expanded(
-                flex: 5,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Padding(
-                      padding: const EdgeInsets.only(left: 4, bottom: 5),
-                      child: Text(
-                        'DATA',
-                        style: TextStyle(
-                          fontSize: 10.5,
-                          fontWeight: FontWeight.w700,
-                          letterSpacing: 0.6,
-                          color: context.bioColors.textMuted,
-                        ),
-                      ),
-                    ),
-                    InkWell(
-                      onTap: () => _pickDate(context),
-                      borderRadius: BorderRadius.circular(10),
-                      child: Container(
-                        height: 46,
-                        padding: const EdgeInsets.symmetric(horizontal: 10),
-                        decoration: BoxDecoration(
-                          color: isDark
-                              ? AppColors.darkBackground
-                              : const Color(0xFFF8FAFC),
-                          borderRadius: BorderRadius.circular(10),
-                          border: Border.all(
-                            color: isDark
-                                ? AppColors.darkBorder
-                                : const Color(0xFFE2E8F0),
-                          ),
-                        ),
-                        alignment: Alignment.centerLeft,
-                        child: Row(
-                          children: [
-                            Icon(
-                              Icons.calendar_today_rounded,
-                              size: 15,
-                              color: isDark
-                                  ? AppColors.darkTextSecondary
-                                  : const Color(0xFF64748B),
-                            ),
-                            const SizedBox(width: 6),
-                            Expanded(
-                              child: Text(
-                                dateFmt.format(_selectedDate),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: TextStyle(
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.w500,
-                                  color: isDark
-                                      ? AppColors.darkTextPrimary
-                                      : const Color(0xFF1E293B),
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(width: 8),
-
-              // Input Peso
-              Expanded(
-                flex: 4,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Padding(
-                      padding: const EdgeInsets.only(left: 4, bottom: 5),
-                      child: Text(
-                        'PESO (KG)',
-                        style: TextStyle(
-                          fontSize: 10.5,
-                          fontWeight: FontWeight.w700,
-                          letterSpacing: 0.6,
-                          color: context.bioColors.textMuted,
-                        ),
-                      ),
-                    ),
-                    Container(
-                      height: 46,
-                      padding: const EdgeInsets.symmetric(horizontal: 10),
-                      decoration: BoxDecoration(
-                        color: isDark
-                            ? AppColors.darkBackground
-                            : const Color(0xFFF8FAFC),
-                        borderRadius: BorderRadius.circular(10),
-                        border: Border.all(
-                          color: isDark
-                              ? AppColors.darkBorder
-                              : const Color(0xFFE2E8F0),
-                        ),
-                      ),
-                      alignment: Alignment.center,
-                      child: TextField(
-                        key: const ValueKey('daily_weight_input'),
-                        controller: _weightCtrl,
-                        keyboardType: const TextInputType.numberWithOptions(
-                          decimal: true,
-                        ),
-                        style: TextStyle(
-                          fontSize: 14.5,
-                          color: isDark
-                              ? AppColors.darkTextPrimary
-                              : const Color(0xFF1E293B),
-                        ),
-                        decoration: InputDecoration(
-                          hintText: 'Ex: 72,5',
-                          hintStyle: TextStyle(
-                            fontSize: 13.5,
-                            color: context.bioColors.textMuted,
-                          ),
-                          border: InputBorder.none,
-                          isDense: true,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(width: 8),
-
-              // Botão Salvar
-              SizedBox(
-                height: 46,
-                child: ElevatedButton(
-                  key: const ValueKey('save_daily_weight_btn'),
-                  onPressed: _handleAddWeight,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.indigoPrimary,
-                    foregroundColor: Colors.white,
-                    elevation: 0,
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                  ),
-                  child: const Text(
-                    'Salvar',
-                    style: TextStyle(
-                      fontSize: 14.5,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ),
-              ),
-            ],
-          ),
-
-          const SizedBox(height: 18),
-
-          // 1. Card de Projeção & Meta
-          if (pesagens.isNotEmpty) ...[
-            _buildProjectionCard(context, projection, isDark),
-            const SizedBox(height: 16),
-          ],
-
-          // 2. Gráfico de Tendência com EMA (α=0.1)
-          if (pesagens.length >= 2) ...[
-            _buildTrendChart(context, pesagens, profile?.metaPesoKg, isDark),
-            const SizedBox(height: 16),
-          ],
-
-          // 3. Heatmap de Consistência das últimas 12 semanas
-          if (pesagens.isNotEmpty) ...[
-            ConsistencyHeatmap(pesagens: pesagens),
-            const SizedBox(height: 18),
-          ],
-
-          // Lista de Médias Semanais ou Estado Vazio
-          if (weeklyData.isNotEmpty)
-            Column(
-              children: List.generate(weeklyData.length, (index) {
-                final week = weeklyData[index];
-                final prevWeek =
-                    index + 1 < weeklyData.length ? weeklyData[index + 1] : null;
-                final diff = prevWeek != null ? week.avg - prevWeek.avg : 0.0;
-
-                final currentGoal =
-                    widget.appState.avaliacoes.firstOrNull?.objetivo ??
-                        Objetivo.emagrecimento;
-                final isHypertrophy = currentGoal == Objetivo.hipertrofia;
-
-                Color badgeBg = isDark
-                    ? const Color(0xFF1E293B)
-                    : const Color(0xFFF1F5F9);
-                Color badgeBorder = isDark
-                    ? AppColors.darkBorder
-                    : const Color(0xFFE2E8F0);
-                Color badgeText = isDark
-                    ? AppColors.darkTextSecondary
-                    : const Color(0xFF64748B);
-                IconData badgeIcon = Icons.remove_rounded;
-
-                if (diff > 0.1) {
-                  final isGood = isHypertrophy;
-                  badgeBg = (isGood
-                          ? const Color(0xFF10B981)
-                          : const Color(0xFFF43F5E))
-                      .withValues(alpha: isDark ? 0.18 : 0.08);
-                  badgeBorder = (isGood
-                          ? const Color(0xFF10B981)
-                          : const Color(0xFFF43F5E))
-                      .withValues(alpha: 0.25);
-                  badgeText = isGood
-                      ? context.bioColors.successText
-                      : context.bioColors.dangerText;
-                  badgeIcon = Icons.trending_up_rounded;
-                } else if (diff < -0.1) {
-                  final isGood = !isHypertrophy;
-                  badgeBg = (isGood
-                          ? const Color(0xFF10B981)
-                          : const Color(0xFFF43F5E))
-                      .withValues(alpha: isDark ? 0.18 : 0.08);
-                  badgeBorder = (isGood
-                          ? const Color(0xFF10B981)
-                          : const Color(0xFFF43F5E))
-                      .withValues(alpha: 0.25);
-                  badgeText = isGood
-                      ? context.bioColors.successText
-                      : context.bioColors.dangerText;
-                  badgeIcon = Icons.trending_down_rounded;
-                }
-
-                return Padding(
-                  padding: EdgeInsets.only(
-                    bottom: index == weeklyData.length - 1 ? 0 : 10,
-                  ),
-                  child: Container(
-                    padding: const EdgeInsets.all(14),
-                    decoration: BoxDecoration(
-                      color: isDark
-                          ? AppColors.darkBackground
-                          : const Color(0xFFF8FAFC),
-                      borderRadius: BorderRadius.circular(14),
-                      border: Border.all(
-                        color: isDark
-                            ? AppColors.darkBorder
-                            : const Color(0xFFF1F5F9),
-                      ),
-                    ),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                '${shortDateFmt.format(week.start)} a ${shortDateFmt.format(week.end)}'
-                                    .toUpperCase(),
-                                style: TextStyle(
-                                  fontSize: 10.5,
-                                  fontWeight: FontWeight.w700,
-                                  letterSpacing: 0.6,
-                                  color: context.bioColors.textMuted,
-                                ),
-                              ),
-                              const SizedBox(height: 4),
-                              Row(
-                                crossAxisAlignment: CrossAxisAlignment.baseline,
-                                textBaseline: TextBaseline.alphabetic,
-                                children: [
-                                  Text(
-                                    week.avg.toStringAsFixed(1),
-                                    style: TextStyle(
-                                      fontSize: 26,
-                                      fontWeight: FontWeight.w800,
-                                      letterSpacing: -0.5,
-                                      color: isDark
-                                          ? AppColors.darkTextPrimary
-                                          : const Color(0xFF1E293B),
-                                    ),
-                                  ),
-                                  const SizedBox(width: 4),
-                                  Text(
-                                    'kg',
-                                    style: TextStyle(
-                                      fontSize: 13.5,
-                                      fontWeight: FontWeight.w500,
-                                      color: isDark
-                                          ? AppColors.darkTextSecondary
-                                          : const Color(0xFF64748B),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              const SizedBox(height: 2),
-                              Text(
-                                '${week.weights.length} ${week.weights.length == 1 ? 'pesagem nesta semana' : 'pesagens nesta semana'}',
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w500,
-                                  color: isDark
-                                      ? AppColors.darkTextSecondary
-                                      : const Color(0xFF64748B),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        if (prevWeek != null)
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 10,
-                              vertical: 8,
-                            ),
-                            decoration: BoxDecoration(
-                              color: badgeBg,
-                              borderRadius: BorderRadius.circular(12),
-                              border: Border.all(color: badgeBorder),
-                            ),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.end,
-                              children: [
-                                Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    Icon(badgeIcon, size: 15, color: badgeText),
-                                    const SizedBox(width: 4),
-                                    Text(
-                                      '${diff.abs().toStringAsFixed(1)} kg',
-                                      style: TextStyle(
-                                        fontSize: 14,
-                                        fontWeight: FontWeight.bold,
-                                        color: badgeText,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                                const SizedBox(height: 2),
-                                Text(
-                                  'VS SEM. ANT.',
-                                  style: TextStyle(
-                                    fontSize: 9.5,
-                                    fontWeight: FontWeight.w700,
-                                    letterSpacing: 0.4,
-                                    color: badgeText.withValues(alpha: 0.8),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                      ],
-                    ),
-                  ),
-                );
-              }),
-            )
-          else
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.symmetric(vertical: 26, horizontal: 16),
-              decoration: BoxDecoration(
-                color:
-                    isDark ? AppColors.darkBackground : const Color(0xFFF8FAFC),
-                borderRadius: BorderRadius.circular(14),
-                border: Border.all(
-                  color:
-                      isDark ? AppColors.darkBorder : const Color(0xFFE2E8F0),
-                ),
-              ),
-              child: Text(
-                'Adicione sua primeira pesagem diária para começar a calcular a média semanal.',
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w500,
-                  color: isDark
-                      ? AppColors.darkTextSecondary
-                      : const Color(0xFF64748B),
-                ),
-              ),
-            ),
-
-          // Histórico Expansível de Registros
-          if (pesagens.isNotEmpty) ...[
-            const SizedBox(height: 14),
-            const Divider(height: 1),
-            const SizedBox(height: 10),
-            InkWell(
-              onTap: () => setState(() => _showHistory = !_showHistory),
-              borderRadius: BorderRadius.circular(8),
-              child: Padding(
-                padding: const EdgeInsets.symmetric(vertical: 4),
-                child: Text(
-                  _showHistory
-                      ? '- Ocultar histórico'
-                      : '+ Mostrar histórico de registros',
-                  style: TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.bold,
-                    color: isDark
-                        ? AppColors.indigoLight
-                        : AppColors.indigoPrimary,
-                  ),
-                ),
-              ),
-            ),
-            if (_showHistory) ...[
-              const SizedBox(height: 8),
-              ConstrainedBox(
-                constraints: const BoxConstraints(maxHeight: 200),
-                child: ListView.separated(
-                  shrinkWrap: true,
-                  itemCount: pesagens.length,
-                  separatorBuilder: (_, __) => const Divider(height: 1),
-                  itemBuilder: (context, idx) {
-                    // Ordem decrescente (mais recente primeiro)
-                    final p = pesagens[pesagens.length - 1 - idx];
-                    return Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 8),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Expanded(
-                            child: Text(
-                              fullDateFmt.format(p.data),
-                              style: TextStyle(
-                                fontSize: 13,
-                                fontWeight: FontWeight.w500,
-                                color: isDark
-                                    ? AppColors.darkTextSecondary
-                                    : const Color(0xFF64748B),
-                              ),
-                            ),
-                          ),
-                          Row(
-                            children: [
-                              Text(
-                                '${p.pesoKg.toStringAsFixed(1)} kg',
-                                style: TextStyle(
-                                  fontSize: 13.5,
-                                  fontWeight: FontWeight.bold,
-                                  color: isDark
-                                      ? AppColors.darkTextPrimary
-                                      : const Color(0xFF334155),
-                                ),
-                              ),
-                              const SizedBox(width: 14),
-                              Semantics(
-                                button: true,
-                                label:
-                                    'Excluir pesagem de ${fullDateFmt.format(p.data)}',
-                                child: InkWell(
-                                  onTap: () => _handleDelete(p.id),
-                                  borderRadius: BorderRadius.circular(8),
-                                  child: Padding(
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 10,
-                                      vertical: 10,
-                                    ),
-                                    child: Text(
-                                      'Excluir',
-                                      style: TextStyle(
-                                        fontSize: 13,
-                                        fontWeight: FontWeight.w600,
-                                        color: context.bioColors.dangerText,
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ],
-                      ),
-                    );
-                  },
-                ),
-              ),
-            ],
-          ],
-        ],
-      ),
+      ],
     );
   }
 
   Widget _buildProjectionCard(
     BuildContext context,
     WeightProjectionResult projection,
+    BioThemeColors colors,
     bool isDark,
   ) {
     Color cardBg;
@@ -805,41 +977,37 @@ class _WeeklyWeightTrackerState extends State<WeeklyWeightTracker> {
     switch (projection.direction) {
       case TrendDirection.losing:
       case TrendDirection.gaining:
-        cardBg =
-            const Color(0xFF10B981).withValues(alpha: isDark ? 0.15 : 0.08);
-        borderCol = const Color(0xFF10B981).withValues(alpha: 0.3);
-        iconCol = const Color(0xFF059669);
+        cardBg = AppColors.emerald.withValues(alpha: isDark ? 0.16 : 0.08);
+        borderCol = AppColors.emerald.withValues(alpha: 0.30);
+        iconCol = colors.successText;
         iconData = Icons.flag_rounded;
         break;
       case TrendDirection.diverging:
-        cardBg =
-            const Color(0xFFF59E0B).withValues(alpha: isDark ? 0.15 : 0.08);
-        borderCol = const Color(0xFFF59E0B).withValues(alpha: 0.35);
-        iconCol = const Color(0xFFD97706);
+        cardBg = AppColors.orange.withValues(alpha: isDark ? 0.16 : 0.08);
+        borderCol = AppColors.orange.withValues(alpha: 0.32);
+        iconCol = colors.warningText;
         iconData = Icons.warning_amber_rounded;
         break;
       case TrendDirection.stable:
-        cardBg =
-            AppColors.indigoPrimary.withValues(alpha: isDark ? 0.15 : 0.08);
-        borderCol = AppColors.indigoPrimary.withValues(alpha: 0.25);
-        iconCol = AppColors.indigoPrimary;
+        cardBg = colors.accent.withValues(alpha: isDark ? 0.16 : 0.08);
+        borderCol = colors.accent.withValues(alpha: 0.28);
+        iconCol = colors.accent;
         iconData = Icons.balance_rounded;
         break;
       case TrendDirection.insufficientData:
-        cardBg = isDark ? const Color(0xFF1E293B) : const Color(0xFFF1F5F9);
-        borderCol = isDark ? AppColors.darkBorder : const Color(0xFFE2E8F0);
-        iconCol =
-            isDark ? AppColors.darkTextSecondary : const Color(0xFF64748B);
+        cardBg = colors.surface;
+        borderCol = colors.border;
+        iconCol = colors.textSecondary;
         iconData = Icons.insights_rounded;
         break;
     }
 
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(14),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: cardBg,
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(20),
         border: Border.all(color: borderCol),
       ),
       child: Row(
@@ -848,7 +1016,7 @@ class _WeeklyWeightTrackerState extends State<WeeklyWeightTracker> {
           Container(
             padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(
-              color: iconCol.withValues(alpha: 0.15),
+              color: iconCol.withValues(alpha: 0.14),
               borderRadius: BorderRadius.circular(10),
             ),
             child: Icon(iconData, color: iconCol, size: 20),
@@ -864,9 +1032,7 @@ class _WeeklyWeightTrackerState extends State<WeeklyWeightTracker> {
                     fontSize: 14.5,
                     fontWeight: FontWeight.bold,
                     letterSpacing: -0.2,
-                    color: isDark
-                        ? AppColors.darkTextPrimary
-                        : const Color(0xFF1E293B),
+                    color: colors.textPrimary,
                   ),
                 ),
                 const SizedBox(height: 3),
@@ -875,9 +1041,7 @@ class _WeeklyWeightTrackerState extends State<WeeklyWeightTracker> {
                   style: TextStyle(
                     fontSize: 12.5,
                     height: 1.35,
-                    color: isDark
-                        ? AppColors.darkTextSecondary
-                        : const Color(0xFF64748B),
+                    color: colors.textSecondary,
                   ),
                 ),
               ],
@@ -892,6 +1056,7 @@ class _WeeklyWeightTrackerState extends State<WeeklyWeightTracker> {
     BuildContext context,
     List<Pesagem> pesagens,
     double? metaPesoKg,
+    BioThemeColors colors,
     bool isDark,
   ) {
     final points = WeightTrendCalculator.computeEma(pesagens, alpha: 0.1);
@@ -924,88 +1089,88 @@ class _WeeklyWeightTrackerState extends State<WeeklyWeightTracker> {
 
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: isDark ? AppColors.darkBackground : const Color(0xFFF8FAFC),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: isDark ? AppColors.darkBorder : const Color(0xFFE2E8F0),
-        ),
-      ),
+      padding: const EdgeInsets.all(18),
+      decoration: _cardDecoration(colors, isDark),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          Text(
+            'Evolução e Tendência do Peso',
+            style: TextStyle(
+              fontSize: 15,
+              fontWeight: FontWeight.bold,
+              color: colors.textPrimary,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Wrap(
+            spacing: 12,
+            runSpacing: 6,
+            crossAxisAlignment: WrapCrossAlignment.center,
             children: [
-              Text(
-                'Tendência do Peso (EMA α=0,1)',
-                style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.bold,
-                  color: isDark
-                      ? AppColors.darkTextPrimary
-                      : const Color(0xFF1E293B),
-                ),
-              ),
               Row(
+                mainAxisSize: MainAxisSize.min,
                 children: [
                   Container(
-                    width: 10,
+                    width: 12,
                     height: 3,
                     decoration: BoxDecoration(
-                      color: AppColors.indigoPrimary,
+                      color: colors.accent,
                       borderRadius: BorderRadius.circular(2),
                     ),
                   ),
-                  const SizedBox(width: 4),
-                  const Text(
+                  const SizedBox(width: 5),
+                  Text(
                     'Tendência',
                     style: TextStyle(
-                      fontSize: 11,
+                      fontSize: 11.5,
                       fontWeight: FontWeight.w600,
-                      color: AppColors.indigoPrimary,
+                      color: colors.accent,
                     ),
                   ),
-                  const SizedBox(width: 8),
+                ],
+              ),
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
                   Container(
                     width: 6,
                     height: 6,
                     decoration: BoxDecoration(
-                      color:
-                          isDark ? Colors.white38 : const Color(0xFF94A3B8),
+                      color: colors.textMuted,
                       shape: BoxShape.circle,
                     ),
                   ),
-                  const SizedBox(width: 4),
+                  const SizedBox(width: 5),
                   Text(
                     'Pesagem',
                     style: TextStyle(
-                      fontSize: 11,
-                      color: isDark
-                          ? AppColors.darkTextSecondary
-                          : const Color(0xFF64748B),
+                      fontSize: 11.5,
+                      color: colors.textSecondary,
                     ),
                   ),
-                  if (metaPesoKg != null && metaPesoKg > 0) ...[
-                    const SizedBox(width: 8),
+                ],
+              ),
+              if (metaPesoKg != null && metaPesoKg > 0)
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
                     Container(
-                      width: 10,
+                      width: 12,
                       height: 2,
-                      color: const Color(0xFF10B981),
+                      color: colors.successText,
                     ),
-                    const SizedBox(width: 4),
-                    const Text(
+                    const SizedBox(width: 5),
+                    Text(
                       'Meta',
                       style: TextStyle(
-                        fontSize: 11,
+                        fontSize: 11.5,
                         fontWeight: FontWeight.w600,
-                        color: Color(0xFF10B981),
+                        color: colors.successText,
                       ),
                     ),
                   ],
-                ],
-              ),
+                ),
             ],
           ),
           const SizedBox(height: 14),
@@ -1014,164 +1179,163 @@ class _WeeklyWeightTrackerState extends State<WeeklyWeightTracker> {
                 'Gráfico de tendência de peso com ${displayPoints.length} registros',
             excludeSemantics: true,
             child: SizedBox(
-              height: 180,
+              height: 185,
               child: LineChart(
-              LineChartData(
-                minY: minY,
-                maxY: maxY,
-                minX: 0,
-                maxX: (displayPoints.length - 1).toDouble(),
-                gridData: FlGridData(
-                  show: true,
-                  drawVerticalLine: false,
-                  horizontalInterval: 1.0,
-                  getDrawingHorizontalLine: (val) => FlLine(
-                    color: isDark
-                        ? AppColors.darkBorder.withValues(alpha: 0.5)
-                        : const Color(0xFFE2E8F0),
-                    strokeWidth: 1,
+                LineChartData(
+                  minY: minY,
+                  maxY: maxY,
+                  minX: 0,
+                  maxX: (displayPoints.length - 1).toDouble(),
+                  gridData: FlGridData(
+                    show: true,
+                    drawVerticalLine: false,
+                    horizontalInterval: 1.0,
+                    getDrawingHorizontalLine: (val) => FlLine(
+                      color: colors.border.withValues(alpha: 0.7),
+                      strokeWidth: 1,
+                    ),
                   ),
-                ),
-                titlesData: FlTitlesData(
-                  rightTitles: const AxisTitles(
-                    sideTitles: SideTitles(showTitles: false),
-                  ),
-                  topTitles: const AxisTitles(
-                    sideTitles: SideTitles(showTitles: false),
-                  ),
-                  leftTitles: AxisTitles(
-                    sideTitles: SideTitles(
-                      showTitles: true,
-                      reservedSize: 34,
-                      interval: math.max(
-                          1.0, ((maxY - minY) / 4).roundToDouble()),
-                      getTitlesWidget: (val, meta) => Text(
-                        '${val.toInt()}k',
-                        style: TextStyle(
-                          fontSize: 10.5,
-                          fontWeight: FontWeight.w500,
-                          color: isDark
-                              ? AppColors.darkTextSecondary
-                              : const Color(0xFF94A3B8),
+                  titlesData: FlTitlesData(
+                    rightTitles: const AxisTitles(
+                      sideTitles: SideTitles(showTitles: false),
+                    ),
+                    topTitles: const AxisTitles(
+                      sideTitles: SideTitles(showTitles: false),
+                    ),
+                    leftTitles: AxisTitles(
+                      sideTitles: SideTitles(
+                        showTitles: true,
+                        reservedSize: 44,
+                        interval: math.max(
+                          1.0,
+                          ((maxY - minY) / 4).roundToDouble(),
+                        ),
+                        getTitlesWidget: (val, meta) => Text(
+                          '${val.toInt()} kg',
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w500,
+                            color: colors.textMuted,
+                          ),
                         ),
                       ),
                     ),
+                    bottomTitles: AxisTitles(
+                      sideTitles: SideTitles(
+                        showTitles: true,
+                        reservedSize: 24,
+                        interval: math.max(
+                          1,
+                          (displayPoints.length / 4).floorToDouble(),
+                        ),
+                        getTitlesWidget: (val, meta) {
+                          final idx = val.toInt();
+                          if (idx < 0 || idx >= displayPoints.length) {
+                            return const SizedBox.shrink();
+                          }
+                          return Text(
+                            dateFmt.format(displayPoints[idx].date),
+                            style: TextStyle(
+                              fontSize: 11,
+                              color: colors.textMuted,
+                            ),
+                          );
+                        },
+                      ),
+                    ),
                   ),
-                  bottomTitles: AxisTitles(
-                    sideTitles: SideTitles(
-                      showTitles: true,
-                      reservedSize: 22,
-                      interval: math.max(
-                          1, (displayPoints.length / 4).floorToDouble()),
-                      getTitlesWidget: (val, meta) {
-                        final idx = val.toInt();
-                        if (idx < 0 || idx >= displayPoints.length) {
-                          return const SizedBox.shrink();
-                        }
-                        return Text(
-                          dateFmt.format(displayPoints[idx].date),
-                          style: TextStyle(
-                            fontSize: 10,
-                            color: isDark
-                                ? AppColors.darkTextSecondary
-                                : const Color(0xFF94A3B8),
-                          ),
-                        );
+                  borderData: FlBorderData(show: false),
+                  lineTouchData: LineTouchData(
+                    touchTooltipData: LineTouchTooltipData(
+                      getTooltipItems: (touchedSpots) {
+                        return touchedSpots.map((spot) {
+                          final idx = spot.x.toInt();
+                          final pt = idx < displayPoints.length
+                              ? displayPoints[idx]
+                              : null;
+                          if (spot.barIndex == 0) {
+                            return LineTooltipItem(
+                              'Peso: ${spot.y.toStringAsFixed(1)} kg\n${pt != null ? dateFmt.format(pt.date) : ''}',
+                              const TextStyle(
+                                color: Colors.white,
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            );
+                          } else if (spot.barIndex == 1) {
+                            return LineTooltipItem(
+                              'Tendência: ${spot.y.toStringAsFixed(1)} kg',
+                              const TextStyle(
+                                color: Color(0xFF818CF8),
+                                fontSize: 12,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            );
+                          }
+                          return null;
+                        }).whereType<LineTooltipItem>().toList();
                       },
                     ),
                   ),
-                ),
-                borderData: FlBorderData(show: false),
-                lineTouchData: LineTouchData(
-                  touchTooltipData: LineTouchTooltipData(
-                    getTooltipItems: (touchedSpots) {
-                      return touchedSpots.map((spot) {
-                        final idx = spot.x.toInt();
-                        final pt = idx < displayPoints.length
-                            ? displayPoints[idx]
-                            : null;
-                        if (spot.barIndex == 0) {
-                          return LineTooltipItem(
-                            'Real: ${spot.y.toStringAsFixed(1)} kg\n${pt != null ? dateFmt.format(pt.date) : ''}',
-                            const TextStyle(
-                              color: Colors.white,
-                              fontSize: 12,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          );
-                        } else if (spot.barIndex == 1) {
-                          return LineTooltipItem(
-                            'EMA: ${spot.y.toStringAsFixed(1)} kg',
-                            const TextStyle(
-                              color: Color(0xFF818CF8),
-                              fontSize: 12,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          );
-                        }
-                        return null;
-                      }).whereType<LineTooltipItem>().toList();
-                    },
-                  ),
-                ),
-                lineBarsData: [
-                  // Linha de pesagens brutas
-                  LineChartBarData(
-                    spots: rawSpots,
-                    isCurved: false,
-                    color: isDark ? Colors.white30 : const Color(0xFF94A3B8),
-                    barWidth: 1.5,
-                    dotData: FlDotData(
-                      show: true,
-                      getDotPainter: (spot, percent, barData, index) =>
-                          FlDotCirclePainter(
-                        radius: 2.5,
-                        color: isDark
-                            ? Colors.white70
-                            : const Color(0xFF64748B),
-                        strokeWidth: 0,
-                      ),
-                    ),
-                  ),
-                  // Linha de tendência EMA (suave)
-                  LineChartBarData(
-                    spots: emaSpots,
-                    isCurved: true,
-                    curveSmoothness: 0.35,
-                    color: AppColors.indigoPrimary,
-                    barWidth: 3.0,
-                    dotData: const FlDotData(show: false),
-                    belowBarData: BarAreaData(
-                      show: true,
-                      gradient: LinearGradient(
-                        begin: Alignment.topCenter,
-                        end: Alignment.bottomCenter,
-                        colors: [
-                          AppColors.indigoPrimary.withValues(
-                              alpha: isDark ? 0.25 : 0.10),
-                          AppColors.indigoPrimary.withValues(alpha: 0.0),
-                        ],
-                      ),
-                    ),
-                  ),
-                  // Linha da Meta
-                  if (metaPesoKg != null && metaPesoKg > 0)
+                  lineBarsData: [
+                    // Linha de pesagens brutas
                     LineChartBarData(
-                      spots: [
-                        FlSpot(0, metaPesoKg),
-                        FlSpot((displayPoints.length - 1).toDouble(),
-                            metaPesoKg),
-                      ],
+                      spots: rawSpots,
                       isCurved: false,
-                      dashArray: [6, 4],
-                      color: const Color(0xFF10B981),
-                      barWidth: 2.0,
-                      dotData: const FlDotData(show: false),
+                      color: isDark ? Colors.white30 : const Color(0xFF94A3B8),
+                      barWidth: 1.5,
+                      dotData: FlDotData(
+                        show: true,
+                        getDotPainter: (spot, percent, barData, index) =>
+                            FlDotCirclePainter(
+                          radius: 2.5,
+                          color: colors.textMuted,
+                          strokeWidth: 0,
+                        ),
+                      ),
                     ),
-                ],
+                    // Linha de tendência suavizada
+                    LineChartBarData(
+                      spots: emaSpots,
+                      isCurved: true,
+                      curveSmoothness: 0.35,
+                      color: colors.accent,
+                      barWidth: 3.0,
+                      dotData: const FlDotData(show: false),
+                      belowBarData: BarAreaData(
+                        show: true,
+                        gradient: LinearGradient(
+                          begin: Alignment.topCenter,
+                          end: Alignment.bottomCenter,
+                          colors: [
+                            colors.accent.withValues(
+                              alpha: isDark ? 0.25 : 0.12,
+                            ),
+                            colors.accent.withValues(alpha: 0.0),
+                          ],
+                        ),
+                      ),
+                    ),
+                    // Linha da Meta
+                    if (metaPesoKg != null && metaPesoKg > 0)
+                      LineChartBarData(
+                        spots: [
+                          FlSpot(0, metaPesoKg),
+                          FlSpot(
+                            (displayPoints.length - 1).toDouble(),
+                            metaPesoKg,
+                          ),
+                        ],
+                        isCurved: false,
+                        dashArray: [6, 4],
+                        color: colors.successText,
+                        barWidth: 2.0,
+                        dotData: const FlDotData(show: false),
+                      ),
+                  ],
+                ),
               ),
             ),
-          ),
           ),
         ],
       ),
