@@ -14,6 +14,31 @@ class GeminiTestResult {
   const GeminiTestResult({required this.success, required this.message});
 }
 
+/// Resposta estruturada do endpoint generateContent do Gemini
+class GeminiParsedResponse {
+  final String text;
+  final String? finishReason;
+
+  const GeminiParsedResponse({
+    required this.text,
+    this.finishReason,
+  });
+
+  bool get isTruncated => finishReason == 'MAX_TOKENS';
+}
+
+class _GeminiCallResult {
+  final String text;
+  final String model;
+  final bool isTruncated;
+
+  const _GeminiCallResult({
+    required this.text,
+    required this.model,
+    required this.isTruncated,
+  });
+}
+
 /// Serviço de integração com a inteligência artificial do Google Gemini.
 /// A chave da API é armazenada estritamente no hardware do dispositivo
 /// (FlutterSecureStorage / Android Keystore) e nenhuma informação passa
@@ -102,6 +127,155 @@ class GeminiService {
     return '${trimmed.substring(0, 6)}••••••••••••${trimmed.substring(trimmed.length - 4)}';
   }
 
+  /// Monta o generationConfig compatível com a família do modelo Gemini.
+  @visibleForTesting
+  static Map<String, dynamic> buildGenerationConfigForModel(
+    String model, {
+    bool isConnectionTest = false,
+    int? maxOutputTokensOverride,
+    bool includeThinkingConfig = true,
+  }) {
+    final normalized = model.toLowerCase().trim();
+    final config = <String, dynamic>{
+      'maxOutputTokens':
+          maxOutputTokensOverride ?? (isConnectionTest ? 128 : 4096),
+      'temperature': isConnectionTest ? 0.0 : 0.4,
+    };
+
+    if (!includeThinkingConfig) {
+      return config;
+    }
+
+    if (normalized.startsWith('gemini-3')) {
+      config['thinkingConfig'] = {'thinkingLevel': 'low'};
+    } else if (normalized.startsWith('gemini-2.5')) {
+      if (isConnectionTest) {
+        config['thinkingConfig'] = {
+          'thinkingBudget': normalized.contains('pro') ? 128 : 0,
+        };
+      } else {
+        config['thinkingConfig'] = {'thinkingBudget': 512};
+      }
+    }
+
+    return config;
+  }
+
+  /// Extrai todo o texto útil da resposta do Gemini e detecta truncamento/bloqueio.
+  @visibleForTesting
+  static GeminiParsedResponse parseGenerateContentResponse(
+    Map<String, dynamic> decoded,
+  ) {
+    final candidates = decoded['candidates'] as List<dynamic>?;
+    if (candidates == null || candidates.isEmpty) {
+      throw StateError('O modelo não gerou resposta para a solicitação.');
+    }
+
+    final firstRaw = candidates.first;
+    if (firstRaw is! Map) {
+      throw StateError('Formato de resposta inválido do Gemini.');
+    }
+    final candidate = Map<String, dynamic>.from(firstRaw);
+    final finishReason = candidate['finishReason'] as String?;
+
+    if (finishReason == 'SAFETY' ||
+        finishReason == 'RECITATION' ||
+        finishReason == 'BLOCKLIST') {
+      throw StateError(
+        'A resposta foi bloqueada pelos filtros de segurança do Gemini ($finishReason).',
+      );
+    }
+
+    final contentRaw = candidate['content'];
+    final content =
+        contentRaw is Map ? Map<String, dynamic>.from(contentRaw) : null;
+    final parts = content?['parts'] as List<dynamic>?;
+    if (parts == null || parts.isEmpty) {
+      throw StateError('Conteúdo de resposta vazio do Gemini.');
+    }
+
+    final buffer = StringBuffer();
+    for (final rawPart in parts) {
+      if (rawPart is! Map) continue;
+      if (rawPart['thought'] == true) continue;
+      final partText = rawPart['text'];
+      if (partText is String && partText.isNotEmpty) {
+        buffer.write(partText);
+      }
+    }
+
+    final text = buffer.toString().trim();
+    if (text.isEmpty) {
+      throw StateError('Conteúdo de resposta vazio do Gemini.');
+    }
+
+    return GeminiParsedResponse(text: text, finishReason: finishReason);
+  }
+
+  static String _extractApiErrorMessage(http.Response response) {
+    String msg = 'Código ${response.statusCode}';
+    try {
+      final decoded = jsonDecode(response.body) as Map<String, dynamic>;
+      final errorObj = decoded['error'] as Map<String, dynamic>?;
+      if (errorObj != null && errorObj['message'] != null) {
+        msg = errorObj['message'].toString();
+      }
+    } catch (_) {}
+    return msg;
+  }
+
+  static bool _isInvalidApiKeyError(int statusCode, String errorMsg) {
+    if (statusCode == 403) return true;
+    if (statusCode != 400) return false;
+    final lower = errorMsg.toLowerCase();
+    return lower.contains('api key') || lower.contains('api_key');
+  }
+
+  static bool _isWebCorsOrNetworkError(Object error) {
+    if (!kIsWeb) return false;
+    if (error is http.ClientException) return true;
+    final lower = error.toString().toLowerCase();
+    return lower.contains('xmlhttprequest') ||
+        lower.contains('failed to fetch') ||
+        lower.contains('networkerror');
+  }
+
+  static Future<http.Response> _sendGenerateContentRequest({
+    required Uri endpoint,
+    required String prompt,
+    required String model,
+    bool isConnectionTest = false,
+    int? maxOutputTokensOverride,
+    bool includeThinkingConfig = true,
+    Duration timeout = const Duration(seconds: 45),
+  }) {
+    final payload = {
+      'contents': [
+        {
+          'parts': [
+            {'text': prompt},
+          ],
+        },
+      ],
+      'generationConfig': buildGenerationConfigForModel(
+        model,
+        isConnectionTest: isConnectionTest,
+        maxOutputTokensOverride: maxOutputTokensOverride,
+        includeThinkingConfig: includeThinkingConfig,
+      ),
+    };
+
+    return http
+        .post(
+          endpoint,
+          headers: {
+            'Content-Type': 'application/json; charset=utf-8',
+          },
+          body: jsonEncode(payload),
+        )
+        .timeout(timeout);
+  }
+
   /// Valida e testa a conectividade da chave diretamente com a API do Gemini
   static Future<GeminiTestResult> testConnection([String? specificKey]) async {
     final keyToTest = specificKey?.trim() ?? await getApiKey();
@@ -130,21 +304,6 @@ class GeminiService {
       ...candidateModels.where((m) => m != _activeModel),
     ];
 
-    final payload = {
-      'contents': [
-        {
-          'parts': [
-            {'text': 'Responda apenas com a palavra: OK'},
-          ],
-        },
-      ],
-      'generationConfig': {
-        'maxOutputTokens': 5,
-        'temperature': 0.0,
-      },
-    };
-
-    final bodyJson = jsonEncode(payload);
     String lastError = '';
 
     for (final model in modelsToTry) {
@@ -153,15 +312,27 @@ class GeminiService {
       );
 
       try {
-        final response = await http
-            .post(
-              endpoint,
-              headers: {
-                'Content-Type': 'application/json; charset=utf-8',
-              },
-              body: bodyJson,
-            )
-            .timeout(const Duration(seconds: 10));
+        var response = await _sendGenerateContentRequest(
+          endpoint: endpoint,
+          prompt: 'Responda apenas com a palavra: OK',
+          model: model,
+          isConnectionTest: true,
+          timeout: const Duration(seconds: 10),
+        );
+
+        if (response.statusCode == 400) {
+          final firstMsg = _extractApiErrorMessage(response);
+          if (!_isInvalidApiKeyError(response.statusCode, firstMsg)) {
+            response = await _sendGenerateContentRequest(
+              endpoint: endpoint,
+              prompt: 'Responda apenas com a palavra: OK',
+              model: model,
+              isConnectionTest: true,
+              includeThinkingConfig: false,
+              timeout: const Duration(seconds: 10),
+            );
+          }
+        }
 
         if (response.statusCode == 200) {
           _activeModel = model;
@@ -171,23 +342,10 @@ class GeminiService {
           );
         }
 
-        String errorMsg = 'Código ${response.statusCode}';
-        try {
-          final decoded = jsonDecode(response.body) as Map<String, dynamic>;
-          final errorObj = decoded['error'] as Map<String, dynamic>?;
-          if (errorObj != null && errorObj['message'] != null) {
-            errorMsg = errorObj['message'].toString();
-          }
-        } catch (_) {}
+        final errorMsg = _extractApiErrorMessage(response);
         lastError = errorMsg;
 
-        // Se a chave for comprovadamente inválida (400 ou 403), interrompe
-        final lower = errorMsg.toLowerCase();
-        if (response.statusCode == 400 &&
-            (lower.contains('api key') || lower.contains('invalid'))) {
-          break;
-        }
-        if (response.statusCode == 403) {
+        if (_isInvalidApiKeyError(response.statusCode, errorMsg)) {
           break;
         }
 
@@ -195,7 +353,7 @@ class GeminiService {
         // continua tentando o próximo modelo candidato da lista
         continue;
       } catch (e) {
-        if (kIsWeb) {
+        if (_isWebCorsOrNetworkError(e)) {
           lastError =
               'Bloqueio de CORS do navegador. O Google Gemini bloqueia chamadas diretas originadas de browsers. No Chrome, execute com: flutter run -d chrome --web-browser-flag "--disable-web-security", ou teste diretamente no aplicativo Android.';
           break;
@@ -312,17 +470,19 @@ DIRETRIZES DA RESPOSTA:
 5. Conclua com um breve aviso ético lembrando que esta análise complementa, mas não substitui, o acompanhamento de um nutricionista ou profissional de saúde.
 ''';
 
-    final text = await _callGeminiApi(key: key, prompt: prompt);
+    final result = await _callGeminiApi(key: key, prompt: prompt);
 
-    // Salvar no cache local SQLite
-    await DatabaseService.saveAiInsight(
-      tipo: tipo,
-      referenciaId: refId,
-      conteudoMd: text,
-      modelo: _defaultModel,
-    );
+    // Salvar no cache local SQLite apenas se a resposta estiver completa
+    if (!result.isTruncated) {
+      await DatabaseService.saveAiInsight(
+        tipo: tipo,
+        referenciaId: refId,
+        conteudoMd: result.text,
+        modelo: result.model,
+      );
+    }
 
-    return text;
+    return result.text;
   }
 
   /// Gera ou recupera do cache a análise comparativa de evolução entre duas avaliações
@@ -417,20 +577,22 @@ DIRETRIZES DA ANÁLISE COMPARATIVA:
 4. Mantenha tom encorajador, científico e conciso (máximo 300 palavras), formatado em Markdown com seções claras.
 ''';
 
-    final text = await _callGeminiApi(key: key, prompt: prompt);
+    final result = await _callGeminiApi(key: key, prompt: prompt);
 
-    await DatabaseService.saveAiInsight(
-      tipo: tipo,
-      referenciaId: refId,
-      conteudoMd: text,
-      modelo: _defaultModel,
-    );
+    if (!result.isTruncated) {
+      await DatabaseService.saveAiInsight(
+        tipo: tipo,
+        referenciaId: refId,
+        conteudoMd: result.text,
+        modelo: result.model,
+      );
+    }
 
-    return text;
+    return result.text;
   }
 
   /// Executa chamada HTTP direta para o endpoint de geração do Gemini
-  static Future<String> _callGeminiApi({
+  static Future<_GeminiCallResult> _callGeminiApi({
     required String key,
     required String prompt,
   }) async {
@@ -439,21 +601,6 @@ DIRETRIZES DA ANÁLISE COMPARATIVA:
       ...candidateModels.where((m) => m != _activeModel),
     ];
 
-    final payload = {
-      'contents': [
-        {
-          'parts': [
-            {'text': prompt},
-          ],
-        },
-      ],
-      'generationConfig': {
-        'maxOutputTokens': 800,
-        'temperature': 0.4,
-      },
-    };
-
-    final bodyJson = jsonEncode(payload);
     String lastError = '';
 
     for (final model in modelsToTry) {
@@ -462,61 +609,74 @@ DIRETRIZES DA ANÁLISE COMPARATIVA:
       );
 
       try {
-        final response = await http
-            .post(
-              endpoint,
-              headers: {
-                'Content-Type': 'application/json; charset=utf-8',
-              },
-              body: bodyJson,
-            )
-            .timeout(const Duration(seconds: 25));
+        var usedThinkingConfig = true;
+        var response = await _sendGenerateContentRequest(
+          endpoint: endpoint,
+          prompt: prompt,
+          model: model,
+        );
+
+        if (response.statusCode == 400) {
+          final firstMsg = _extractApiErrorMessage(response);
+          if (_isInvalidApiKeyError(response.statusCode, firstMsg)) {
+            lastError = firstMsg;
+            break;
+          }
+          usedThinkingConfig = false;
+          response = await _sendGenerateContentRequest(
+            endpoint: endpoint,
+            prompt: prompt,
+            model: model,
+            includeThinkingConfig: false,
+          );
+        }
 
         if (response.statusCode == 200) {
-          _activeModel = model;
           final decoded = jsonDecode(response.body) as Map<String, dynamic>;
-          final candidates = decoded['candidates'] as List<dynamic>?;
-          if (candidates == null || candidates.isEmpty) {
-            throw StateError('O modelo não gerou resposta para a solicitação.');
+          var parsed = parseGenerateContentResponse(decoded);
+
+          if (parsed.isTruncated) {
+            try {
+              final retryResponse = await _sendGenerateContentRequest(
+                endpoint: endpoint,
+                prompt: prompt,
+                model: model,
+                maxOutputTokensOverride: 8192,
+                includeThinkingConfig: usedThinkingConfig,
+              );
+              if (retryResponse.statusCode == 200) {
+                final retryDecoded =
+                    jsonDecode(retryResponse.body) as Map<String, dynamic>;
+                parsed = parseGenerateContentResponse(retryDecoded);
+              }
+            } catch (e) {
+              if (_isWebCorsOrNetworkError(e)) rethrow;
+            }
           }
 
-          final content = candidates.first['content'] as Map<String, dynamic>?;
-          final parts = content?['parts'] as List<dynamic>?;
-          if (parts == null || parts.isEmpty) {
-            throw StateError('Conteúdo de resposta vazio do Gemini.');
-          }
-
-          final text = parts.first['text'] as String?;
-          return text?.trim() ?? 'Sem resposta.';
+          _activeModel = model;
+          return _GeminiCallResult(
+            text: parsed.text,
+            model: model,
+            isTruncated: parsed.isTruncated,
+          );
         }
 
-        String msg = 'Código ${response.statusCode}';
-        try {
-          final decoded = jsonDecode(response.body) as Map<String, dynamic>;
-          final errorObj = decoded['error'] as Map<String, dynamic>?;
-          if (errorObj != null && errorObj['message'] != null) {
-            msg = errorObj['message'].toString();
-          }
-        } catch (_) {}
+        final msg = _extractApiErrorMessage(response);
         lastError = msg;
 
-        final lower = msg.toLowerCase();
-        if (response.statusCode == 400 &&
-            (lower.contains('api key') || lower.contains('invalid'))) {
-          break;
-        }
-        if (response.statusCode == 403) {
+        if (_isInvalidApiKeyError(response.statusCode, msg)) {
           break;
         }
 
         continue;
       } catch (e) {
-        if (kIsWeb) {
+        if (_isWebCorsOrNetworkError(e)) {
           throw StateError(
             'Bloqueio de CORS do navegador. O Google Gemini bloqueia chamadas diretas de browsers. Teste no Android ou inicie o Chrome com --disable-web-security.',
           );
         }
-        lastError = e.toString();
+        lastError = e is StateError ? e.message : e.toString();
         continue;
       }
     }

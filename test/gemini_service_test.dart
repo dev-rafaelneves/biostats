@@ -182,4 +182,133 @@ void main() {
       );
     });
   });
+
+  group('GeminiService - Configuração de Tokens e Parser de Resposta', () {
+    test('Configura thinkingLevel low e 4096 tokens para família Gemini 3', () {
+      final config = GeminiService.buildGenerationConfigForModel(
+        'gemini-3.8-flash',
+      );
+
+      expect(config['maxOutputTokens'], equals(4096));
+      expect(config['temperature'], equals(0.4));
+      final thinking = config['thinkingConfig'] as Map<String, dynamic>?;
+      expect(thinking, isNotNull);
+      expect(thinking!['thinkingLevel'], equals('low'));
+      expect(thinking.containsKey('thinkingBudget'), isFalse);
+    });
+
+    test('Configura thinkingBudget 512 e 4096 tokens para família Gemini 2.5', () {
+      for (final model in ['gemini-2.5-flash', 'gemini-2.5-pro']) {
+        final config = GeminiService.buildGenerationConfigForModel(model);
+        expect(config['maxOutputTokens'], equals(4096));
+        expect(config['temperature'], equals(0.4));
+        final thinking = config['thinkingConfig'] as Map<String, dynamic>?;
+        expect(thinking, isNotNull);
+        expect(thinking!['thinkingBudget'], equals(512));
+        expect(thinking.containsKey('thinkingLevel'), isFalse);
+      }
+    });
+
+    test('Configura testConnection com 128 tokens e budget mínimo seguro por modelo', () {
+      final cfg3 = GeminiService.buildGenerationConfigForModel(
+        'gemini-3.8-flash',
+        isConnectionTest: true,
+      );
+      expect(cfg3['maxOutputTokens'], equals(128));
+      expect(cfg3['temperature'], equals(0.0));
+      expect(
+        (cfg3['thinkingConfig'] as Map<String, dynamic>)['thinkingLevel'],
+        equals('low'),
+      );
+
+      final cfg25Flash = GeminiService.buildGenerationConfigForModel(
+        'gemini-2.5-flash',
+        isConnectionTest: true,
+      );
+      expect(cfg25Flash['maxOutputTokens'], equals(128));
+      expect(
+        (cfg25Flash['thinkingConfig'] as Map<String, dynamic>)['thinkingBudget'],
+        equals(0),
+      );
+
+      final cfg25Pro = GeminiService.buildGenerationConfigForModel(
+        'gemini-2.5-pro',
+        isConnectionTest: true,
+      );
+      expect(cfg25Pro['maxOutputTokens'], equals(128));
+      expect(
+        (cfg25Pro['thinkingConfig'] as Map<String, dynamic>)['thinkingBudget'],
+        equals(128),
+      );
+    });
+
+    test('Concatena múltiplas parts, ignora partes de thought e detecta MAX_TOKENS', () {
+      final complete = GeminiService.parseGenerateContentResponse({
+        'candidates': [
+          {
+            'finishReason': 'STOP',
+            'content': {
+              'parts': [
+                {'thought': true, 'text': 'Raciocínio interno oculto'},
+                {'text': 'Olá, Rafael! '},
+                {'text': 'Parecer completo.'},
+              ],
+            },
+          },
+        ],
+      });
+
+      expect(complete.text, equals('Olá, Rafael! Parecer completo.'));
+      expect(complete.isTruncated, isFalse);
+
+      final truncated = GeminiService.parseGenerateContentResponse({
+        'candidates': [
+          {
+            'finishReason': 'MAX_TOKENS',
+            'content': {
+              'parts': [
+                {'text': 'Olá, Rafael! Parecer'},
+              ],
+            },
+          },
+        ],
+      });
+
+      expect(truncated.text, equals('Olá, Rafael! Parecer'));
+      expect(truncated.isTruncated, isTrue);
+    });
+
+    test('Lança StateError para candidates vazios, parts vazias ou bloqueio SAFETY', () {
+      expect(
+        () => GeminiService.parseGenerateContentResponse({'candidates': []}),
+        throwsStateError,
+      );
+      expect(
+        () => GeminiService.parseGenerateContentResponse({
+          'candidates': [
+            {
+              'finishReason': 'STOP',
+              'content': {'parts': []},
+            },
+          ],
+        }),
+        throwsStateError,
+      );
+      expect(
+        () => GeminiService.parseGenerateContentResponse({
+          'candidates': [
+            {
+              'finishReason': 'SAFETY',
+              'content': {
+                'parts': [
+                  {'text': 'Texto bloqueado'},
+                ],
+              },
+            },
+          ],
+        }),
+        throwsStateError,
+      );
+    });
+  });
 }
